@@ -237,7 +237,7 @@ function initTicker() {
   var itemsHTML = '';
   tickerData.forEach(function(t) {
     var changeClass = t.change >= 0 ? 'up' : 'down';
-    var arrow = t.change >= 0 ? '▲' : '▼';
+    var arrow = t.change >= 0 ? '\u25B2' : '\u25BC';
     itemsHTML += '<span class="ticker-item">' +
       '<span class="ticker-name">' + escapeHTML(t.name) + '</span>' +
       '<span class="ticker-price">' + formatUSD(t.price) + '</span>' +
@@ -309,7 +309,7 @@ function renderSearchResults(cards) {
     var price = getCardPrice(card);
     var change = generateMockChange();
     var changeClass = change >= 0 ? 'price-up' : 'price-down';
-    var arrow = change >= 0 ? '▲' : '▼';
+    var arrow = change >= 0 ? '\u25B2' : '\u25BC';
     var img = getCardImageSmall(card);
     return '<div class="mtg-card" onclick="navigateTo(\'#card/' + card.id + '\')">' +
       '<div class="mtg-card-image">' +
@@ -665,9 +665,9 @@ function renderPortfolio() {
   var kpisHTML =
     '<div class="portfolio-kpis">' +
       '<div class="kpi-card"><div class="kpi-label">Total Value</div><div class="kpi-value">' + formatUSD(totalValue) + '</div>' +
-        '<div class="kpi-delta ' + (totalChange >= 0 ? 'price-up' : 'price-down') + '">' + (totalChange >= 0 ? '▲' : '▼') + ' ' + formatUSD(Math.abs(totalChange)) + ' (' + Math.abs(totalChangePct).toFixed(1) + '%)</div></div>' +
+        '<div class="kpi-delta ' + (totalChange >= 0 ? 'price-up' : 'price-down') + '">' + (totalChange >= 0 ? '\u25B2' : '\u25BC') + ' ' + formatUSD(Math.abs(totalChange)) + ' (' + Math.abs(totalChangePct).toFixed(1) + '%)</div></div>' +
       '<div class="kpi-card"><div class="kpi-label">Day Change</div><div class="kpi-value">' + (dayChange >= 0 ? '+' : '') + formatUSD(dayChange) + '</div>' +
-        '<div class="kpi-delta ' + (dayChange >= 0 ? 'price-up' : 'price-down') + '">' + (dayChange >= 0 ? '▲' : '▼') + ' ' + Math.abs(dayChangePct).toFixed(1) + '% today</div></div>' +
+        '<div class="kpi-delta ' + (dayChange >= 0 ? 'price-up' : 'price-down') + '">' + (dayChange >= 0 ? '\u25B2' : '\u25BC') + ' ' + Math.abs(dayChangePct).toFixed(1) + '% today</div></div>' +
       '<div class="kpi-card"><div class="kpi-label">Total Cost</div><div class="kpi-value">' + formatUSD(totalCost) + '</div>' +
         '<div class="kpi-delta" style="color:var(--color-text-muted)">' + AppState.portfolio.length + ' unique cards</div></div>' +
     '</div>';
@@ -689,7 +689,7 @@ function renderPortfolio() {
             '<td>' + formatUSD(p.avgCost) + '</td>' +
             '<td>' + formatUSD(p.currentPrice) + '</td>' +
             '<td class="' + cls + '">' + (gain >= 0 ? '+' : '') + formatUSD(gain) + '</td>' +
-            '<td class="' + cls + '">' + (gain >= 0 ? '▲' : '▼') + ' ' + Math.abs(gainPct).toFixed(1) + '%</td>' +
+            '<td class="' + cls + '">' + (gain >= 0 ? '\u25B2' : '\u25BC') + ' ' + Math.abs(gainPct).toFixed(1) + '%</td>' +
             '<td><button class="btn btn-ghost btn-sm" onclick="removeFromPortfolio(\'' + p.id + '\')">Remove</button></td>' +
           '</tr>';
         }).join('') +
@@ -987,7 +987,10 @@ function sendChatMessage() {
 
   fetch(CHATBOT_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer o3O3uWjTMeO_FxjMQqyl-zFQk46w92CJejF-S186'
+    },
     body: JSON.stringify({
       model: '@cf/meta/llama-3.1-8b-instruct',
       messages: chatHistory.slice(-10),
