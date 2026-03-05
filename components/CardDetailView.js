@@ -1,0 +1,224 @@
+/* CardDetailView.js */
+import React from 'react';
+import { getCard } from '../utils/api.js';
+import { formatUSD, getCardPrice, generateMockPriceHistory, generateMockChange, getScryfallImageUrl } from '../utils/helpers.js';
+import { SkeletonCard } from './shared/SkeletonCard.js';
+import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
+var h = React.createElement;
+
+export function CardDetailView({ cardId, state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
+  var ref1 = React.useState(null);
+  var card = ref1[0], setCard = ref1[1];
+  var ref2 = React.useState(true);
+  var loading = ref2[0], setLoading = ref2[1];
+  var ref3 = React.useState(null);
+  var error = ref3[0], setError = ref3[1];
+  var ref4 = React.useState('1m');
+  var timeframe = ref4[0], setTimeframe = ref4[1];
+  var chartRef = React.useRef(null);
+  var chartInstance = React.useRef(null);
+
+  React.useEffect(function() {
+    if (!cardId) return;
+    setLoading(true);
+    setError(null);
+    setCard(null);
+    getCard(cardId).then(function(data) {
+      setCard(data);
+      setLoading(false);
+    }).catch(function() {
+      setError('Card not found.');
+      setLoading(false);
+    });
+  }, [cardId]);
+
+  React.useEffect(function() {
+    if (!card || !chartRef.current) return;
+    if (typeof Chart === 'undefined') return;
+
+    var price = getCardPrice(card);
+    var days = timeframe === '1w' ? 7 : timeframe === '1m' ? 30 : timeframe === '3m' ? 90 : 365;
+    var history = generateMockPriceHistory(price, days);
+    var labels = history.map(function(_, i) {
+      var d = new Date();
+      d.setDate(d.getDate() - (history.length - 1 - i));
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+
+    var ctx = chartRef.current.getContext('2d');
+    var gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(212, 168, 67, 0.25)');
+    gradient.addColorStop(1, 'rgba(212, 168, 67, 0.0)');
+
+    chartInstance.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: history,
+          borderColor: '#D4A843',
+          backgroundColor: gradient,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { callback: function(v) { return '$' + v.toFixed(2); }, color: '#8B8D94', font: { size: 11 } }
+          }
+        }
+      }
+    });
+
+    return function() {
+      if (chartInstance.current) { chartInstance.current.destroy(); chartInstance.current = null; }
+    };
+  }, [card, timeframe]);
+
+  function addToCart() {
+    if (!card) return;
+    var price = getCardPrice(card);
+    var existing = state.cart.find(function(item) { return item.id === card.id; });
+    if (existing) {
+      updateCart(state.cart.map(function(item) {
+        return item.id === card.id ? Object.assign({}, item, { qty: (item.qty || 1) + 1 }) : item;
+      }));
+    } else {
+      updateCart(state.cart.concat([{ id: card.id, name: card.name, set: card.set_name, price: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+    }
+  }
+
+  function addToPortfolio() {
+    if (!card) return;
+    var price = getCardPrice(card);
+    var existing = state.portfolio.find(function(item) { return item.id === card.id; });
+    if (!existing) {
+      updatePortfolio(state.portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+    }
+  }
+
+  function toggleWatchlist() {
+    if (!card) return;
+    var inList = state.watchlist.some(function(item) { return item.id === card.id; });
+    if (inList) {
+      updateWatchlist(state.watchlist.filter(function(item) { return item.id !== card.id; }));
+    } else {
+      updateWatchlist(state.watchlist.concat([{ id: card.id, name: card.name, set: card.set_name }]));
+    }
+  }
+
+  if (loading) return h('div', { className: 'container card-detail' },
+    h('div', { className: 'card-detail-grid' },
+      h('div', null, h('div', { className: 'skeleton skeleton-image' })),
+      h('div', null,
+        h('div', { className: 'skeleton skeleton-heading' }),
+        [1,2,3].map(function(i) { return h('div', { key: i, className: 'skeleton skeleton-text' }); })
+      )
+    )
+  );
+
+  if (error) return h('div', { className: 'container card-detail' },
+    h('div', { className: 'empty-state' }, h('p', null, error))
+  );
+
+  if (!card) return null;
+
+  var price = getCardPrice(card);
+  var change = generateMockChange();
+  var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
+
+  var prices = [
+    { label: 'Market', value: formatUSD(price) },
+    { label: 'Foil',   value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
+    { label: 'MTGO',   value: card.prices && card.prices.tix ? formatUSD(parseFloat(card.prices.tix)) + ' tix' : 'N/A' },
+    { label: '30d Δ', value: (change > 0 ? '+' : '') + change + '%' },
+  ];
+
+  var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
+    return ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].indexOf(entry[0]) !== -1;
+  });
+
+  return h('div', { className: 'container card-detail' },
+    h('a', {
+      className: 'back-link',
+      onClick: function() { window.history.back(); },
+      href: '#'
+    }, h(ChevronLeftIcon, null), ' Back'),
+    h('div', { className: 'card-detail-grid' },
+      h('div', { className: 'card-detail-image' },
+        h('img', {
+          src: getScryfallImageUrl(card, 'normal'),
+          alt: card.name,
+          loading: 'lazy'
+        })
+      ),
+      h('div', { className: 'card-detail-info' },
+        h('h1', null, card.name),
+        h('p', { className: 'card-detail-set' }, card.set_name, ' • ', card.rarity),
+        h('div', { className: 'price-breakdown' },
+          prices.map(function(p) {
+            return h('div', { key: p.label, className: 'price-box' },
+              h('div', { className: 'price-box-label' }, p.label),
+              h('div', { className: 'price-box-value' }, p.value)
+            );
+          })
+        ),
+        h('div', { className: 'card-actions' },
+          h('button', { className: 'btn btn-primary', onClick: addToCart },
+            h(CartIcon, null), ' Add to Cart'
+          ),
+          h('button', { className: 'btn btn-secondary', onClick: addToPortfolio },
+            h(PortfolioIcon, null), ' Track'
+          ),
+          h('button', {
+            className: 'btn btn-ghost',
+            onClick: toggleWatchlist,
+            'aria-pressed': inWatchlist
+          },
+            h(StarIcon, null), inWatchlist ? ' Watching' : ' Watch'
+          ),
+          onOpenListing && h('button', {
+            className: 'btn btn-secondary',
+            onClick: function() { onOpenListing(card); }
+          }, 'List on Market')
+        ),
+        h('div', { className: 'chart-container' },
+          h('h3', null, 'Price History'),
+          h('div', { style: { display: 'flex', gap: '8px', marginBottom: '12px' } },
+            ['1w','1m','3m','1y'].map(function(tf) {
+              return h('button', {
+                key: tf,
+                className: 'btn btn-sm ' + (timeframe === tf ? 'btn-primary' : 'btn-ghost'),
+                onClick: function() { setTimeframe(tf); }
+              }, tf);
+            })
+          ),
+          h('canvas', { ref: chartRef })
+        ),
+        h('div', { className: 'legality-grid' },
+          legalities.map(function(entry) {
+            return h('span', {
+              key: entry[0],
+              className: 'legality-badge ' + (entry[1] === 'legal' ? 'legality-legal' : 'legality-not-legal')
+            }, entry[0]);
+          })
+        ),
+        card.oracle_text && h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: '1.6', marginBottom: 'var(--space-4)' } },
+          card.oracle_text
+        )
+      )
+    )
+  );
+}
