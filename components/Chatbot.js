@@ -1,116 +1,195 @@
 /* Chatbot.js */
 import React from 'react';
-import { SparkleIcon, XIcon, SendIcon } from './shared/Icons.js';
+import { ChatIcon, CloseIcon, SendIcon, PortfolioIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-var CANNED_RESPONSES = [
-  { pattern: /black lotus/i, response: 'Black Lotus is one of the most valuable Magic cards ever printed. Alpha/Beta copies can exceed $50,000 in mint condition. Even Unlimited copies hover around $18,000–25,000. It\'s restricted in Vintage and banned everywhere else.' },
-  { pattern: /price|worth|value/i, response: 'Card prices fluctuate based on tournament play, reprints, and market demand. I recommend checking the Live Price charts on each card\'s detail page for real-time Scryfall data.' },
-  { pattern: /invest|spec|speculation/i, response: 'MTG investing often focuses on: (1) Reserved List cards that can\'t be reprinted, (2) Commander staples with consistent demand, and (3) rotating Standard cards near rotation lows. Always diversify and only invest what you can afford to hold.' },
-  { pattern: /guam|local|store/i, response: 'Guam has 4 local MTG stores: Geek Out Guam (Hagatna), Inventory Game Store (Tamuning), Pacific Card Exchange (Tumon), and Island Hobby Center (Dededo). Check the Local Stores page for hours and contact info.' },
-  { pattern: /portfolio|track/i, response: 'Use the Portfolio page to track your collection\'s value over time. Add cards by viewing their detail page and clicking "Track". Your data is saved locally in your browser.' },
-  { pattern: /foil|etched|showcase/i, response: 'Foil prices are typically 1.5–3x non-foil. Some showcase/extended art treatments are worth more. Older pre-M15 foils often carry a premium due to the distinctive foil pattern.' },
-  { pattern: /draft|sealed|limited/i, response: 'For limited play, prioritize bomb rares, removal, and card advantage. Check EDHREC.com for Commander staples. Limited Resources podcast is great for improving draft game.' },
-  { pattern: /hello|hi|hey/i, response: 'Hey there! I\'m your MTG Price Intelligence assistant. Ask me about card prices, local stores, portfolio tips, or investment strategies.' },
-];
+/* SECURITY: API calls routed through Cloudflare Worker proxy.
+   The AI Gateway token is stored server-side in the Worker, never exposed to the browser. */
+var CHATBOT_PROXY = 'https://investmtg-ai-proxy.imvestmtg.workers.dev';
+var SYSTEM_PROMPT = 'You are an expert Magic: The Gathering investment advisor and card analyst for investMTG.com. You help users make smart decisions about buying, selling, and collecting MTG cards. You know about card prices, market trends, format legality, deck building, set releases, reserved list cards, and investment strategies. Keep responses concise (2-4 sentences unless more detail is requested). Use dollar amounts when discussing prices. Be friendly and enthusiastic about MTG. If you don\'t know a specific current price, say so and recommend checking the card on investMTG. Never give financial advice disclaimers unless specifically asked about real money investment risk.';
 
-var DEFAULT_RESPONSE = 'Great question! For specific card prices, use the Search page. For local buying/selling, check the Guam Marketplace. Anything else I can help with?';
+/* Client-side rate limiter — prevents rapid-fire abuse */
+var rateLimitState = { lastRequest: 0, count: 0, windowStart: 0 };
+var RATE_WINDOW = 60000; /* 1 minute */
+var RATE_MAX = 8; /* max 8 messages per minute */
 
-function getResponse(message) {
-  for (var i = 0; i < CANNED_RESPONSES.length; i++) {
-    if (CANNED_RESPONSES[i].pattern.test(message)) {
-      return CANNED_RESPONSES[i].response;
-    }
+function checkRateLimit() {
+  var now = Date.now();
+  /* Minimum 2 seconds between messages */
+  if (now - rateLimitState.lastRequest < 2000) return false;
+  /* Reset window if expired */
+  if (now - rateLimitState.windowStart > RATE_WINDOW) {
+    rateLimitState.windowStart = now;
+    rateLimitState.count = 0;
   }
-  return DEFAULT_RESPONSE;
+  if (rateLimitState.count >= RATE_MAX) return false;
+  rateLimitState.count++;
+  rateLimitState.lastRequest = now;
+  return true;
+}
+
+/* Input sanitization — strips dangerous patterns */
+function sanitizeInput(str) {
+  if (!str) return '';
+  /* Trim and limit length */
+  var s = str.trim().slice(0, 500);
+  /* Remove null bytes and control characters (except newlines) */
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  return s;
 }
 
 export function Chatbot() {
-  var ref1 = React.useState(false);
-  var open = ref1[0], setOpen = ref1[1];
-  var ref2 = React.useState([
-    { role: 'bot', text: 'Hi! I\'m your MTG Price Intelligence assistant. Ask me about card values, local stores, or investment tips.' }
+  var ref = React.useState(false);
+  var isOpen = ref[0], setIsOpen = ref[1];
+  var msgsRef = React.useState([
+    { role: 'bot', text: 'Hey! I\'m your MTG investment advisor. Ask me about card prices, investment strategies, deck building, or anything Magic: The Gathering.' }
   ]);
-  var messages = ref2[0], setMessages = ref2[1];
-  var ref3 = React.useState('');
-  var input = ref3[0], setInput = ref3[1];
-  var ref4 = React.useState(false);
-  var typing = ref4[0], setTyping = ref4[1];
+  var messages = msgsRef[0], setMessages = msgsRef[1];
+  var busyRef = React.useState(false);
+  var busy = busyRef[0], setBusy = busyRef[1];
+  var inputRef = React.useRef(null);
   var messagesEndRef = React.useRef(null);
+  var historyRef = React.useRef([{ role: 'system', content: SYSTEM_PROMPT }]);
 
   React.useEffect(function() {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;
     }
-  }, [messages, typing]);
+  }, [messages]);
 
-  function sendMessage() {
-    var msg = input.trim();
+  var toggle = function() {
+    var newState = !isOpen;
+    setIsOpen(newState);
+    if (newState && inputRef.current) {
+      setTimeout(function() { inputRef.current.focus(); }, 100);
+    }
+  };
+
+  var sendMessage = function() {
+    if (busy) return;
+    var input = inputRef.current;
+    if (!input) return;
+    var msg = sanitizeInput(input.value);
     if (!msg) return;
-    setInput('');
-    setMessages(function(prev) { return prev.concat([{ role: 'user', text: msg }]); });
-    setTyping(true);
-    setTimeout(function() {
-      var response = getResponse(msg);
-      setMessages(function(prev) { return prev.concat([{ role: 'bot', text: response }]); });
-      setTyping(false);
-    }, 800 + Math.random() * 600);
-  }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    /* Rate limit check */
+    if (!checkRateLimit()) {
+      setMessages(function(prev) {
+        return prev.concat([{ role: 'bot', text: 'Please wait a moment before sending another message.' }]);
+      });
+      return;
+    }
+
+    input.value = '';
+    setMessages(function(prev) { return prev.concat([{ role: 'user', text: msg }]); });
+    historyRef.current.push({ role: 'user', content: msg });
+
+    setBusy(true);
+    setMessages(function(prev) { return prev.concat([{ role: 'typing', text: '' }]); });
+
+    fetch(CHATBOT_PROXY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: '@cf/meta/llama-3.1-8b-instruct',
+        messages: historyRef.current.slice(-10),
+        max_tokens: 512,
+        temperature: 0.7
+      })
+    })
+    .then(function(res) {
+      if (res.status === 429) throw new Error('rate_limited');
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      var reply = '';
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        reply = data.choices[0].message.content;
+      } else if (data.result && data.result.response) {
+        reply = data.result.response;
+      } else {
+        reply = 'Sorry, I couldn\'t process that. Please try again.';
+      }
+      historyRef.current.push({ role: 'assistant', content: reply });
+      setMessages(function(prev) {
+        return prev.filter(function(m) { return m.role !== 'typing'; }).concat([{ role: 'bot', text: reply }]);
+      });
+    })
+    .catch(function(err) {
+      var errorMsg = err.message === 'rate_limited'
+        ? 'Too many requests. Please wait a moment and try again.'
+        : 'Sorry, I\'m having trouble connecting right now. Please try again in a moment.';
+      setMessages(function(prev) {
+        return prev.filter(function(m) { return m.role !== 'typing'; }).concat([
+          { role: 'bot', text: errorMsg }
+        ]);
+      });
+    })
+    .finally(function() {
+      setBusy(false);
+    });
+  };
+
+  var onKeyDown = function(e) {
+    if (e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
     }
-  }
+  };
 
   return h(React.Fragment, null,
-    !open && h('button', {
-      className: 'chatbot-fab',
-      onClick: function() { setOpen(true); },
-      'aria-label': 'Open AI assistant'
-    },
-      h(SparkleIcon, null)
-    ),
-    open && h('div', { className: 'chatbot-panel open', role: 'dialog', 'aria-label': 'MTG AI Assistant' },
+    // FAB
+    !isOpen
+      ? h('div', { className: 'chatbot-fab', onClick: toggle, 'aria-label': 'Open AI Advisor' },
+          h(ChatIcon)
+        )
+      : null,
+
+    // Panel
+    h('div', { className: 'chatbot-panel' + (isOpen ? ' open' : '') },
       h('div', { className: 'chatbot-header' },
         h('div', { className: 'chatbot-header-title' },
-          h(SparkleIcon, null), ' MTG Assistant'
+          h(PortfolioIcon, { size: '20' }),
+          h('span', null, 'MTG Advisor')
         ),
-        h('button', {
-          className: 'chatbot-close',
-          onClick: function() { setOpen(false); },
-          'aria-label': 'Close assistant'
-        }, h(XIcon, null))
+        h('button', { className: 'chatbot-close', onClick: toggle, 'aria-label': 'Close chat' },
+          h(CloseIcon)
+        )
       ),
-      h('div', { className: 'chatbot-messages', role: 'log', 'aria-live': 'polite' },
-        messages.map(function(msg, i) {
-          return h('div', { key: i, className: 'chat-msg ' + (msg.role === 'bot' ? 'bot-msg' : 'user-msg') },
-            h('div', { className: 'chat-bubble' }, msg.text)
+      h('div', { className: 'chatbot-messages', ref: messagesEndRef },
+        messages.map(function(m, i) {
+          if (m.role === 'typing') {
+            return h('div', { key: 'typing-' + i, className: 'chat-msg bot-msg' },
+              h('div', { className: 'chat-typing' },
+                h('span'), h('span'), h('span')
+              )
+            );
+          }
+          var cls = m.role === 'user' ? 'user-msg' : 'bot-msg';
+          return h('div', { key: i, className: 'chat-msg ' + cls },
+            h('div', { className: 'chat-bubble' }, m.text)
           );
-        }),
-        typing && h('div', { className: 'chat-msg bot-msg' },
-          h('div', { className: 'chat-bubble chat-typing' },
-            h('span', null), h('span', null), h('span', null)
-          )
-        ),
-        h('div', { ref: messagesEndRef })
+        })
       ),
       h('div', { className: 'chatbot-input-area' },
         h('input', {
           type: 'text',
-          placeholder: 'Ask about prices, stores, investing...',
-          value: input,
-          onChange: function(e) { setInput(e.target.value); },
-          onKeyDown: handleKey,
-          'aria-label': 'Type a message'
+          ref: inputRef,
+          placeholder: 'Ask about MTG cards...',
+          autoComplete: 'off',
+          onKeyDown: onKeyDown
         }),
         h('button', {
           id: 'chatbot-send',
           onClick: sendMessage,
-          disabled: !input.trim(),
-          'aria-label': 'Send message'
-        }, h(SendIcon, null))
+          'aria-label': 'Send message',
+          disabled: busy
+        },
+          h(SendIcon)
+        )
       )
     )
   );

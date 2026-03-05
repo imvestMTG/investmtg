@@ -1,132 +1,142 @@
 /* ListingModal.js */
 import React from 'react';
-import { XIcon } from './shared/Icons.js';
+import { CloseIcon } from './shared/Icons.js';
+import { showToast } from './shared/Toast.js';
 var h = React.createElement;
 
-export function ListingModal({ card, listings, updateListings, onClose }) {
-  var ref1 = React.useState(card ? card.name : '');
-  var cardName = ref1[0], setCardName = ref1[1];
-  var ref2 = React.useState(card ? (card.set_name || '') : '');
-  var setName = ref2[0], setSetName = ref2[1];
-  var ref3 = React.useState('NM');
-  var condition = ref3[0], setCondition = ref3[1];
-  var ref4 = React.useState(card && card.prices && card.prices.usd ? card.prices.usd : '');
-  var price = ref4[0], setPrice = ref4[1];
-  var ref5 = React.useState('sale');
-  var listingType = ref5[0], setListingType = ref5[1];
-  var ref6 = React.useState('');
-  var contact = ref6[0], setContact = ref6[1];
-  var ref7 = React.useState('');
-  var notes = ref7[0], setNotes = ref7[1];
-  var ref8 = React.useState(false);
-  var submitted = ref8[0], setSubmitted = ref8[1];
+/* Input sanitization for marketplace listings */
+function sanitize(str, maxLen) {
+  if (!str) return '';
+  var s = str.trim().slice(0, maxLen || 200);
+  /* Strip HTML tags */
+  s = s.replace(/<[^>]*>/g, '');
+  /* Remove null bytes and control characters */
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  /* Remove javascript: and data: URIs */
+  s = s.replace(/javascript\s*:/gi, '').replace(/data\s*:/gi, '');
+  return s;
+}
 
-  function handleSubmit(e) {
+function sanitizePrice(val) {
+  var p = parseFloat(val);
+  if (isNaN(p) || p < 0) return NaN;
+  /* Cap at $99,999 to prevent absurd listings */
+  return Math.min(p, 99999);
+}
+
+export function ListingModal({ isOpen, onClose, onSubmit, prefillCardName }) {
+  var cardNameRef = React.useRef(null);
+  var formRef = React.useRef(null);
+
+  React.useEffect(function() {
+    if (isOpen && prefillCardName && cardNameRef.current) {
+      cardNameRef.current.value = prefillCardName;
+    }
+  }, [isOpen, prefillCardName]);
+
+  if (!isOpen) return null;
+
+  var handleSubmit = function(e) {
     e.preventDefault();
-    var newListing = {
+    var form = formRef.current;
+    if (!form) return;
+
+    var cardName = sanitize(form.querySelector('#listing-card-name').value, 100);
+    var setName = sanitize(form.querySelector('#listing-set-name').value, 100);
+    var condition = form.querySelector('#listing-condition').value;
+    var price = sanitizePrice(form.querySelector('#listing-price').value);
+    var typeRadio = form.querySelector('input[name="listing-type"]:checked');
+    var type = typeRadio ? typeRadio.value : 'sale';
+    var seller = sanitize(form.querySelector('#listing-seller').value, 60);
+    var contact = sanitize(form.querySelector('#listing-contact').value, 100);
+    var notes = sanitize(form.querySelector('#listing-notes').value, 500);
+
+    if (!cardName || !setName || !condition || isNaN(price) || !seller || !contact) return;
+
+    onSubmit({
       id: 'm' + Date.now(),
       cardName: cardName,
       setName: setName,
       condition: condition,
-      price: parseFloat(price) || 0,
-      type: listingType,
-      seller: contact || 'Anonymous',
+      price: price,
+      type: type,
+      seller: seller,
       contact: contact,
       notes: notes,
       image: '',
       createdAt: Date.now()
-    };
-    updateListings([newListing].concat(listings));
-    setSubmitted(true);
-    setTimeout(onClose, 1500);
-  }
+    });
 
-  return h('div', { className: 'modal-overlay', onClick: function(e) { if (e.target === e.currentTarget) onClose(); } },
-    h('div', { className: 'modal-box', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'modal-title' },
-      h('div', { className: 'modal-header' },
-        h('h2', { id: 'modal-title' }, 'List a Card'),
-        h('button', { className: 'modal-close', onClick: onClose, 'aria-label': 'Close dialog' }, h(XIcon, null))
+    form.reset();
+    onClose();
+    showToast('Listing added!');
+  };
+
+  var handleOverlayClick = function(e) {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  return h('div', { className: 'mp-modal-overlay open', onClick: handleOverlayClick },
+    h('div', { className: 'mp-modal' },
+      h('div', { className: 'mp-modal-header' },
+        h('h3', null, 'List Your Card'),
+        h('button', { className: 'mp-modal-close', onClick: onClose, 'aria-label': 'Close' },
+          h(CloseIcon)
+        )
       ),
-      submitted
-        ? h('div', { className: 'modal-body' },
-            h('div', { className: 'empty-state', style: { padding: 'var(--space-8)' } },
-              h('p', { style: { color: 'var(--color-success)', fontWeight: '600' } }, 'Listing posted successfully!')
+      h('form', { className: 'mp-listing-form', ref: formRef, onSubmit: handleSubmit },
+        h('div', { className: 'mp-form-row' },
+          h('label', { htmlFor: 'listing-card-name' }, 'Card Name *'),
+          h('input', { type: 'text', id: 'listing-card-name', ref: cardNameRef, placeholder: 'e.g. Black Lotus', required: true, maxLength: 100 })
+        ),
+        h('div', { className: 'mp-form-row' },
+          h('label', { htmlFor: 'listing-set-name' }, 'Set Name *'),
+          h('input', { type: 'text', id: 'listing-set-name', placeholder: 'e.g. Unlimited', required: true, maxLength: 100 })
+        ),
+        h('div', { className: 'mp-form-grid-2' },
+          h('div', { className: 'mp-form-row' },
+            h('label', { htmlFor: 'listing-condition' }, 'Condition *'),
+            h('select', { id: 'listing-condition', required: true },
+              h('option', { value: 'NM' }, 'Near Mint (NM)'),
+              h('option', { value: 'LP' }, 'Lightly Played (LP)'),
+              h('option', { value: 'MP' }, 'Moderately Played (MP)'),
+              h('option', { value: 'HP' }, 'Heavily Played (HP)')
             )
+          ),
+          h('div', { className: 'mp-form-row' },
+            h('label', { htmlFor: 'listing-price' }, 'Price (USD) *'),
+            h('input', { type: 'number', id: 'listing-price', min: '0', max: '99999', step: '0.01', placeholder: '0.00', required: true })
           )
-        : h('form', { onSubmit: handleSubmit },
-            h('div', { className: 'modal-body' },
-              h('div', { className: 'form-row' },
-                h('div', { className: 'form-group' },
-                  h('label', { className: 'form-label' }, 'Card Name'),
-                  h('input', {
-                    className: 'form-input',
-                    value: cardName,
-                    onChange: function(e) { setCardName(e.target.value); },
-                    required: true,
-                    placeholder: 'e.g. Black Lotus'
-                  })
-                ),
-                h('div', { className: 'form-group' },
-                  h('label', { className: 'form-label' }, 'Set'),
-                  h('input', {
-                    className: 'form-input',
-                    value: setName,
-                    onChange: function(e) { setSetName(e.target.value); },
-                    placeholder: 'e.g. Unlimited'
-                  })
-                )
-              ),
-              h('div', { className: 'form-row' },
-                h('div', { className: 'form-group' },
-                  h('label', { className: 'form-label' }, 'Condition'),
-                  h('select', { className: 'form-select', value: condition, onChange: function(e) { setCondition(e.target.value); } },
-                    ['NM','LP','MP','HP'].map(function(c) { return h('option', { key: c, value: c }, c); })
-                  )
-                ),
-                h('div', { className: 'form-group' },
-                  h('label', { className: 'form-label' }, 'Listing Type'),
-                  h('select', { className: 'form-select', value: listingType, onChange: function(e) { setListingType(e.target.value); } },
-                    h('option', { value: 'sale' }, 'For Sale'),
-                    h('option', { value: 'trade' }, 'Trade')
-                  )
-                )
-              ),
-              listingType === 'sale' && h('div', { className: 'form-group' },
-                h('label', { className: 'form-label' }, 'Price (USD)'),
-                h('input', {
-                  className: 'form-input',
-                  type: 'number',
-                  min: '0',
-                  step: '0.01',
-                  value: price,
-                  onChange: function(e) { setPrice(e.target.value); },
-                  placeholder: '0.00'
-                })
-              ),
-              h('div', { className: 'form-group' },
-                h('label', { className: 'form-label' }, 'Contact (username / phone)'),
-                h('input', {
-                  className: 'form-input',
-                  value: contact,
-                  onChange: function(e) { setContact(e.target.value); },
-                  placeholder: '@yourusername or (671) 555-0000'
-                })
-              ),
-              h('div', { className: 'form-group' },
-                h('label', { className: 'form-label' }, 'Notes'),
-                h('textarea', {
-                  className: 'form-textarea',
-                  value: notes,
-                  onChange: function(e) { setNotes(e.target.value); },
-                  placeholder: 'Condition details, pickup location, etc.'
-                })
-              )
+        ),
+        h('div', { className: 'mp-form-row' },
+          h('label', null, 'Listing Type *'),
+          h('div', { className: 'mp-radio-group' },
+            h('label', { className: 'mp-radio-label' },
+              h('input', { type: 'radio', name: 'listing-type', value: 'sale', defaultChecked: true }),
+              ' For Sale'
             ),
-            h('div', { className: 'modal-footer' },
-              h('button', { type: 'button', className: 'btn btn-ghost', onClick: onClose }, 'Cancel'),
-              h('button', { type: 'submit', className: 'btn btn-primary' }, 'Post Listing')
+            h('label', { className: 'mp-radio-label' },
+              h('input', { type: 'radio', name: 'listing-type', value: 'trade' }),
+              ' For Trade'
             )
           )
+        ),
+        h('div', { className: 'mp-form-grid-2' },
+          h('div', { className: 'mp-form-row' },
+            h('label', { htmlFor: 'listing-seller' }, 'Seller Name *'),
+            h('input', { type: 'text', id: 'listing-seller', placeholder: 'Your name or handle', required: true, maxLength: 60 })
+          ),
+          h('div', { className: 'mp-form-row' },
+            h('label', { htmlFor: 'listing-contact' }, 'Contact Info *'),
+            h('input', { type: 'text', id: 'listing-contact', placeholder: '@instagram, phone, etc.', required: true, maxLength: 100 })
+          )
+        ),
+        h('div', { className: 'mp-form-row' },
+          h('label', { htmlFor: 'listing-notes' }, 'Notes (optional)'),
+          h('textarea', { id: 'listing-notes', rows: '3', placeholder: 'Any additional details...', maxLength: 500 })
+        ),
+        h('button', { type: 'submit', className: 'btn btn-primary', style: { width: '100%', padding: 'var(--space-3)' } }, 'Add Listing')
+      )
     )
   );
 }
