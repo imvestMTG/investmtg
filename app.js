@@ -942,3 +942,119 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ===== AI CHATBOT =====
+var CHATBOT_API = 'https://gateway.ai.cloudflare.com/v1/12360b71beb495952bc5bdcd1b3eab27/investmtg/compat/chat/completions';
+var chatHistory = [
+  {
+    role: 'system',
+    content: 'You are an expert Magic: The Gathering investment advisor and card analyst for investMTG.com. You help users make smart decisions about buying, selling, and collecting MTG cards. You know about card prices, market trends, format legality, deck building, set releases, reserved list cards, and investment strategies. Keep responses concise (2-4 sentences unless more detail is requested). Use dollar amounts when discussing prices. Be friendly and enthusiastic about MTG. If you don\'t know a specific current price, say so and recommend checking the card on investMTG. Never give financial advice disclaimers unless specifically asked about real money investment risk.'
+  }
+];
+var chatBusy = false;
+
+function toggleChatbot() {
+  var panel = document.getElementById('chatbot-panel');
+  var fab = document.getElementById('chatbot-fab');
+  var isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    fab.classList.remove('hidden');
+  } else {
+    panel.classList.add('open');
+    fab.classList.add('hidden');
+    var input = document.getElementById('chatbot-input');
+    if (input) { setTimeout(function() { input.focus(); }, 100); }
+  }
+}
+
+function sendChatMessage() {
+  if (chatBusy) { return; }
+  var input = document.getElementById('chatbot-input');
+  var msg = input.value.trim();
+  if (!msg) { return; }
+
+  input.value = '';
+  appendChatMessage('user', msg);
+  chatHistory.push({ role: 'user', content: msg });
+
+  chatBusy = true;
+  var sendBtn = document.getElementById('chatbot-send');
+  if (sendBtn) { sendBtn.disabled = true; }
+
+  // Show typing indicator
+  var typing = appendTypingIndicator();
+
+  fetch(CHATBOT_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: '@cf/meta/llama-3.1-8b-instruct',
+      messages: chatHistory.slice(-10),
+      max_tokens: 512,
+      temperature: 0.7
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) { throw new Error('API error: ' + res.status); }
+    return res.json();
+  })
+  .then(function(data) {
+    removeTypingIndicator(typing);
+    var reply = '';
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      reply = data.choices[0].message.content;
+    } else if (data.result && data.result.response) {
+      reply = data.result.response;
+    } else {
+      reply = 'Sorry, I couldn\'t process that. Please try again.';
+    }
+    chatHistory.push({ role: 'assistant', content: reply });
+    appendChatMessage('bot', reply);
+  })
+  .catch(function(err) {
+    removeTypingIndicator(typing);
+    appendChatMessage('bot', 'Sorry, I\'m having trouble connecting right now. Please try again in a moment.');
+    console.error('Chatbot error:', err);
+  })
+  .finally(function() {
+    chatBusy = false;
+    if (sendBtn) { sendBtn.disabled = false; }
+  });
+}
+
+function appendChatMessage(role, text) {
+  var messages = document.getElementById('chatbot-messages');
+  if (!messages) { return; }
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + (role === 'user' ? 'user-msg' : 'bot-msg');
+  var bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  bubble.textContent = text;
+  div.appendChild(bubble);
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function appendTypingIndicator() {
+  var messages = document.getElementById('chatbot-messages');
+  if (!messages) { return null; }
+  var div = document.createElement('div');
+  div.className = 'chat-msg bot-msg';
+  div.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return div;
+}
+
+function removeTypingIndicator(el) {
+  if (el && el.parentNode) { el.parentNode.removeChild(el); }
+}
+
+// Chatbot enter key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'chatbot-input') {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});

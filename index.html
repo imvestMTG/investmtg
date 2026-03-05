@@ -234,6 +234,33 @@
   </div>
 </footer>
 
+<!-- AI Chatbot -->
+<div id="chatbot-fab" class="chatbot-fab" onclick="toggleChatbot()" aria-label="Open AI Advisor">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</div>
+<div id="chatbot-panel" class="chatbot-panel">
+  <div class="chatbot-header">
+    <div class="chatbot-header-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span>MTG Advisor</span>
+    </div>
+    <button class="chatbot-close" onclick="toggleChatbot()" aria-label="Close chat">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="chatbot-messages" id="chatbot-messages">
+    <div class="chat-msg bot-msg">
+      <div class="chat-bubble">Hey! I'm your MTG investment advisor. Ask me about card prices, investment strategies, deck building, or anything Magic: The Gathering.</div>
+    </div>
+  </div>
+  <div class="chatbot-input-area">
+    <input type="text" id="chatbot-input" placeholder="Ask about MTG cards..." autocomplete="off">
+    <button id="chatbot-send" onclick="sendChatMessage()" aria-label="Send message">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+    </button>
+  </div>
+</div>
+
 <script src="./app.js"></script>
 <script>
 // Load home trending cards
