@@ -24,8 +24,38 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0D0F12">
-<title>investMTG — Magic: The Gathering Price Intelligence</title>
-<meta name="description" content="Track Magic: The Gathering card prices, manage your portfolio, and discover investment opportunities. Real-time pricing for 25,000+ cards.">
+<title>investMTG — Guam's MTG Marketplace & Price Intelligence</title>
+<meta name="description" content="Track Magic: The Gathering card prices, buy and sell locally in Guam, manage your portfolio, and discover investment opportunities. Real-time pricing for 25,000+ cards.">
+<meta name="keywords" content="Magic The Gathering, MTG, Guam, card prices, marketplace, trading cards, MTG investment, Guam MTG, card trading">
+
+<!-- Open Graph / Social Share -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.investmtg.com/">
+<meta property="og:title" content="investMTG — Guam's MTG Marketplace & Price Intelligence">
+<meta property="og:description" content="Track MTG card prices, buy and sell locally in Guam, manage your portfolio. Real-time pricing for 25,000+ cards.">
+<meta property="og:image" content="https://www.investmtg.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="investMTG">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="investMTG — Guam's MTG Marketplace">
+<meta name="twitter:description" content="Track MTG card prices, buy and sell locally in Guam. Real-time pricing for 25,000+ cards.">
+<meta name="twitter:image" content="https://www.investmtg.com/og-image.png">
+<meta name="twitter:site" content="@investMTG">
+
+<!-- Favicons -->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="https://www.investmtg.com/">
 
 <!-- Security Headers -->
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -33,10 +63,37 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com data:; connect-src 'self' https://api.scryfall.com https://text.pollinations.ai https://esm.sh; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 
+<!-- Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "investMTG",
+  "url": "https://www.investmtg.com",
+  "description": "Guam's local marketplace for Magic: The Gathering cards. Track prices, buy and sell locally, manage your portfolio.",
+  "applicationCategory": "ShoppingApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "creator": {
+    "@type": "SoftwareApplication",
+    "name": "Perplexity Computer",
+    "url": "https://www.perplexity.ai/computer"
+  },
+  "areaServed": {
+    "@type": "Place",
+    "name": "Guam"
+  }
+}
+</script>
+
 <!-- Fonts -->
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
 
-<!-- Chart.js (with Subresource Integrity) -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
 
 <!-- Styles -->
