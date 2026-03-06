@@ -17,6 +17,9 @@ import { Chatbot } from './components/Chatbot.js';
 import { Footer } from './components/Footer.js';
 import { BackToTop } from './components/shared/BackToTop.js';
 import { ToastContainer, showToast } from './components/shared/Toast.js';
+import { CheckoutView } from './components/CheckoutView.js';
+import { SellerDashboard } from './components/SellerDashboard.js';
+import { OrderConfirmation } from './components/OrderConfirmation.js';
 
 var h = React.createElement;
 
@@ -42,10 +45,15 @@ function parseHash() {
   if (hash.startsWith('card/')) {
     return { page: 'card', id: hash.slice(5) };
   }
+  if (hash.startsWith('order/')) {
+    return { page: 'order', id: hash.slice(6) };
+  }
   if (hash === 'search') return { page: 'search' };
   if (hash === 'portfolio') return { page: 'portfolio' };
   if (hash === 'cart') return { page: 'cart' };
   if (hash === 'store') return { page: 'store' };
+  if (hash === 'checkout') return { page: 'checkout' };
+  if (hash === 'seller') return { page: 'seller' };
   return { page: 'home' };
 }
 
@@ -165,6 +173,14 @@ function App() {
         updateCart: gs.updateCart,
         updateListings: gs.updateListings,
         onBuyLocal: setBuyLocalCard
+      }),
+      route.page === 'checkout' && h(CheckoutView, {
+        state: gs.state,
+        updateCart: gs.updateCart
+      }),
+      route.page === 'seller' && h(SellerDashboard, null),
+      route.page === 'order' && h(OrderConfirmation, {
+        orderId: route.id
       })
     ),
     h(Footer, null),
