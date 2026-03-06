@@ -3,10 +3,9 @@ import React from 'react';
 import { ChatIcon, CloseIcon, SendIcon, PortfolioIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-/* SECURITY: API calls routed through Cloudflare Worker proxy.
-   The AI Gateway token is stored server-side in the Worker, never exposed to the browser. */
-var CHATBOT_PROXY = 'https://investmtg-ai-proxy.imvestmtg.workers.dev';
-var SYSTEM_PROMPT = 'You are an expert Magic: The Gathering investment advisor and card analyst for investMTG.com. You help users make smart decisions about buying, selling, and collecting MTG cards. You know about card prices, market trends, format legality, deck building, set releases, reserved list cards, and investment strategies. Keep responses concise (2-4 sentences unless more detail is requested). Use dollar amounts when discussing prices. Be friendly and enthusiastic about MTG. If you don\'t know a specific current price, say so and recommend checking the card on investMTG. Never give financial advice disclaimers unless specifically asked about real money investment risk.';
+/* AI Chat API — free, no API key required */
+var CHAT_API = 'https://text.pollinations.ai/openai/chat/completions';
+var SYSTEM_PROMPT = 'You are an expert Magic: The Gathering investment advisor and card analyst for investMTG.com — a local Guam marketplace for MTG cards. You help users make smart decisions about buying, selling, and collecting MTG cards. You know about card prices, market trends, format legality, deck building, set releases, reserved list cards, and investment strategies. Keep responses concise (2-4 sentences unless more detail is requested). Use dollar amounts when discussing prices. Be friendly and enthusiastic about MTG. If you don\'t know a specific current price, say so and recommend checking the card on investMTG. Never give financial advice disclaimers unless specifically asked about real money investment risk.';
 
 /* Client-side rate limiter — prevents rapid-fire abuse */
 var rateLimitState = { lastRequest: 0, count: 0, windowStart: 0 };
@@ -87,13 +86,13 @@ export function Chatbot() {
     setBusy(true);
     setMessages(function(prev) { return prev.concat([{ role: 'typing', text: '' }]); });
 
-    fetch(CHATBOT_PROXY, {
+    fetch(CHAT_API, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: '@cf/meta/llama-3.1-8b-instruct',
+        model: 'openai',
         messages: historyRef.current.slice(-10),
         max_tokens: 512,
         temperature: 0.7
@@ -108,8 +107,6 @@ export function Chatbot() {
       var reply = '';
       if (data.choices && data.choices[0] && data.choices[0].message) {
         reply = data.choices[0].message.content;
-      } else if (data.result && data.result.response) {
-        reply = data.result.response;
       } else {
         reply = 'Sorry, I couldn\'t process that. Please try again.';
       }
