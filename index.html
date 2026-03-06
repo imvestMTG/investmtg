@@ -61,7 +61,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com data:; connect-src 'self' https://api.scryfall.com https://text.pollinations.ai https://esm.sh; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net https://gateway.sumup.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com data:; connect-src 'self' https://api.scryfall.com https://text.pollinations.ai https://esm.sh https://gateway.sumup.com https://api.sumup.com; frame-src https://gateway.sumup.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 
 <!-- Structured Data -->
 <script type="application/ld+json">
@@ -95,6 +95,9 @@
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+
+<!-- SumUp Payment SDK (placeholder — activate by passing a valid checkoutId) -->
+<script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js" defer></script>
 
 <!-- Styles -->
 <link rel="stylesheet" href="./base.css">
