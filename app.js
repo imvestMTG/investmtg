@@ -168,6 +168,7 @@ function App() {
       })
     ),
     h(Footer, null),
+    h(Chatbot, null),
     h(BackToTop, null),
     h(ToastContainer, null),
     listingModalCard && h(ListingModal, {
