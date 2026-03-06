@@ -2,7 +2,7 @@
 import React from 'react';
 import { filterMarketplace } from '../utils/marketplace-data.js';
 import { formatUSD } from '../utils/helpers.js';
-import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon } from './shared/Icons.js';
+import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon } from './shared/Icons.js';
 var h = React.createElement;
 
 var GUAM_STORES = [
@@ -59,10 +59,38 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
   var ref2 = React.useState('listings');
   var activeTab = ref2[0], setActiveTab = ref2[1];
 
+  var ref3 = React.useState(null);
+  var addedToCart = ref3[0], setAddedToCart = ref3[1];
+
   var filtered = filterMarketplace(listings, filter);
 
   function updateFilter(key, val) {
     setFilter(function(prev) { return Object.assign({}, prev, { [key]: val }); });
+  }
+
+  function handleAddToCart(listing) {
+    var cart = state.cart || [];
+    var existingIdx = cart.findIndex(function(i) { return i.id === listing.id; });
+    var newCart;
+    if (existingIdx >= 0) {
+      newCart = cart.map(function(i, idx) {
+        return idx === existingIdx ? Object.assign({}, i, { qty: (i.qty || 1) + 1 }) : i;
+      });
+    } else {
+      newCart = cart.concat([{
+        id: listing.id,
+        name: listing.cardName,
+        set: listing.setName,
+        condition: listing.condition,
+        price: listing.price,
+        seller: listing.seller,
+        image: listing.image || null,
+        qty: 1
+      }]);
+    }
+    updateCart(newCart);
+    setAddedToCart(listing.id);
+    setTimeout(function() { setAddedToCart(null); }, 1500);
   }
 
   return h('div', { className: 'container store-page' },
@@ -81,7 +109,13 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
         h('button', {
           className: 'btn ' + (activeTab === 'stores' ? 'btn-primary' : 'btn-secondary'),
           onClick: function() { setActiveTab('stores'); }
-        }, 'Local Stores')
+        }, 'Local Stores'),
+        h('a', {
+          href: '#seller',
+          className: 'btn btn-seller-cta'
+        },
+          h(SellerIcon, null), ' Become a Seller'
+        )
       )
     ),
 
@@ -177,7 +211,9 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
               return h(ListingCard, {
                 key: listing.id,
                 listing: listing,
-                onBuyLocal: onBuyLocal
+                onBuyLocal: onBuyLocal,
+                onAddToCart: handleAddToCart,
+                justAdded: addedToCart === listing.id
               });
             })
           )
@@ -196,12 +232,24 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
           ' Contact us on ', h('a', { href: 'https://x.com/investMTG', target: '_blank', rel: 'noopener' }, 'Twitter/X'),
           ' or email ', h('a', { href: 'mailto:hello@investmtg.com' }, 'hello@investmtg.com'), '.'
         )
+      ),
+
+      // Become a seller CTA
+      h('div', { className: 'store-seller-cta' },
+        h('div', { className: 'store-seller-cta-inner' },
+          h(SellerIcon, null),
+          h('div', null,
+            h('h3', null, 'Want to sell your cards?'),
+            h('p', null, 'Create a free seller account and list your cards in the Guam MTG marketplace.')
+          ),
+          h('a', { href: '#seller', className: 'btn btn-primary' }, 'Become a Seller')
+        )
       )
     )
   );
 }
 
-function ListingCard({ listing, onBuyLocal }) {
+function ListingCard({ listing, onBuyLocal, onAddToCart, justAdded }) {
   var condClass = { NM: 'cond-nm', LP: 'cond-lp', MP: 'cond-mp', HP: 'cond-hp' }[listing.condition] || 'cond-nm';
   return h('div', { className: 'mp-listing-card' },
     h('div', { className: 'mp-listing-image' },
@@ -218,10 +266,22 @@ function ListingCard({ listing, onBuyLocal }) {
       h('div', { className: 'mp-listing-set' }, listing.setName),
       h('div', { className: 'mp-listing-price-row' },
         h('span', { className: 'mp-listing-price' }, listing.type === 'sale' ? formatUSD(listing.price) : 'Trade'),
-        h('span', { className: 'mp-listing-seller' }, listing.seller)
+        h('span', { className: 'mp-listing-seller' },
+          h('span', { className: 'mp-seller-badge' }, listing.seller)
+        )
       ),
       listing.notes && h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', lineHeight: '1.4' } }, listing.notes),
       h('div', { className: 'mp-listing-actions' },
+        listing.type === 'sale' && h('button', {
+          className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
+          onClick: function() {
+            if (onAddToCart) onAddToCart(listing);
+          }
+        },
+          justAdded
+            ? '✓ Added'
+            : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
+        ),
         listing.type === 'sale' && h('button', {
           className: 'btn mp-btn-buylocal',
           onClick: function() {
