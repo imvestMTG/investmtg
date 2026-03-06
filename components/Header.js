@@ -1,6 +1,6 @@
 /* Header.js */
 import React from 'react';
-import { SearchIcon, PortfolioIcon, ShoppingCartIcon, MoonIcon, SunIcon, MenuIcon, XIcon } from './shared/Icons.js';
+import { SearchIcon, PortfolioIcon, ShoppingCartIcon, MoonIcon, SunIcon, MenuIcon, XIcon, SellerIcon } from './shared/Icons.js';
 var h = React.createElement;
 
 export function Header({ route, cartCount }) {
@@ -59,6 +59,13 @@ export function Header({ route, cartCount }) {
             )),
             h('li', null, h('a', { href: '#store', className: isActive('store'), onClick: function(e) { e.preventDefault(); nav('store'); } },
               'Local Stores'
+            )),
+            h('li', null, h('a', {
+              href: '#seller',
+              className: isActive('seller') + ' nav-sell-link',
+              onClick: function(e) { e.preventDefault(); nav('seller'); }
+            },
+              h(SellerIcon, null), 'Sell'
             ))
           )
         )
