@@ -168,6 +168,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  background: rgba(13, 15, 18, 0.85);
   background: oklch(from var(--color-bg) l c h / 0.85);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
@@ -346,7 +347,7 @@
   transform: translateX(-50%);
   width: 800px;
   height: 800px;
-  background: radial-gradient(circle, oklch(from var(--color-primary) l c h / 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(212, 168, 67, 0.06) 0%, transparent 70%);
   pointer-events: none;
 }
 .hero-tagline {
@@ -393,6 +394,7 @@
 .hero-search input:focus {
   outline: none;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.15);
   box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.15);
 }
 .hero-search .search-icon {
@@ -536,6 +538,7 @@
 }
 .badge-blue {
   color: var(--color-secondary);
+  background: rgba(74, 159, 217, 0.12);
   background: oklch(from var(--color-secondary) l c h / 0.12);
 }
 
@@ -685,8 +688,10 @@
               transform var(--transition-interactive);
 }
 .mtg-card:hover {
-  box-shadow: 0 0 20px oklch(from var(--color-primary) l c h / 0.15);
-  border-color: oklch(from var(--color-primary) l c h / 0.4);
+  box-shadow: 0 0 20px rgba(212, 168, 67, 0.15);
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow: 0 0 20px rgba(212, 168, 67, 0.15);
+  border-color: rgba(212, 168, 67, 0.4);
   transform: translateY(-2px);
 }
 .mtg-card-image {
@@ -1206,6 +1211,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 4px 20px rgba(212, 168, 67, 0.35);
   box-shadow: 0 4px 20px oklch(from #D4A843 l c h / 0.35);
   z-index: 200;
   transition: transform var(--transition-interactive),
@@ -1213,6 +1219,7 @@
 }
 .chatbot-fab:hover {
   transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(212, 168, 67, 0.5);
   box-shadow: 0 6px 28px oklch(from #D4A843 l c h / 0.5);
 }
 .chatbot-fab.hidden { display: none; }
@@ -1392,7 +1399,7 @@
   transform: translateX(-50%);
   width: 900px;
   height: 600px;
-  background: radial-gradient(ellipse, oklch(from var(--color-primary) l c h / 0.04) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(212, 168, 67, 0.04) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -1432,6 +1439,8 @@
               box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .store-card:hover {
+  border-color: rgba(212, 168, 67, 0.5);
+  box-shadow: 0 0 24px rgba(212, 168, 67, 0.12), inset 0 1px 0 rgba(212, 168, 67, 0.08);
   border-color: oklch(from var(--color-primary) l c h / 0.5);
   box-shadow: 0 0 24px oklch(from var(--color-primary) l c h / 0.12),
               inset 0 1px 0 oklch(from var(--color-primary) l c h / 0.08);
@@ -1461,6 +1470,7 @@
   letter-spacing: 0.02em;
   color: var(--color-primary);
   background: var(--color-primary-highlight);
+  border: 1px solid rgba(212, 168, 67, 0.2);
   border: 1px solid oklch(from var(--color-primary) l c h / 0.2);
   white-space: nowrap;
   flex-shrink: 0;
@@ -1561,6 +1571,8 @@
               box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .store-card-detailed:hover {
+  border-color: rgba(212, 168, 67, 0.5);
+  box-shadow: 0 0 24px rgba(212, 168, 67, 0.12);
   border-color: oklch(from var(--color-primary) l c h / 0.5);
   box-shadow: 0 0 24px oklch(from var(--color-primary) l c h / 0.12);
 }
@@ -1600,6 +1612,7 @@
   padding: var(--space-6);
   background: var(--color-primary-highlight);
   border-radius: var(--radius-xl);
+  border: 1px solid rgba(212, 168, 67, 0.15);
   border: 1px solid oklch(from var(--color-primary) l c h / 0.15);
 }
 .store-community-note p {
@@ -1627,6 +1640,7 @@
                     linear-gradient(135deg, #D4A843, #E8B84A, #C09838, #D4A843);
   background-origin: border-box;
   background-clip: padding-box, border-box;
+  box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.15), 0 0 20px rgba(212, 168, 67, 0.08);
   box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.15),
               0 0 20px oklch(from var(--color-primary) l c h / 0.08);
 }
@@ -2100,6 +2114,7 @@
 .form-textarea:focus {
   outline: none;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.12);
   box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.12);
 }
 .form-textarea { resize: vertical; min-height: 80px; }
