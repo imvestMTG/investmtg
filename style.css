@@ -323,10 +323,9 @@
   color: var(--color-text);
 }
 .ticker-item .ticker-price {
-  color: var(--color-text);
+  color: var(--color-accent, #D4A843);
+  font-weight: 500;
 }
-.ticker-item .up { color: var(--color-success); }
-.ticker-item .down { color: var(--color-error); }
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -742,9 +741,10 @@
   font-variant-numeric: tabular-nums lining-nums;
   font-size: var(--text-sm);
 }
-.mtg-card-change {
+.mtg-card-foil {
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--color-text-muted);
   font-variant-numeric: tabular-nums lining-nums;
 }
 .price-up { color: var(--color-success); }
@@ -815,23 +815,36 @@
   color: var(--color-text);
 }
 
-/* Chart container */
-.chart-container {
+/* Price source & purchase links */
+.price-source {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.price-source a {
+  color: var(--color-accent, #D4A843);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.purchase-links {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   margin-bottom: var(--space-6);
 }
-.chart-container h3 {
+.purchase-links h3 {
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: 600;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   color: var(--color-text-muted);
 }
-.chart-container canvas {
-  max-height: 300px;
+.purchase-links-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 /* Action buttons */
