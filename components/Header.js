@@ -57,6 +57,12 @@ export function Header({ route, cartCount }) {
             h('li', null, h('a', { href: '#portfolio', className: isActive('portfolio'), onClick: function(e) { e.preventDefault(); nav('portfolio'); } },
               h(PortfolioIcon, null), 'Portfolio'
             )),
+            h('li', null, h('a', { href: '#movers', className: isActive('movers'), onClick: function(e) { e.preventDefault(); nav('movers'); } },
+              'Movers'
+            )),
+            h('li', null, h('a', { href: '#decks', className: isActive('decks'), onClick: function(e) { e.preventDefault(); nav('decks'); } },
+              'Decks'
+            )),
             h('li', null, h('a', { href: '#store', className: isActive('store'), onClick: function(e) { e.preventDefault(); nav('store'); } },
               'Local Stores'
             )),
