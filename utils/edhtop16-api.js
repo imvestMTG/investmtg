@@ -3,7 +3,9 @@
  * Data: cEDH commander meta share, win rates, top cuts, staples, tournaments
  */
 
-var GRAPHQL_URL = 'https://edhtop16.com/api/graphql';
+var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+var GRAPHQL_TARGET = 'https://edhtop16.com/api/graphql';
+var GRAPHQL_URL = PROXY_URL + '/?target=' + encodeURIComponent(GRAPHQL_TARGET);
 
 /* Simple in-memory cache — 15 min TTL */
 var _cache = {};
@@ -20,7 +22,7 @@ function cached(key, fn) {
   });
 }
 
-/* Core GraphQL fetch */
+/* Core GraphQL fetch — routed through CORS proxy */
 function gqlFetch(query, variables) {
   var body = { query: query };
   if (variables) body.variables = variables;
