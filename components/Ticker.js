@@ -41,7 +41,11 @@ function fetchTickerPrices() {
     return res.json();
   }).then(function(json) {
     if (!json.data) return [];
-    return json.data.map(function(card) {
+    return json.data.filter(function(card) {
+      // Exclude digital-only cards (MTGO, Arena)
+      return !card.digital;
+    }).map(function(card) {
+      // Only use physical card USD prices, not MTGO tix
       var price = parseFloat(card.prices && card.prices.usd) || parseFloat(card.prices && card.prices.usd_foil) || 0;
       return {
         name: card.name,
