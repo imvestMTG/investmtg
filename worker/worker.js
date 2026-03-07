@@ -82,7 +82,7 @@ async function handleJustTCG(request, env) {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + (env.JUSTTCG_API_KEY || ''),
+    'X-Api-Key': env.JUSTTCG_API_KEY || '',
   };
 
   let fetchOpts = { method: request.method, headers };
@@ -104,7 +104,7 @@ async function handleJustTCG(request, env) {
 
 /* ── Route: /topdeck ── */
 
-async function handleTopDeck(request) {
+async function handleTopDeck(request, env) {
   const url = new URL(request.url);
   const pathname = url.pathname.replace(/^\/topdeck/, '') || '/';
 
@@ -114,9 +114,15 @@ async function handleTopDeck(request) {
 
   const targetUrl = 'https://topdeck.gg/api' + pathname + url.search;
 
+  // The frontend sends all requests as POST with X-Original-Method header
+  const actualMethod = request.headers.get('X-Original-Method') || request.method;
+
   let fetchOpts = {
-    method: request.method,
-    headers: { 'Content-Type': 'application/json' },
+    method: actualMethod,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': env.TOPDECK_API_KEY || '',
+    },
   };
   if (request.method === 'POST' || request.method === 'PUT') {
     fetchOpts.body = await request.text();
@@ -262,7 +268,7 @@ export default {
     }
 
     if (path.startsWith('/topdeck')) {
-      return handleTopDeck(request);
+      return handleTopDeck(request, env);
     }
 
     if (path === '/chatbot') {
