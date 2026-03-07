@@ -90,14 +90,22 @@
 }
 </script>
 
+<!-- Preconnect for fonts -->
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+
+<!-- DNS prefetch for Scryfall API -->
+<link rel="dns-prefetch" href="https://api.scryfall.com">
+<link rel="dns-prefetch" href="https://cards.scryfall.io">
+
+<!-- Preload critical CSS -->
+<link rel="preload" href="./base.css" as="style">
+<link rel="preload" href="./style.css" as="style">
+
 <!-- Fonts -->
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-
-<!-- SumUp Payment SDK (placeholder — activate by passing a valid checkoutId) -->
-<script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js" defer></script>
+<!-- Chart.js and SumUp Card SDK v2 are lazy-loaded on demand -->
 
 <!-- Styles -->
 <link rel="stylesheet" href="./base.css">
