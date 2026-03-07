@@ -120,12 +120,9 @@ export function StoreView(props) {
         h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' } },
           'Showing ', filtered.length, ' of ', listings.length, ' listings'
         ),
-        h('button', {
-          className: 'btn btn-primary btn-sm',
-          onClick: function() {
-            var mockCard = { id: 'new', name: 'Your Card', set_name: 'Your Set', prices: { usd: '0' } };
-            if (onBuyLocal) onBuyLocal(mockCard);
-          }
+        h('a', {
+          href: '#seller',
+          className: 'btn btn-primary btn-sm'
         }, h(PlusIcon, null), ' List a Card')
       ),
 
@@ -185,7 +182,15 @@ export function StoreView(props) {
       // Grid
       filtered.length === 0
         ? h('div', { className: 'empty-state' },
-            h('p', null, 'No listings match your filters.')
+            listings.length === 0
+              ? h('div', null,
+                  h('h3', null, 'No listings yet'),
+                  h('p', null, 'Be the first to list a card on the Guam MTG marketplace.'),
+                  h('a', { href: '#seller', className: 'btn btn-primary', style: { marginTop: 'var(--space-4)', display: 'inline-flex' } },
+                    h(PlusIcon, null), ' Become a Seller & List Cards'
+                  )
+                )
+              : h('p', null, 'No listings match your filters.')
           )
         : h('div', { className: 'mp-grid' },
             filtered.map(function(listing) {

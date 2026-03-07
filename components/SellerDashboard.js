@@ -364,7 +364,8 @@ function ListingForm({ initial, onSave, onCancel }) {
 }
 
 // ===== MAIN SELLER DASHBOARD =====
-export function SellerDashboard() {
+export function SellerDashboard(props) {
+  var refreshMarketplace = props && props.refreshMarketplace;
   var activeSellerId = getActiveSellerId();
 
   var ref1 = React.useState(activeSellerId ? loadSellerData(activeSellerId) : null);
@@ -390,6 +391,7 @@ export function SellerDashboard() {
   function handleRegister(newSeller) {
     setSeller(newSeller);
     flash('Seller account created! Welcome, ' + newSeller.name + '.');
+    if (refreshMarketplace) refreshMarketplace();
   }
 
   function refreshSeller() {
@@ -408,6 +410,7 @@ export function SellerDashboard() {
       flash('Listing updated successfully!');
     } else {
       listingData.seller = seller.name;
+      listingData.contact = listingData.contact || seller.contact;
       listings.unshift(listingData);
       flash('Listing added to marketplace!');
     }
@@ -416,6 +419,8 @@ export function SellerDashboard() {
     setSeller(updatedSeller);
     setEditingListing(null);
     setActiveTab('listings');
+    /* Sync to global marketplace so StoreView sees the new listing */
+    if (refreshMarketplace) refreshMarketplace();
   }
 
   function handleDeleteListing(id) {
@@ -429,6 +434,7 @@ export function SellerDashboard() {
         setSeller(updatedSeller);
         flash('Listing deleted.');
         setConfirmAction(null);
+        if (refreshMarketplace) refreshMarketplace();
       }
     });
   }
@@ -466,7 +472,10 @@ export function SellerDashboard() {
 
     // Flash message
     flashMsg && h('div', { className: 'seller-flash' },
-      h(CheckCircleIcon, null), ' ', flashMsg
+      h(CheckCircleIcon, null), ' ', flashMsg,
+      flashMsg.indexOf('marketplace') !== -1
+        ? h('a', { href: '#store', style: { marginLeft: 'var(--space-2)', color: 'inherit', textDecoration: 'underline' } }, 'View Marketplace →')
+        : null
     ),
 
     // Profile header
@@ -532,6 +541,13 @@ export function SellerDashboard() {
 
     // ===== LISTINGS TAB =====
     activeTab === 'listings' && h('div', { className: 'seller-tab-content' },
+      listings.length > 0 && h('p', {
+        style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }
+      },
+        'Your listings are live on the ',
+        h('a', { href: '#store', style: { color: 'var(--color-primary)' } }, 'Marketplace'),
+        '. Buyers can see them and reach out to you.'
+      ),
       listings.length === 0
         ? h('div', { className: 'empty-state' },
             h('h3', null, 'No listings yet'),

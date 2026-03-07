@@ -1,7 +1,7 @@
 /* investMTG — React SPA */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { getInitialMarketplaceData } from './utils/marketplace-data.js';
+import { getInitialMarketplaceData, saveMarketplaceData } from './utils/marketplace-data.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
@@ -129,6 +129,13 @@ function updateWatchlist(newWatchlist) {
 
 function updateListings(newListings) {
   globalState.listings = newListings;
+  saveMarketplaceData(newListings);
+  notify();
+}
+
+/* Reload marketplace from all sellers' localStorage — called after seller changes */
+function refreshMarketplace() {
+  globalState.listings = getInitialMarketplaceData();
   notify();
 }
 
@@ -148,7 +155,8 @@ function useGlobalState() {
     updateCart: updateCart,
     updatePortfolio: updatePortfolio,
     updateWatchlist: updateWatchlist,
-    updateListings: updateListings
+    updateListings: updateListings,
+    refreshMarketplace: refreshMarketplace
   };
 }
 
@@ -213,7 +221,9 @@ function App() {
         state: gs.state,
         updateCart: gs.updateCart
       }),
-      route.page === 'seller' && h(SellerDashboard, null),
+      route.page === 'seller' && h(SellerDashboard, {
+        refreshMarketplace: gs.refreshMarketplace
+      }),
       route.page === 'order' && h(OrderConfirmation, {
         orderId: route.id
       }),
@@ -230,9 +240,12 @@ function App() {
     h(BackToTop, null),
     h(ToastContainer, null),
     listingModalCard && h(ListingModal, {
-      card: listingModalCard,
-      listings: gs.state.listings,
-      updateListings: gs.updateListings,
+      isOpen: true,
+      prefillCardName: listingModalCard.name || listingModalCard,
+      onSubmit: function(newListing) {
+        var updated = gs.state.listings.concat([newListing]);
+        gs.updateListings(updated);
+      },
       onClose: function() { setListingModalCard(null); }
     }),
     buyLocalCard && h(BuyLocalModal, {
