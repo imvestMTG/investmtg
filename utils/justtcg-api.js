@@ -125,7 +125,7 @@ export function getTrendingCards(period) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  var url = JUSTTCG_BASE + '/cards?game=mtg&orderBy=' + orderBy +
+  var url = JUSTTCG_BASE + '/cards?game=magic-the-gathering&orderBy=' + orderBy +
     '&limit=10&min_price=1&include_price_history=false&include_statistics=7d,30d';
 
   return jtcgFetch(url).then(function(result) {
@@ -148,7 +148,7 @@ export function getBiggestDrops(period) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  var url = JUSTTCG_BASE + '/cards?game=mtg&orderBy=' + orderBy +
+  var url = JUSTTCG_BASE + '/cards?game=magic-the-gathering&orderBy=' + orderBy +
     '&order=asc&limit=10&min_price=1&include_price_history=false&include_statistics=7d,30d';
 
   return jtcgFetch(url).then(function(result) {
@@ -182,9 +182,27 @@ function processJustTCGCard(card) {
 
   // Price changes from NM normal, fallback to any variant
   var refVariant = nmNormal || normalVariants[0] || variants[0];
-  var change7d = refVariant ? refVariant.priceChange7d : null;
-  var change30d = refVariant ? refVariant.priceChange30d : null;
-  var change90d = refVariant ? refVariant.priceChange90d : null;
+  var change7d = refVariant && refVariant.priceChange7d != null ? refVariant.priceChange7d : null;
+  var change30d = refVariant && refVariant.priceChange30d != null ? refVariant.priceChange30d : null;
+  var change90d = refVariant && refVariant.priceChange90d != null ? refVariant.priceChange90d : null;
+
+  // If main variant has no change data, try to find any variant with data
+  if (change7d === null) {
+    for (var vi = 0; vi < variants.length; vi++) {
+      if (variants[vi].priceChange7d != null) {
+        change7d = variants[vi].priceChange7d;
+        break;
+      }
+    }
+  }
+  if (change30d === null) {
+    for (var vj = 0; vj < variants.length; vj++) {
+      if (variants[vj].priceChange30d != null) {
+        change30d = variants[vj].priceChange30d;
+        break;
+      }
+    }
+  }
 
   // Price history from reference variant
   var priceHistory = refVariant && refVariant.priceHistory ? refVariant.priceHistory : [];
