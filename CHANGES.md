@@ -1,11 +1,25 @@
 # investMTG — Changelog
 
+## 2026-03-07: Physical Cards Only — Remove Digital/MTGO Content
+
+### Changes
+- **api.js**: All search functions now include `-is:digital` filter. `searchCards()`, `searchCardsCheapest()`, and `randomCard()` only return physical printed cards.
+- **CardDetailView.js**: Removed MTGO (tix) price box. Removed Cardhoarder purchase link (MTGO-only retailer). Now shows Market USD, Foil USD, and EUR only.
+- **Ticker.js**: Filters out digital-only cards from the Scryfall collection API response.
+- **HomeView.js**: Cleaned up redundant digital filter (now handled globally by api.js).
+- **SOUL.md**: Added "Physical Cards Only" principle. Removed MTGO from data sources.
+- **README.md**: Updated to reflect physical-cards-only policy.
+- **BUILD_SPEC.md**: Removed Cardhoarder from external services.
+- **index.html**: Updated meta descriptions to say "printed cards."
+
+---
+
 ## 2026-03-07: Real-Time Pricing & Documentation
 
 ### Live Price Data (SOUL.md Compliance)
 - **Ticker.js**: Completely rewritten — fetches live prices from Scryfall `/cards/collection` API every 5 minutes with localStorage caching. No more hardcoded fake percentages.
 - **HomeView.js**: Daily-rotating card sections — Featured, Trending, and Budget cards now draw from pools of 18-20 cards each, shuffled with a date-seeded algorithm so content is fresh every day.
-- **CardDetailView.js**: Removed fake price history chart and mock % change. Now shows real USD, Foil, MTGO, and EUR prices from Scryfall. Added links to TCGplayer, Cardmarket, and Cardhoarder for purchase. Added Scryfall source attribution.
+- **CardDetailView.js**: Removed fake price history chart and mock % change. Now shows real USD, Foil, and EUR prices from Scryfall. Added links to TCGplayer and Cardmarket for purchase. Added Scryfall source attribution.
 - **PortfolioView.js**: Portfolio now fetches live prices from Scryfall for all tracked cards (via `/cards/collection`). Gain/loss calculated against real market data instead of random numbers.
 - **CardGrid.js**: Removed fake % change badges. Now shows foil price when available.
 - **SearchView.js**: Removed unused mock function import.
