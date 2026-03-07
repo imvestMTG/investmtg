@@ -35,7 +35,13 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 - We clearly label where every price comes from
 - Price data refreshes on every page visit (with 5-minute caching to respect API limits)
 
-### 5. No Dark Patterns
+### 5. Physical Cards Only
+- investMTG is a marketplace for real, printed Magic cards — not digital versions
+- We filter out all digital-only cards (MTGO, MTG Arena) from search results, the price ticker, and the homepage
+- We do not display MTGO ticket prices or link to MTGO retailers
+- All API queries include `-is:digital` to exclude digital printings
+
+### 6. No Dark Patterns
 - No fake urgency ("Only 2 left!" when we don't track inventory)
 - No fabricated reviews or ratings
 - No simulated activity feeds
@@ -47,7 +53,7 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 
 | Data | Source | Update Frequency |
 |------|--------|-----------------|
-| Card prices (USD, EUR, foil, MTGO) | [Scryfall API](https://scryfall.com/docs/api) | Live on each visit (5-min cache) |
+| Card prices (USD, EUR, foil) | [Scryfall API](https://scryfall.com/docs/api) | Live on each visit (5-min cache) |
 | Card images | [Scryfall](https://scryfall.com) | Live |
 | Card legality, oracle text, set info | [Scryfall](https://scryfall.com) | Live |
 | Local store info | Manually verified | Updated as needed |
