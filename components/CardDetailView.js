@@ -1,67 +1,10 @@
 /* CardDetailView.js */
 import React from 'react';
-import { getCard, getCardPrints } from '../utils/api.js';
-import { formatUSD, getCardPrice, getAllPrices, generateMockPriceHistory, generateMockChange, getScryfallImageUrl, getFinishTags, getFinishLabel, getVariantLabel } from '../utils/helpers.js';
+import { getCard } from '../utils/api.js';
+import { formatUSD, getCardPrice, generateMockPriceHistory, generateMockChange, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
 var h = React.createElement;
-
-function PrintingRow({ printing, isCurrentCard }) {
-  var price = getCardPrice(printing);
-  var finishes = getFinishTags(printing);
-  var variantLabel = getVariantLabel(printing);
-  var allPrices = getAllPrices(printing);
-
-  return h('div', {
-    className: 'printing-row' + (isCurrentCard ? ' printing-row-current' : ''),
-    onClick: function() {
-      if (!isCurrentCard) {
-        window.location.hash = 'card/' + printing.id;
-      }
-    },
-    role: isCurrentCard ? undefined : 'button',
-    tabIndex: isCurrentCard ? undefined : 0,
-    style: { cursor: isCurrentCard ? 'default' : 'pointer' }
-  },
-    h('div', { className: 'printing-image' },
-      h('img', {
-        src: getScryfallImageUrl(printing, 'small'),
-        alt: printing.set_name,
-        loading: 'lazy'
-      })
-    ),
-    h('div', { className: 'printing-info' },
-      h('div', { className: 'printing-set-name' },
-        printing.set_name,
-        isCurrentCard && h('span', { className: 'printing-current-badge' }, 'Viewing')
-      ),
-      h('div', { className: 'printing-meta' },
-        '#' + (printing.collector_number || '?'),
-        ' · ',
-        (printing.rarity || '').charAt(0).toUpperCase() + (printing.rarity || '').slice(1)
-      ),
-      variantLabel && h('div', { className: 'printing-variant' }, variantLabel),
-      h('div', { className: 'printing-finishes' },
-        finishes.map(function(f) {
-          return h('span', {
-            key: f,
-            className: 'finish-badge finish-badge-' + f
-          }, getFinishLabel(f));
-        })
-      )
-    ),
-    h('div', { className: 'printing-prices' },
-      allPrices.length > 0 ? allPrices.map(function(p) {
-        return h('div', { key: p.label, className: 'printing-price-item' },
-          h('span', { className: 'printing-price-label' }, p.label),
-          h('span', { className: 'printing-price-value' }, p.isTix ? p.value.toFixed(2) + ' tix' : formatUSD(p.value))
-        );
-      }) : h('div', { className: 'printing-price-item' },
-        h('span', { className: 'printing-price-value printing-price-na' }, 'N/A')
-      )
-    )
-  );
-}
 
 export function CardDetailView({ cardId, state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
   var ref1 = React.useState(null);
@@ -75,34 +18,14 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var chartRef = React.useRef(null);
   var chartInstance = React.useRef(null);
 
-  // Printings state
-  var ref5 = React.useState([]);
-  var printings = ref5[0], setPrintings = ref5[1];
-  var ref6 = React.useState(false);
-  var loadingPrintings = ref6[0], setLoadingPrintings = ref6[1];
-  var ref7 = React.useState(false);
-  var showAllPrintings = ref7[0], setShowAllPrintings = ref7[1];
-
   React.useEffect(function() {
     if (!cardId) return;
     setLoading(true);
     setError(null);
     setCard(null);
-    setPrintings([]);
-    setShowAllPrintings(false);
     getCard(cardId).then(function(data) {
       setCard(data);
       setLoading(false);
-      // Fetch all printings
-      if (data.oracle_id) {
-        setLoadingPrintings(true);
-        getCardPrints(data.oracle_id).then(function(printsData) {
-          setPrintings(printsData && printsData.data ? printsData.data : []);
-          setLoadingPrintings(false);
-        }).catch(function() {
-          setLoadingPrintings(false);
-        });
-      }
     }).catch(function() {
       setError('Card not found.');
       setLoading(false);
@@ -111,7 +34,21 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
 
   React.useEffect(function() {
     if (!card || !chartRef.current) return;
-    if (typeof Chart === 'undefined') return;
+
+    // Dynamically load Chart.js if not already present
+    if (typeof Chart === 'undefined') {
+      var script = document.querySelector('script[src*="chart.js"]');
+      if (!script) {
+        script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.crossOrigin = 'anonymous';
+        script.onload = function() { setTimeframe(function(prev) { return prev; }); };
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener('load', function() { setTimeframe(function(prev) { return prev; }); });
+      }
+      return;
+    }
 
     var price = getCardPrice(card);
     var days = timeframe === '1w' ? 7 : timeframe === '1m' ? 30 : timeframe === '3m' ? 90 : 365;
@@ -215,22 +152,17 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var price = getCardPrice(card);
   var change = generateMockChange();
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
-  var allPrices = getAllPrices(card);
-  var finishes = getFinishTags(card);
-  var variantLabel = getVariantLabel(card);
 
-  var priceBoxes = allPrices.map(function(p) {
-    return { label: p.label, value: p.isTix ? p.value.toFixed(2) + ' tix' : formatUSD(p.value) };
-  });
-  priceBoxes.push({ label: '30d Change', value: (change > 0 ? '+' : '') + change + '%' });
+  var prices = [
+    { label: 'Market', value: formatUSD(price) },
+    { label: 'Foil',   value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
+    { label: 'MTGO',   value: card.prices && card.prices.tix ? formatUSD(parseFloat(card.prices.tix)) + ' tix' : 'N/A' },
+    { label: '30d Δ', value: (change > 0 ? '+' : '') + change + '%' },
+  ];
 
   var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
     return ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].indexOf(entry[0]) !== -1;
   });
-
-  // Show first 5 printings by default, rest behind "Show All"
-  var visiblePrintings = showAllPrintings ? printings : printings.slice(0, 5);
-  var hasMorePrintings = printings.length > 5;
 
   return h('div', { className: 'container card-detail' },
     h('a', {
@@ -244,22 +176,13 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
           src: getScryfallImageUrl(card, 'normal'),
           alt: card.name,
           loading: 'lazy'
-        }),
-        // Finish badges on detail image
-        finishes.length > 0 && h('div', { className: 'detail-finish-badges' },
-          finishes.map(function(f) {
-            return h('span', { key: f, className: 'finish-badge finish-badge-' + f }, getFinishLabel(f));
-          })
-        )
+        })
       ),
       h('div', { className: 'card-detail-info' },
         h('h1', null, card.name),
-        h('p', { className: 'card-detail-set' },
-          card.set_name, ' · ', card.rarity, ' · #', card.collector_number || '?'
-        ),
-        variantLabel && h('p', { className: 'card-detail-variant' }, variantLabel),
+        h('p', { className: 'card-detail-set' }, card.set_name, ' • ', card.rarity),
         h('div', { className: 'price-breakdown' },
-          priceBoxes.map(function(p) {
+          prices.map(function(p) {
             return h('div', { key: p.label, className: 'price-box' },
               h('div', { className: 'price-box-label' }, p.label),
               h('div', { className: 'price-box-value' }, p.value)
@@ -308,35 +231,6 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
         ),
         card.oracle_text && h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: '1.6', marginBottom: 'var(--space-4)' } },
           card.oracle_text
-        ),
-
-        // ===== ALL PRINTINGS SECTION =====
-        h('div', { className: 'printings-section' },
-          h('div', { className: 'printings-header' },
-            h('h3', null, 'All Printings'),
-            printings.length > 0 && h('span', { className: 'printings-count' }, printings.length + ' versions')
-          ),
-          loadingPrintings && h('div', { className: 'printings-loading' },
-            h('div', { className: 'skeleton skeleton-text' }),
-            h('div', { className: 'skeleton skeleton-text' }),
-            h('div', { className: 'skeleton skeleton-text' })
-          ),
-          !loadingPrintings && printings.length === 0 && h('p', { className: 'printings-empty' }, 'No other printings found.'),
-          !loadingPrintings && visiblePrintings.map(function(printing) {
-            return h(PrintingRow, {
-              key: printing.id,
-              printing: printing,
-              isCurrentCard: printing.id === card.id
-            });
-          }),
-          !loadingPrintings && hasMorePrintings && !showAllPrintings && h('button', {
-            className: 'btn btn-ghost printings-show-all-btn',
-            onClick: function() { setShowAllPrintings(true); }
-          }, 'Show All ' + printings.length + ' Printings'),
-          !loadingPrintings && showAllPrintings && hasMorePrintings && h('button', {
-            className: 'btn btn-ghost printings-show-all-btn',
-            onClick: function() { setShowAllPrintings(false); }
-          }, 'Show Less')
         )
       )
     )
