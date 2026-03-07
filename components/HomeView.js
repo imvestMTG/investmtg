@@ -8,11 +8,13 @@ import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon } from './shared/Icons.
 var h = React.createElement;
 
 /* ── Card pools for daily rotation ── */
+/* Featured: High-value staples that reliably have Scryfall USD prices */
 var FEATURED_POOL = [
-  'black lotus', 'mox pearl', 'ancestral recall', 'mox sapphire',
-  'mox jet', 'mox ruby', 'mox emerald', 'time walk', 'timetwister',
   'underground sea', 'volcanic island', 'tropical island', 'bayou',
-  'tundra', 'savannah', 'scrubland', 'badlands', 'taiga', 'plateau'
+  'tundra', 'savannah', 'scrubland', 'badlands', 'taiga', 'plateau',
+  'gaea\'s cradle', 'serra\'s sanctum', 'city of traitors', 'ancient tomb',
+  'lion\'s eye diamond', 'mox diamond', 'chrome mox', 'mox opal',
+  'force of negation', 'jeweled lotus'
 ];
 
 var TRENDING_POOL = [
