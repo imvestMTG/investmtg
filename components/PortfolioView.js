@@ -1,79 +1,96 @@
-/* PortfolioView.js — Portfolio tracker using real Scryfall prices */
+/* PortfolioView.js — Portfolio with live Scryfall prices */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PortfolioIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-// Fetch real current prices from Scryfall for portfolio items
-function useRealPrices(portfolio) {
-  var ref = React.useState({});
-  var prices = ref[0], setPrices = ref[1];
-  var ref2 = React.useState(false);
-  var loading = ref2[0], setLoading = ref2[1];
+var PRICE_CACHE_KEY = 'investmtg-portfolio-prices';
+var PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  React.useEffect(function() {
-    if (portfolio.length === 0) return;
-    var cancelled = false;
-    setLoading(true);
+function loadPriceCache() {
+  try {
+    var raw = localStorage.getItem(PRICE_CACHE_KEY);
+    if (!raw) return null;
+    var cached = JSON.parse(raw);
+    if (Date.now() - cached.ts > PRICE_CACHE_TTL) return null;
+    return cached.data;
+  } catch (e) { return null; }
+}
 
-    // Batch fetch prices — one request per unique card ID
-    var uniqueIds = [];
-    var seen = {};
-    portfolio.forEach(function(item) {
-      if (!seen[item.id]) {
-        seen[item.id] = true;
-        uniqueIds.push(item.id);
+function savePriceCache(data) {
+  try {
+    localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
+  } catch (e) { /* ignore */ }
+}
+
+function fetchLivePrices(ids) {
+  if (!ids || ids.length === 0) return Promise.resolve({});
+  var identifiers = ids.map(function(id) { return { id: id }; });
+  // Scryfall collection limit is 75 per request
+  var batches = [];
+  for (var i = 0; i < identifiers.length; i += 75) {
+    batches.push(identifiers.slice(i, i + 75));
+  }
+  return Promise.all(batches.map(function(batch) {
+    return fetch('https://api.scryfall.com/cards/collection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifiers: batch })
+    }).then(function(res) {
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    });
+  })).then(function(results) {
+    var priceMap = {};
+    results.forEach(function(json) {
+      if (json.data) {
+        json.data.forEach(function(card) {
+          var p = parseFloat(card.prices && card.prices.usd) || parseFloat(card.prices && card.prices.usd_foil) || 0;
+          priceMap[card.id] = p;
+        });
       }
     });
-
-    // Fetch in small batches to respect Scryfall rate limits (100ms delay between)
-    var results = {};
-    var idx = 0;
-
-    function fetchNext() {
-      if (idx >= uniqueIds.length || cancelled) {
-        if (!cancelled) {
-          setPrices(results);
-          setLoading(false);
-        }
-        return;
-      }
-      var id = uniqueIds[idx];
-      idx++;
-      fetch('https://api.scryfall.com/cards/' + id)
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(card) {
-          if (card && card.prices) {
-            var usd = parseFloat(card.prices.usd) || parseFloat(card.prices.usd_foil) || 0;
-            results[id] = usd;
-          }
-        })
-        .catch(function() {})
-        .then(function() {
-          setTimeout(fetchNext, 100);
-        });
-    }
-    fetchNext();
-
-    return function() { cancelled = true; };
-  }, [portfolio.length]);
-
-  return { prices: prices, loading: loading };
+    return priceMap;
+  });
 }
 
 export function PortfolioView({ state, updatePortfolio }) {
   var portfolio = state.portfolio;
-  var realPrices = useRealPrices(portfolio);
+  var ref1 = React.useState({});
+  var livePrices = ref1[0], setLivePrices = ref1[1];
+  var ref2 = React.useState(false);
+  var pricesLoaded = ref2[0], setPricesLoaded = ref2[1];
 
-  // Use real Scryfall prices when available, fall back to stored currentPrice
-  var enriched = portfolio.map(function(item) {
-    var livePrice = realPrices.prices[item.id];
-    var currentPrice = livePrice != null ? livePrice : (item.currentPrice || 0);
-    var change = item.buyPrice > 0 ? ((currentPrice - item.buyPrice) / item.buyPrice * 100) : 0;
-    return Object.assign({}, item, {
-      currentPrice: Math.round(currentPrice * 100) / 100,
-      change: Math.round(change * 10) / 10
+  React.useEffect(function() {
+    if (portfolio.length === 0) return;
+    var cancelled = false;
+    var ids = portfolio.map(function(item) { return item.id; });
+
+    // Try cache first
+    var cached = loadPriceCache();
+    if (cached) {
+      setLivePrices(cached);
+      setPricesLoaded(true);
+    }
+
+    // Fetch live prices
+    fetchLivePrices(ids).then(function(priceMap) {
+      if (!cancelled) {
+        setLivePrices(priceMap);
+        savePriceCache(priceMap);
+        setPricesLoaded(true);
+      }
+    }).catch(function() {
+      if (!cancelled) setPricesLoaded(true);
     });
+
+    return function() { cancelled = true; };
+  }, [portfolio.length]);
+
+  // Enrich portfolio with live prices
+  var enriched = portfolio.map(function(item) {
+    var currentPrice = livePrices[item.id] !== undefined ? livePrices[item.id] : item.currentPrice;
+    return Object.assign({}, item, { currentPrice: currentPrice });
   });
 
   var totalCost = enriched.reduce(function(sum, item) { return sum + (item.buyPrice || 0) * (item.qty || 1); }, 0);
@@ -106,11 +123,6 @@ export function PortfolioView({ state, updatePortfolio }) {
 
   return h('div', { className: 'container portfolio-page' },
     h('h1', { className: 'page-heading' }, 'My Portfolio'),
-
-    realPrices.loading && h('div', { style: { textAlign: 'center', padding: 'var(--space-3)', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' } },
-      'Fetching live prices from Scryfall…'
-    ),
-
     h('div', { className: 'portfolio-kpis' },
       h('div', { className: 'kpi-card' },
         h('div', { className: 'kpi-label' }, 'Total Cost'),
@@ -134,6 +146,7 @@ export function PortfolioView({ state, updatePortfolio }) {
         h('div', { className: 'kpi-value' }, portfolio.length)
       )
     ),
+    !pricesLoaded && h('p', { className: 'price-source' }, 'Loading live prices from Scryfall...'),
     h('div', { className: 'portfolio-table-wrapper' },
       h('table', { className: 'portfolio-table' },
         h('thead', null,
@@ -184,8 +197,8 @@ export function PortfolioView({ state, updatePortfolio }) {
         )
       )
     ),
-    h('p', { style: { textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-4)' } },
-      'Prices sourced from Scryfall (TCGplayer market data). Updated on page load.'
+    h('p', { className: 'price-source', style: { marginTop: 'var(--space-4)' } },
+      'Gain/Loss calculated from your buy price vs. live Scryfall market data. Prices update every 5 minutes.'
     )
   );
 }
