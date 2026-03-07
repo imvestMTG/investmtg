@@ -1,5 +1,45 @@
 # investMTG — Changelog
 
+## 2026-03-07: Major Visual Redesign
+
+### Hero Section
+- **AI-generated background**: Cinematic dark scene with golden energy trails and floating card shapes
+- **Dark gradient overlay**: Multi-stop oklch gradient for text readability
+- **Glass-morphism stats bar**: Semi-transparent backdrop-blur cards for the stat values
+- Light mode support with reduced opacity
+
+### Community Events — Complete Redesign
+- **AI-generated event artwork**: Three custom images created with GPT Image for TCG Con, Commander Night, and Weekend Events
+- **Featured event layout**: Large hero-style card for TCG Con 2026 (full-width with background image)
+- **2-column sub-grid**: Commander Night and Weekend Events as smaller cards below
+- **Image backgrounds**: Each event card has its own cinematic background with dark gradient overlay
+- **Calendar date chip**: Prominent date label overlay on each card
+- **Hover effects**: Image zoom (1.04x scale), golden border glow, card lift
+- **Section header**: Replaced emoji calendar with styled header featuring golden accent bar + "What's Happening on Guam" subtitle
+
+### Section Headers
+- **Golden accent bars**: Added 4px gold vertical bars to all section headers (Featured Cards, Trending Now, Budget Staples)
+- **Bottom border accent**: Subtle divider below each section header
+- **Improved spacing**: Better visual hierarchy between content sections
+
+### Animations
+- **Scroll-driven reveals**: CSS `animation-timeline: view()` for fade-up section animations
+- **Browser fallback**: Timed fade-up animations for browsers without scroll-driven animation support
+- Applied to all major homepage sections
+
+### Store Directory Update
+- **Removed**: Fokai Guam (clothing brand, NOT a TCG store) and The Grid GU (unverifiable)
+- **Renamed**: "Geek Out Guam" → "Geek Out Next Level" (correct name, WPN-authorized)
+- **Renamed**: "Inventory Guam" → "The Inventory" (correct name, Hagåtña)
+- **Added**: My Wife Told Me To Sell It (Dededo, 5.0★ 71 reviews)
+- **Added**: Fraim's Collectibles (Mangilao)
+- **Added**: Poke Violet 671 (Hagåtña)
+- **Added**: Expensive Dreams (Tumon)
+- **Total stores**: 6 verified (up from 4, with 2 removed and 4 added)
+- Conditional rendering for null phone/hours fields
+
+---
+
 ## 2026-03-07: Brand Foundation & Social Media Integration
 
 ### Brand
