@@ -61,7 +61,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(self \"https://js.sumup.com\" \"https://gateway.sumup.com\")">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com data:; connect-src 'self' https://api.scryfall.com https://text.pollinations.ai https://esm.sh https://gateway.sumup.com https://api.sumup.com https://js.sumup.com; frame-src https://gateway.sumup.com https://js.sumup.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com data:; connect-src 'self' https://api.scryfall.com https://text.pollinations.ai https://esm.sh https://gateway.sumup.com https://api.sumup.com https://js.sumup.com https://api.justtcg.com https://api2.moxfield.com; frame-src https://gateway.sumup.com https://js.sumup.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 
 <!-- Structured Data -->
 <script type="application/ld+json">
@@ -97,6 +97,8 @@
 <!-- DNS prefetch for Scryfall API -->
 <link rel="dns-prefetch" href="https://api.scryfall.com">
 <link rel="dns-prefetch" href="https://cards.scryfall.io">
+<link rel="dns-prefetch" href="https://api.justtcg.com">
+<link rel="dns-prefetch" href="https://api2.moxfield.com">
 
 <!-- Preload critical CSS -->
 <link rel="preload" href="./base.css" as="style">
