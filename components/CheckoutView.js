@@ -10,10 +10,10 @@ var SUMUP_MERCHANT_CODE = 'M55T01IN';
 
 // Guam stores for pickup selection
 var PICKUP_STORES = [
-  { id: 's1', name: 'Geek Out Guam', address: '404 W. O\'Brien Dr., Suite 101, Hagatna, GU 96910', phone: '(671) 477-4335' },
-  { id: 's2', name: 'Inventory Game Store', address: 'Tamuning, GU 96913', phone: '(671) 649-4263' },
-  { id: 's3', name: 'Pacific Card Exchange', address: 'Tumon, GU 96913', phone: '(671) 555-0198' },
-  { id: 's4', name: 'Island Hobby Center', address: 'Dededo, GU 96929', phone: '(671) 632-0044' }
+  { id: 's1', name: 'Geek Out Guam', address: 'Tamuning, GU 96913', phone: '(671) 477-4335' },
+  { id: 's2', name: 'The Grid GU', address: 'Dededo, GU 96929', phone: null },
+  { id: 's3', name: 'Fokai Guam', address: 'Hag\u00e5t\u00f1a, GU 96910', phone: null },
+  { id: 's4', name: 'Inventory Guam', address: 'Tamuning, GU 96913', phone: null }
 ];
 
 function generateOrderId() {
@@ -257,12 +257,10 @@ export function CheckoutView(props) {
     // This requires the secret API key — for now, show the manual payment flow
     // Once a Cloudflare Worker is set up, this will create real checkouts
 
-    // For launch: simulate the payment processing, store order locally
-    // The merchant will see orders in the seller dashboard and can
-    // coordinate payment via SumUp card reader or other method
-    setTimeout(function() {
-      completeOrder();
-    }, 2000);
+    // Online card payment requires a backend to create SumUp checkouts.
+    // Coming soon — for now, redirect to reserve flow.
+    setPaymentError('Online card payment is coming soon. Please use Reserve & Pay at Pickup for now.');
+    setPaymentProcessing(false);
   }
 
   // Empty cart
