@@ -8,10 +8,10 @@ A local Magic: The Gathering marketplace for the Guam community. Track real-time
 
 ## Features
 
-- **Real-Time Prices** — Live card pricing from [Scryfall](https://scryfall.com), sourced from TCGplayer, Cardmarket, and Cardhoarder
+- **Real-Time Prices** — Live card pricing from [Scryfall](https://scryfall.com), sourced from TCGplayer and Cardmarket. Physical printed cards only — no MTGO or digital-only cards.
 - **Daily Fresh Content** — Homepage Featured, Trending, and Budget sections rotate daily across 50+ card pools
 - **Live Price Ticker** — Scrolling ticker with real market prices for 15 major cards, refreshing every 5 minutes
-- **Card Search** — Search 25,000+ cards with color, rarity, and price filters
+- **Card Search** — Search thousands of printed Magic cards with color, rarity, and price filters
 - **Portfolio Tracker** — Track your collection's value against live market prices
 - **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
 - **Seller Dashboard** — Register as a seller, manage listings, track sales
