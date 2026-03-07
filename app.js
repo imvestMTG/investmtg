@@ -23,6 +23,9 @@ import { OrderConfirmation } from './components/OrderConfirmation.js';
 import { DecklistView } from './components/DecklistView.js';
 import { MarketMoversView } from './components/MarketMoversView.js';
 import { MetaView } from './components/MetaView.js';
+import { PrivacyPolicyView } from './components/PrivacyPolicyView.js';
+import { TermsView } from './components/TermsView.js';
+import { CookieNotice } from './components/CookieNotice.js';
 
 var h = React.createElement;
 
@@ -60,6 +63,8 @@ function parseHash() {
   if (hash === 'decks') return { page: 'decks' };
   if (hash === 'movers') return { page: 'movers' };
   if (hash === 'meta') return { page: 'meta' };
+  if (hash === 'privacy') return { page: 'privacy' };
+  if (hash === 'terms') return { page: 'terms' };
   return { page: 'home' };
 }
 
@@ -190,9 +195,12 @@ function App() {
       }),
       route.page === 'decks' && h(DecklistView, null),
       route.page === 'movers' && h(MarketMoversView, null),
-      route.page === 'meta' && h(MetaView, null)
+      route.page === 'meta' && h(MetaView, null),
+      route.page === 'privacy' && h(PrivacyPolicyView, null),
+      route.page === 'terms' && h(TermsView, null)
     ),
     h(Footer, null),
+    h(CookieNotice, null),
     h(Chatbot, null),
     h(BackToTop, null),
     h(ToastContainer, null),
