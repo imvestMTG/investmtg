@@ -39,7 +39,12 @@ export function getNamedCard(name) {
 }
 
 export function getCard(id) {
-  return apiFetch(BASE + '/cards/' + id);
+  /* If id looks like a Scryfall UUID (8-4-4-4-12 hex), use direct lookup.
+   * Otherwise treat as card name and use named lookup. */
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return apiFetch(BASE + '/cards/' + id);
+  }
+  return apiFetch(BASE + '/cards/named?fuzzy=' + encodeURIComponent(decodeURIComponent(id)));
 }
 
 export function randomCard() {
