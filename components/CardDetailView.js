@@ -82,7 +82,6 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var priceBoxes = [
     { label: 'Market (USD)', value: formatUSD(price) },
     { label: 'Foil (USD)', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
-    { label: 'MTGO (tix)', value: card.prices && card.prices.tix ? parseFloat(card.prices.tix).toFixed(2) + ' tix' : 'N/A' },
     { label: 'EUR', value: card.prices && card.prices.eur ? '€' + parseFloat(card.prices.eur).toFixed(2) : 'N/A' },
   ];
 
@@ -144,7 +143,7 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
         ),
 
         /* Purchase Links */
-        (purchaseLinks.tcgplayer || purchaseLinks.cardmarket || purchaseLinks.cardhoarder)
+        (purchaseLinks.tcgplayer || purchaseLinks.cardmarket)
           ? h('div', { className: 'purchase-links' },
               h('h3', null, 'Buy This Card'),
               h('div', { className: 'purchase-links-row' },
@@ -159,13 +158,7 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
                   target: '_blank',
                   rel: 'noopener noreferrer',
                   className: 'btn btn-sm btn-ghost'
-                }, 'Cardmarket'),
-                purchaseLinks.cardhoarder && h('a', {
-                  href: purchaseLinks.cardhoarder,
-                  target: '_blank',
-                  rel: 'noopener noreferrer',
-                  className: 'btn btn-sm btn-ghost'
-                }, 'Cardhoarder')
+                }, 'Cardmarket')
               )
             )
           : null,
