@@ -28,13 +28,13 @@ All data must be real and verifiable:
 ### Pages
 | Component | Route | Description |
 |-----------|-------|-------------|
-| HomeView | `#` (home) | Daily-rotating Featured/Trending/Budget cards from Scryfall |
+| HomeView | `#` (home) | Immersive hero, community events with AI artwork, daily-rotating Featured/Trending/Budget cards |
 | SearchView | `#search` | Full card search with color, rarity, price filters |
 | CardDetailView | `#card/{id}` | Live pricing, legality, purchase links from Scryfall |
 | PortfolioView | `#portfolio` | Portfolio tracker with live Scryfall price updates |
 | CartView | `#cart` | Shopping cart with seller grouping |
 | CheckoutView | `#checkout` | 3 payment methods: Reserve & Pay at Pickup, SumUp Card, Apple/Google Pay |
-| StoreView | `#store` | Local stores + community marketplace |
+| StoreView | `#store` | 6 verified Guam stores + community marketplace |
 | SellerDashboard | `#seller` | Seller registration, listing CRUD, sales history |
 | OrderConfirmation | `#order/{id}` | Post-payment confirmation |
 | MarketMoversView | `#movers` | Most valuable cards by category with real pricing |
@@ -92,6 +92,14 @@ All data must be real and verifiable:
 - Font: Clash Display (headings), Satoshi (body) via Fontshare
 - Mobile-first responsive design
 - Dark/light theme support via `[data-theme]`
+
+### Visual Redesign (2026-03-07)
+- **Hero background**: AI-generated cinematic image (`images/hero-bg.jpg`) with dark oklch gradient overlay via `::before` pseudo-element
+- **Glass-morphism stats**: Semi-transparent `backdrop-filter: blur()` cards in the hero stats bar
+- **Event cards**: AI-generated artwork per event (`images/event-*.jpg`) with full-bleed backgrounds, dark overlays, date chips, and hover zoom (1.04x) with golden border glow
+- **Section headers**: Golden 4px vertical accent bars (`::before` pseudo-element) on all homepage section headings
+- **Scroll animations**: CSS `animation-timeline: view()` for fade-up section reveals with timed fallback for unsupported browsers
+- **Event layout**: Featured event as large hero card + 2-column sub-grid for recurring events
 
 ## External Services
 | Service | Endpoint | Auth |

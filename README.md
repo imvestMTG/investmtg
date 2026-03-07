@@ -18,7 +18,9 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 
 - **Real-Time Prices (USD Only)** — Live card pricing from [Scryfall](https://scryfall.com), sourced from TCGplayer and Cardmarket. Physical printed cards only — no MTGO or digital-only cards.
 - **Condition Pricing** — Cart shows condition-specific prices (DMG, HP, MP, LP, NM) via [JustTCG](https://justtcg.com) with interactive chip selectors
-- **Daily Fresh Content** — Homepage Featured, Trending, and Budget sections rotate daily across 50+ card pools
+- **Immersive Hero** — AI-generated cinematic background with golden energy trails, glass-morphism stats bar, scroll-driven fade-up animations
+- **Community Events** — Featured events with AI-generated artwork (TCG Con 2026 hero card, Commander Night, Weekend Events), date chips, hover effects with golden border glow
+- **Daily Fresh Content** — Homepage Featured, Trending, and Budget sections rotate daily across 50+ card pools with golden accent bar headers
 - **Live Price Ticker** — Scrolling ticker with real market prices for 15 major cards, refreshing every 5 minutes
 - **Card Search** — Search thousands of printed Magic cards with color, rarity, and price filters
 - **Market Movers** — Most Valuable Cards, Modern Staples, Commander Staples, and Budget Finds with real pricing
@@ -27,7 +29,7 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **Portfolio Tracker** — Track your collection's value against live market prices
 - **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
 - **Seller Dashboard** — Register as a seller, manage listings, track sales
-- **Local Store Directory** — Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam (listed as community resources — no formal partnerships)
+- **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671, Expensive Dreams (6 verified Guam stores — listed as community resources, no formal partnerships)
 - **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI
 - **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
 - **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout
@@ -62,6 +64,12 @@ investmtg/
 ├── BUILD_SPEC.md           # Original build specification
 ├── CHANGES.md              # Build changelog
 ├── OPTIMIZATION_SUMMARY.md # Performance optimization log
+│
+├── images/
+│   ├── hero-bg.jpg          # AI-generated hero background (golden energy trails)
+│   ├── event-tcgcon.jpg     # AI artwork for TCG Con 2026 event card
+│   ├── event-commander.jpg  # AI artwork for Commander Night event card
+│   └── event-weekend.jpg    # AI artwork for Weekend Events card
 │
 ├── components/
 │   ├── HomeView.js         # Homepage with daily-rotating card sections
