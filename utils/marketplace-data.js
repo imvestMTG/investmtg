@@ -1,9 +1,8 @@
-/* marketplace-data.js — Real marketplace data from user-created listings */
+/* marketplace-data.js — Real marketplace listings (user-submitted only) */
 
 export function getInitialMarketplaceData() {
-  // All marketplace listings come from real users via the Seller Dashboard.
-  // This function returns an empty array — no mock data.
-  // Listings are persisted in localStorage when sellers create them.
+  // No seed data — marketplace starts empty per SOUL.md principles.
+  // All listings come from real sellers via the Seller Dashboard.
   return [];
 }
 
