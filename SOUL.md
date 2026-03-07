@@ -1,8 +1,51 @@
 # SOUL.md — The Fair Play Economy
 
-## What investMTG Stands For
+---
 
-investMTG is Guam's local Magic: The Gathering marketplace. Every piece of data on this site must be **real, verifiable, and transparent**. This document defines our principles and is the ethical backbone of the project.
+## About
+
+investMTG is a free Magic: The Gathering marketplace and price intelligence platform built for the Guam community. We give island players the same pricing transparency, portfolio tools, and market data that mainland players take for granted — without the markup, without the guesswork, and without the games.
+
+Every price on our platform comes from verified public sources. Every store we list is a real business you can walk into. Every feature we ship is built on real data or not built at all. We don't simulate activity, fabricate trends, or manufacture urgency. What you see is what the market actually says.
+
+investMTG was created by a Guam-based player who got tired of the information gap — where island collectors overpay because they can't easily compare prices, and local trades happen in the dark without fair market context. This platform exists to close that gap.
+
+---
+
+## Vision
+
+To be Guam's trusted home for Magic: The Gathering — the place every island player checks before they buy, sell, or trade a card.
+
+---
+
+## Mission
+
+To prove that a trading card marketplace can run on honesty. investMTG exists to give Guam's MTG community free access to real market data, fair pricing tools, and a local marketplace built without fake data, dark patterns, or hidden agendas.
+
+---
+
+## Brand
+
+**Name:** investMTG
+**Tagline:** Real cards. Real data. Fair play.
+**Brand Promise:** Every piece of data on this platform is real, verifiable, and transparent.
+
+### The Fair Play Economy
+
+investMTG operates under a governing philosophy called The Fair Play Economy — a set of principles that guide every decision on the platform. It's built on five pillars:
+
+1. **Transparency** — All prices, sources, and methods are visible. Nothing is hidden.
+2. **Equity of Access** — Every player gets the same data, the same tools, the same information — free, forever.
+3. **Honesty Rewarded** — The platform is designed to reward accurate grading, fair pricing, and good-faith trading.
+4. **Sportsmanship Over Greed** — Systems are built to discourage hoarding, price gouging, and market manipulation.
+5. **Diversity & Inclusion** — The platform welcomes every player regardless of budget, experience level, or background.
+
+### Brand Voice
+
+- Direct and honest — say what's true, skip what isn't
+- Community-first — we build for Guam players, not for metrics
+- Confident but never arrogant — we earn trust, we don't claim it
+- Island-local — we speak like the community we serve
 
 ---
 
@@ -125,9 +168,7 @@ If you're contributing to investMTG, follow these rules:
 
 ---
 
-## Brand Voice & Messaging
-
-investMTG's public-facing copy follows these principles:
+## Messaging Reference
 
 ### Hero / Homepage
 - **Headline:** "Know What Your Cards Are Worth"
@@ -164,7 +205,7 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 
 | Date | Change |
 |------|--------|
-| 2026-03-07 | Clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
+| 2026-03-07 | Added About, Vision, Mission, and Brand sections; clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
 | 2026-03-06 | Audit fixes: legal pages, cookie notice, accessibility, fake data removal, SOUL.md EUR fix |
 
 ---
