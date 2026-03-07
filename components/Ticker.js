@@ -68,28 +68,36 @@ export function Ticker() {
       setItems(cached);
     }
 
-    // Always fetch fresh data
-    fetchTickerPrices().then(function(data) {
-      if (!cancelled && data.length > 0) {
-        setItems(data);
-        saveCache(data);
-      }
-    }).catch(function() {
-      // Keep cached data on error
-    });
+    // Defer network fetch 2s to let critical render path complete first
+    var timeout = setTimeout(function() {
+      if (cancelled) return;
 
-    // Refresh every 5 minutes
-    var interval = setInterval(function() {
+      // Fetch fresh data after delay
       fetchTickerPrices().then(function(data) {
         if (!cancelled && data.length > 0) {
           setItems(data);
           saveCache(data);
         }
-      }).catch(function() {});
-    }, CACHE_TTL);
+      }).catch(function() {
+        // Keep cached data on error
+      });
+
+      // Refresh every 5 minutes
+      interval = setInterval(function() {
+        fetchTickerPrices().then(function(data) {
+          if (!cancelled && data.length > 0) {
+            setItems(data);
+            saveCache(data);
+          }
+        }).catch(function() {});
+      }, CACHE_TTL);
+    }, 2000);
+
+    var interval;
 
     return function() {
       cancelled = true;
+      clearTimeout(timeout);
       clearInterval(interval);
     };
   }, []);

@@ -6,28 +6,49 @@ import { getInitialMarketplaceData } from './utils/marketplace-data.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
-import { SearchView } from './components/SearchView.js';
-import { CardDetailView } from './components/CardDetailView.js';
-import { PortfolioView } from './components/PortfolioView.js';
-import { CartView } from './components/CartView.js';
-import { StoreView } from './components/StoreView.js';
-import { ListingModal } from './components/ListingModal.js';
-import { BuyLocalModal } from './components/BuyLocalModal.js';
-import { Chatbot } from './components/Chatbot.js';
 import { Footer } from './components/Footer.js';
 import { BackToTop } from './components/shared/BackToTop.js';
 import { ToastContainer, showToast } from './components/shared/Toast.js';
-import { CheckoutView } from './components/CheckoutView.js';
-import { SellerDashboard } from './components/SellerDashboard.js';
-import { OrderConfirmation } from './components/OrderConfirmation.js';
-import { DecklistView } from './components/DecklistView.js';
-import { MarketMoversView } from './components/MarketMoversView.js';
-import { MetaView } from './components/MetaView.js';
-import { PrivacyPolicyView } from './components/PrivacyPolicyView.js';
-import { TermsView } from './components/TermsView.js';
 import { CookieNotice } from './components/CookieNotice.js';
 
 var h = React.createElement;
+
+// ===== LAZY COMPONENT LOADER =====
+function lazyComponent(importFn, exportName) {
+  var cache = { C: null, p: null };
+  return function(props) {
+    var ref = React.useState(0);
+    var setTick = ref[1];
+    if (!cache.C) {
+      if (!cache.p) {
+        cache.p = importFn().then(function(mod) {
+          cache.C = mod[exportName];
+          setTick(function(n) { return n + 1; });
+        });
+      }
+      return null;
+    }
+    return h(cache.C, props);
+  };
+}
+
+// Lazy-loaded components (only fetched when navigated to)
+var SearchView = lazyComponent(function() { return import('./components/SearchView.js'); }, 'SearchView');
+var CardDetailView = lazyComponent(function() { return import('./components/CardDetailView.js'); }, 'CardDetailView');
+var PortfolioView = lazyComponent(function() { return import('./components/PortfolioView.js'); }, 'PortfolioView');
+var CartView = lazyComponent(function() { return import('./components/CartView.js'); }, 'CartView');
+var StoreView = lazyComponent(function() { return import('./components/StoreView.js'); }, 'StoreView');
+var CheckoutView = lazyComponent(function() { return import('./components/CheckoutView.js'); }, 'CheckoutView');
+var SellerDashboard = lazyComponent(function() { return import('./components/SellerDashboard.js'); }, 'SellerDashboard');
+var OrderConfirmation = lazyComponent(function() { return import('./components/OrderConfirmation.js'); }, 'OrderConfirmation');
+var DecklistView = lazyComponent(function() { return import('./components/DecklistView.js'); }, 'DecklistView');
+var MarketMoversView = lazyComponent(function() { return import('./components/MarketMoversView.js'); }, 'MarketMoversView');
+var MetaView = lazyComponent(function() { return import('./components/MetaView.js'); }, 'MetaView');
+var PrivacyPolicyView = lazyComponent(function() { return import('./components/PrivacyPolicyView.js'); }, 'PrivacyPolicyView');
+var TermsView = lazyComponent(function() { return import('./components/TermsView.js'); }, 'TermsView');
+var Chatbot = lazyComponent(function() { return import('./components/Chatbot.js'); }, 'Chatbot');
+var ListingModal = lazyComponent(function() { return import('./components/ListingModal.js'); }, 'ListingModal');
+var BuyLocalModal = lazyComponent(function() { return import('./components/BuyLocalModal.js'); }, 'BuyLocalModal');
 
 // ===== ROUTER HOOK =====
 function useRouter() {
