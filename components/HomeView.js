@@ -81,7 +81,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
 
     // Featured & Trending: search for the most expensive physical printing
     var namedSearches = featuredPicks.concat(trendingPicks).map(function(q) {
-      return searchCards(q + ' -is:digital').then(function(data) {
+      return searchCards(q).then(function(data) {
         if (!cancelled && data && data.data && data.data.length > 0) {
           results[q] = data.data[0];
         }
@@ -121,7 +121,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
   }
 
   var stats = [
-    { value: '25,000+', label: 'Cards Tracked' },
+    { value: 'Thousands', label: 'Printed Cards' },
     { value: '4', label: 'Local Guam Stores' },
     { value: 'Live', label: 'Price Updates' },
     { value: 'Free', label: 'Forever' },
@@ -135,7 +135,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
         h('div', { className: 'search-icon' }, h(SearchIcon, null)),
         h('input', {
           type: 'search',
-          placeholder: 'Search 25,000+ Magic cards...',
+          placeholder: 'Search printed Magic cards...',
           value: heroSearch,
           onChange: function(e) { setHeroSearch(e.target.value); },
           'aria-label': 'Search cards'
