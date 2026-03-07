@@ -4,8 +4,12 @@
  */
 import React from 'react';
 import { getTopCommanders, getCommanderDetail, getRecentTournaments, getStaples } from '../utils/edhtop16-api.js';
+import { setTopDeckApiKey, getRecentCEDHTournaments } from '../utils/topdeck-api.js';
 import { getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
+
+/* Initialize TopDeck API key */
+setTopDeckApiKey('d9ee7b1e-8732-4f73-984a-8c7c8fa2c769');
 var h = React.createElement;
 
 /* ---- Color identity helpers ---- */
@@ -207,14 +211,21 @@ function TournamentsList(props) {
 
   return h('div', { className: 'meta-tournaments-list' },
     tournaments.map(function(t, i) {
+      var linkUrl = t.source === 'topdeck'
+        ? 'https://topdeck.gg/event/' + t.TID
+        : 'https://edhtop16.com/tournament/' + t.TID;
+      var sourceBadge = t.source === 'topdeck' ? 'TopDeck' : 'EDH Top 16';
+      var badgeClass = 'meta-source-badge meta-source-' + (t.source || 'edhtop16');
+
       return h('div', { key: i, className: 'meta-tournament-card' },
         h('div', { className: 'meta-tournament-header' },
           h('h4', { className: 'meta-tournament-name' },
             h('a', {
-              href: 'https://edhtop16.com/tournament/' + t.TID,
+              href: linkUrl,
               target: '_blank',
               rel: 'noopener noreferrer'
-            }, t.name)
+            }, t.name),
+            h('span', { className: badgeClass }, sourceBadge)
           ),
           h('div', { className: 'meta-tournament-meta' },
             h('span', null, t.size + ' players'),
@@ -332,12 +343,47 @@ export function MetaView() {
     });
   }, [sortBy, timePeriod]);
 
-  /* Fetch tournaments when tab changes */
+  /* Fetch tournaments from both EDH Top 16 + TopDeck.gg */
   React.useEffect(function() {
     if (tab === 'tournaments' && tournaments.length === 0) {
       setTournamentsLoading(true);
-      getRecentTournaments({ count: 12 }).then(function(data) {
-        setTournaments(data || []);
+      var edh16Promise = getRecentTournaments({ count: 12 });
+      var topdeckPromise = getRecentCEDHTournaments(14, 8).then(function(tdData) {
+        if (!tdData || !Array.isArray(tdData)) return [];
+        return tdData.map(function(t) {
+          return {
+            name: t.tournamentName || 'Unknown',
+            TID: t.TID || '',
+            date: t.startDate ? new Date(t.startDate * 1000).toISOString() : '',
+            size: (t.standings || []).length,
+            topCut: t.topCut || 0,
+            swissRounds: t.swissNum || 0,
+            source: 'topdeck',
+            topEntries: (t.standings || []).slice(0, 4).map(function(s, idx) {
+              return {
+                standing: idx + 1,
+                wins: s.wins || 0,
+                losses: s.losses || 0,
+                draws: s.draws || 0,
+                commander: s.name || 'Unknown',
+                commanderColorId: '',
+                playerName: s.name || ''
+              };
+            })
+          };
+        });
+      }).catch(function() { return []; });
+
+      Promise.all([edh16Promise, topdeckPromise]).then(function(results) {
+        var edh16 = (results[0] || []).map(function(t) { t.source = 'edhtop16'; return t; });
+        var td = results[1] || [];
+        /* Merge and sort by date descending */
+        var all = edh16.concat(td).sort(function(a, b) {
+          var da = a.date ? new Date(a.date).getTime() : 0;
+          var db = b.date ? new Date(b.date).getTime() : 0;
+          return db - da;
+        });
+        setTournaments(all);
         setTournamentsLoading(false);
       });
     }
