@@ -1,6 +1,7 @@
-/* CartView.js */
+/* CartView.js — Cart with JustTCG condition pricing & interactive elements */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
+import { getJustTCGPricing } from '../utils/justtcg-api.js';
 import { TrashIcon, MapPinIcon, TruckIcon, ChevronRightIcon } from './shared/Icons.js';
 var h = React.createElement;
 
@@ -16,6 +17,36 @@ function groupBySeller(cart) {
 
 export function CartView({ state, updateCart }) {
   var cart = state.cart;
+  var ref1 = React.useState({});
+  var jtcgPrices = ref1[0], setJtcgPrices = ref1[1];
+  var ref2 = React.useState(false);
+  var jtcgLoading = ref2[0], setJtcgLoading = ref2[1];
+
+  // Fetch JustTCG condition prices for cart items that have tcgplayerId
+  React.useEffect(function() {
+    if (cart.length === 0) return;
+    var itemsWithTcg = cart.filter(function(item) { return item.tcgplayerId; });
+    if (itemsWithTcg.length === 0) return;
+
+    setJtcgLoading(true);
+    var fetches = itemsWithTcg.map(function(item) {
+      return getJustTCGPricing(item.tcgplayerId, { historyDuration: '7d' })
+        .then(function(data) {
+          if (data) {
+            setJtcgPrices(function(prev) {
+              var next = Object.assign({}, prev);
+              next[item.id] = data;
+              return next;
+            });
+          }
+        })
+        .catch(function() {});
+    });
+
+    Promise.all(fetches).then(function() {
+      setJtcgLoading(false);
+    });
+  }, [cart.length]);
 
   var subtotal = cart.reduce(function(sum, item) { return sum + (item.price || 0) * (item.qty || 1); }, 0);
   var tax = subtotal * 0.04;
@@ -74,26 +105,71 @@ export function CartView({ state, updateCart }) {
               h('span', { className: 'cart-seller-label' }, 'From: ' + seller)
             ),
             items.map(function(item) {
+              var jtcg = jtcgPrices[item.id];
               return h('div', { key: item.id, className: 'cart-item' },
-                h('div', { className: 'cart-item-image' },
+                h('a', {
+                  className: 'cart-item-image',
+                  href: '#card/' + item.id,
+                  'aria-label': 'View ' + item.name + ' details'
+                },
                   item.image
                     ? h('img', { src: item.image, alt: item.name, loading: 'lazy' })
-                    : h('div', { className: 'cart-item-img-placeholder' }, '🃏')
+                    : h('div', { className: 'cart-item-img-placeholder' }, '\uD83C\uDCCF')
                 ),
                 h('div', { className: 'cart-item-details' },
-                  h('div', { className: 'cart-item-name' }, item.name),
+                  /* Card name — clickable, links to card detail */
+                  h('a', {
+                    className: 'cart-item-name cart-item-link',
+                    href: '#card/' + item.id
+                  }, item.name),
+
                   h('div', { className: 'cart-item-meta' },
-                    item.set && h('span', { className: 'cart-item-set' }, item.set),
-                    item.condition && h('span', { className: 'cart-item-cond-badge cond-' + (item.condition || '').toLowerCase() }, item.condition)
+                    /* Set name — clickable, links to set search */
+                    item.set && h('a', {
+                      className: 'cart-item-set cart-item-link',
+                      href: '#search',
+                      onClick: function(e) {
+                        e.preventDefault();
+                        window.location.hash = 'search';
+                        setTimeout(function() {
+                          var setQuery = item.setCode ? 'e:' + item.setCode : item.set;
+                          var ev = new CustomEvent('investmtg-search', { detail: setQuery });
+                          window.dispatchEvent(ev);
+                        }, 50);
+                      }
+                    }, item.set),
+                    item.condition && h('span', {
+                      className: 'cart-item-cond-badge cond-' + (item.condition || '').toLowerCase()
+                    }, item.condition)
                   ),
-                  h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each')
+
+                  h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each'),
+
+                  /* JustTCG condition breakdown (only shows if data loaded) */
+                  jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0
+                    ? h('div', { className: 'cart-condition-row' },
+                        Object.entries(jtcg.conditionPrices).slice(0, 4).map(function(entry) {
+                          var condLabel = entry[0];
+                          var condPrice = entry[1];
+                          var abbr = condLabel === 'Near Mint' ? 'NM' :
+                                     condLabel === 'Lightly Played' ? 'LP' :
+                                     condLabel === 'Moderately Played' ? 'MP' :
+                                     condLabel === 'Heavily Played' ? 'HP' :
+                                     condLabel === 'Damaged' ? 'DMG' : condLabel;
+                          return h('span', {
+                            key: condLabel,
+                            className: 'cart-cond-chip'
+                          }, abbr + ' ' + formatUSD(condPrice));
+                        })
+                      )
+                    : null
                 ),
                 h('div', { className: 'cart-item-controls' },
                   h('button', {
                     className: 'qty-btn',
                     onClick: function() { updateQty(item.id, (item.qty || 1) - 1); },
                     'aria-label': 'Decrease quantity'
-                  }, '−'),
+                  }, '\u2212'),
                   h('span', { className: 'qty-value' }, item.qty || 1),
                   h('button', {
                     className: 'qty-btn',
@@ -130,15 +206,25 @@ export function CartView({ state, updateCart }) {
           h('span', null, 'Subtotal'), h('span', null, formatUSD(total))
         ),
 
-        // Fulfillment options preview
+        jtcgLoading
+          ? h('div', { className: 'cart-jtcg-note loading' },
+              'Fetching condition prices...'
+            )
+          : Object.keys(jtcgPrices).length > 0
+            ? h('div', { className: 'cart-jtcg-note' },
+                'Condition prices from ',
+                h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG')
+              )
+            : null,
+
         h('div', { className: 'cart-fulfillment-preview' },
           h('div', { className: 'cart-fulfillment-row' },
             h(MapPinIcon, null),
-            h('span', null, 'Local Pickup — Free')
+            h('span', null, 'Local Pickup \u2014 Free')
           ),
           h('div', { className: 'cart-fulfillment-row' },
             h(TruckIcon, null),
-            h('span', null, 'Ship to Guam — $5 flat')
+            h('span', null, 'Ship to Guam \u2014 $5 flat')
           )
         ),
 
