@@ -334,7 +334,7 @@
 
 /* ===== HERO SECTION ===== */
 .hero {
-  padding: clamp(var(--space-12), 8vw, var(--space-32)) var(--space-4);
+  padding: clamp(var(--space-8), 5vw, var(--space-16)) var(--space-4) clamp(var(--space-6), 3vw, var(--space-10));
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -349,6 +349,11 @@
   height: 800px;
   background: radial-gradient(circle, rgba(212, 168, 67, 0.06) 0%, transparent 70%);
   pointer-events: none;
+  animation: heroPulse 4s ease-in-out infinite;
+}
+@keyframes heroPulse {
+  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
 }
 .hero-tagline {
   font-family: var(--font-display);
@@ -391,12 +396,6 @@
               box-shadow var(--transition-interactive);
 }
 .hero-search input::placeholder { color: var(--color-text-faint); }
-.hero-search input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.15);
-  box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.15);
-}
 .hero-search .search-icon {
   position: absolute;
   left: var(--space-4);
@@ -676,6 +675,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: var(--space-4);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 400px;
 }
 .mtg-card {
   background: var(--color-surface);
@@ -683,6 +684,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
+  perspective: 800px;
   transition: box-shadow var(--transition-interactive),
               border-color var(--transition-interactive),
               transform var(--transition-interactive);
@@ -690,9 +692,7 @@
 .mtg-card:hover {
   box-shadow: 0 0 20px rgba(212, 168, 67, 0.15);
   border-color: rgba(212, 168, 67, 0.4);
-  box-shadow: 0 0 20px rgba(212, 168, 67, 0.15);
-  border-color: rgba(212, 168, 67, 0.4);
-  transform: translateY(-2px);
+  transform: translateY(-2px) rotateX(1deg) rotateY(-1deg);
 }
 .mtg-card-image {
   aspect-ratio: 745/1040;
@@ -949,8 +949,11 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--space-16) var(--space-8);
+  padding: var(--space-12) var(--space-8);
   color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
 }
 .empty-state-icon {
   width: 48px;
@@ -1711,14 +1714,6 @@
   border-color: var(--color-primary);
 }
 
-/* ===== CARD 3D TILT HOVER ===== */
-.mtg-card {
-  perspective: 800px;
-}
-.mtg-card:hover {
-  transform: translateY(-2px) rotateX(1deg) rotateY(-1deg);
-}
-
 /* ===== PAGE LOAD FADE IN ===== */
 @keyframes heroFadeIn {
   from {
@@ -2159,6 +2154,8 @@
 /* ===== WATCHLIST SECTION ===== */
 .watchlist-section {
   margin-bottom: var(--space-8);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }
 .watchlist-section h2 {
   font-family: var(--font-display);
@@ -2603,23 +2600,6 @@
   font-weight: 600;
   margin-bottom: var(--space-2);
   color: var(--color-text);
-}
-.form-input {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-offset);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  font-family: inherit;
-  transition: border-color var(--transition-interactive),
-              box-shadow var(--transition-interactive);
-}
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.12);
 }
 .form-input.error {
   border-color: var(--color-error);
