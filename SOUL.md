@@ -206,6 +206,7 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 
 | Date | Change |
 |------|--------|
+| 2026-03-07 | Performance optimization: lazy-loaded components (262KB → 47KB initial JS), minified CSS (127KB → 105KB), deleted unused 5MB og-image.png, hero preload, Scryfall preconnect, deferred Ticker fetch, removed unused font weights |
 | 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
 | 2026-03-07 | Store directory updated: removed Fokai Guam, The Grid GU, and Expensive Dreams (not a TCG store). Added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 5 verified stores |
 | 2026-03-07 | Added About, Vision, Mission, and Brand sections; clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |

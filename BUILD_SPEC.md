@@ -12,9 +12,10 @@ The codebase is at `/home/user/workspace/investmtg_build/`. All files are served
 - Use `var ref = React.useState()` with `ref[0]`/`ref[1]` — no destructuring
 - All imports from `'react'` via esm.sh import maps
 - Static site, no backend server — use localStorage for data persistence
-- All CSS goes into the existing `style.css` file
+- All CSS goes into the existing `style.css` file (minified, ~105KB)
 - Keep the existing design system (CSS variables from `:root` and `[data-theme]`)
 - File naming: PascalCase for components, lowercase for utils
+- **Lazy loading**: Non-homepage components use dynamic `import()` via `lazyComponent()` in app.js. Only HomeView, Header, Footer, Ticker, CookieNotice, BackToTop, and Toast load eagerly (~47KB). All other page components load on navigation.
 
 ## Data Integrity (SOUL.md)
 All data must be real and verifiable:
@@ -46,7 +47,7 @@ All data must be real and verifiable:
 ### Shared Components
 | Component | Description |
 |-----------|-------------|
-| Ticker | Live price ticker fetching from Scryfall collection API every 5 min |
+| Ticker | Live price ticker fetching from Scryfall collection API every 5 min (fetch deferred 2s, cached data instant) |
 | Header | Navigation with cart badge |
 | Footer | Site footer with attribution |
 | Chatbot | AI assistant via Pollinations API |
@@ -112,6 +113,15 @@ All data must be real and verifiable:
 | Pollinations AI | `https://text.pollinations.ai/openai/chat/completions` | None (free) |
 | SumUp | `https://js.sumup.com` / `https://api.sumup.com` | Public key |
 | Fontshare | `https://api.fontshare.com` | None |
+
+## Performance
+- **Lazy loading**: 16 components loaded via dynamic `import()` — initial JS reduced from 262KB to 47KB
+- **CSS minified**: 127KB → 105KB (comments/whitespace stripped)
+- **Hero preload**: `<link rel="preload">` with `fetchpriority="high"` for LCP image
+- **Scryfall preconnect**: Full `preconnect` (not just dns-prefetch) for API + image CDN
+- **Font optimization**: Only 6 font weights loaded (removed unused Clash Display 400, Satoshi 300)
+- **Deferred Ticker**: API fetch delayed 2s; cached data shows instantly
+- **Lighthouse**: Desktop 96, Mobile 68 → targeting 85+
 
 ## Deployment
 - GitHub repo: `imvestMTG/investmtg` (branch: `main`)

@@ -35,6 +35,7 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout
 - **Legal Pages** — Privacy Policy, Terms of Service, Cookie Notice
 - **PWA Support** — Installable as a mobile app
+- **Performance Optimized** — Lazy-loaded components (82% less initial JS), minified CSS, hero image preload, deferred API calls
 
 ## Tech Stack
 
@@ -120,9 +121,10 @@ investmtg/
 - `var ref = React.useState(x); var val = ref[0], setVal = ref[1];` — no destructuring
 - All imports use bare specifiers resolved by the import map in index.html
 - Static site with no backend — localStorage for all persistence
-- All CSS in `style.css` — no CSS-in-JS or modules
+- All CSS in `style.css` (minified) — no CSS-in-JS or modules
 - Mobile-first responsive design with dark/light theme support
 - USD only — no EUR, GBP, tix, or other currencies displayed
+- **Lazy loading**: 16 non-homepage components use dynamic `import()` via a custom `lazyComponent()` wrapper. Only homepage essentials load eagerly (47KB vs 262KB previously).
 
 ## The Fair Play Economy (SOUL.md)
 
