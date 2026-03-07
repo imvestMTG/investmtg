@@ -3404,390 +3404,136 @@
   .store-page-links { flex-wrap: wrap; }
   .checkout-payment-recap { flex-direction: column; }
 }
-/* ===== VARIANT & FILTER ADDITIONS ===== */
 
-/* --- Filter sidebar enhancements --- */
-.filter-sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-3);
+/* ===== PAYMENT METHOD SELECTOR ===== */
+.payment-method-selector {
+  margin-bottom: var(--space-6);
 }
-
-.filter-sidebar-header h2 {
+.payment-method-title {
+  font-family: var(--font-display);
   font-size: var(--text-lg);
-  margin: 0;
-}
-
-.clear-filters-btn {
-  font-size: var(--text-xs) !important;
-  color: var(--color-accent) !important;
-  padding: 4px 8px !important;
-}
-
-.unique-toggle {
-  display: flex;
-  gap: 4px;
-}
-
-.unique-toggle .btn {
-  flex: 1;
-  font-size: var(--text-xs);
-  padding: 6px 8px;
-}
-
-.filter-apply-btn {
-  width: 100%;
-  margin-top: var(--space-3);
-}
-
-.filter-toggle-btn {
-  display: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.search-bar-wrapper {
-  display: flex;
-  gap: var(--space-2);
-  align-items: stretch;
-}
-
-/* Results meta */
-.results-meta {
-  padding: var(--space-2) 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.results-meta-hint {
-  opacity: 0.7;
-}
-
-/* Load more */
-.load-more-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6) 0;
-}
-
-.load-more-btn {
-  min-width: 200px;
-}
-
-/* --- Finish badges on cards --- */
-.finish-badges {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.mtg-card-image {
-  position: relative;
-}
-
-.finish-badge {
-  display: inline-block;
-  font-size: 10px;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  line-height: 1.3;
-}
-
-.finish-badge-foil {
-  background: linear-gradient(135deg, #D4A843 0%, #C4913A 50%, #E8C566 100%);
-  color: #1a1a2e;
-}
-
-.finish-badge-etched {
-  background: linear-gradient(135deg, #8B8D94 0%, #B0B2BA 50%, #9D9FA6 100%);
-  color: #1a1a2e;
-}
-
-.finish-badge-nonfoil {
-  background: rgba(255,255,255,0.12);
-  color: var(--color-text-muted);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.finish-badge-glossy {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-}
-
-/* Variant label on card grid */
-.mtg-card-variant {
-  font-size: 10px;
-  color: var(--color-accent);
-  font-weight: 500;
-  margin-top: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-/* Foil price on card grid */
-.mtg-card-foil-price {
-  font-size: var(--text-xs);
-  color: #D4A843;
-  margin-top: 2px;
-}
-
-/* --- Card Detail: Finish badges --- */
-.detail-finish-badges {
-  display: flex;
-  gap: 4px;
-  margin-top: var(--space-2);
-  justify-content: center;
-}
-
-.card-detail-variant {
-  color: var(--color-accent);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--space-2);
-}
-
-/* --- All Printings Section --- */
-.printings-section {
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-
-.printings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  color: var(--color-text);
   margin-bottom: var(--space-3);
 }
-
-.printings-header h3 {
-  margin: 0;
+.payment-method-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
-
-.printings-count {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  background: rgba(255,255,255,0.06);
-  padding: 2px 10px;
-  border-radius: 12px;
+.payment-method-option {
+  display: block;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  background: var(--color-surface);
 }
-
-.printings-loading {
+.payment-method-option:hover {
+  border-color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+}
+.payment-method-option.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-highlight);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+.payment-method-option input[type="radio"] {
+  display: none;
+}
+.payment-method-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
-
-.printings-empty {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.printing-row {
+.payment-method-header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: 8px;
-  transition: background 0.15s;
-  margin-bottom: 2px;
 }
-
-.printing-row:hover {
-  background: rgba(255,255,255,0.04);
-}
-
-.printing-row-current {
-  background: rgba(212, 168, 67, 0.08);
-  border: 1px solid rgba(212, 168, 67, 0.2);
-}
-
-.printing-row-current:hover {
-  background: rgba(212, 168, 67, 0.08);
-}
-
-.printing-image {
-  width: 48px;
-  height: 68px;
+.payment-method-header svg {
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
+  color: var(--color-primary);
 }
-
-.printing-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.printing-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.printing-set-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.printing-current-badge {
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #D4A843;
-  background: rgba(212, 168, 67, 0.15);
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
-.printing-meta {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  margin-top: 1px;
-}
-
-.printing-variant {
-  font-size: 10px;
-  color: var(--color-accent);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-top: 2px;
-}
-
-.printing-finishes {
-  display: flex;
-  gap: 3px;
-  margin-top: 3px;
-}
-
-.printing-prices {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: flex-end;
-  flex-shrink: 0;
-}
-
-.printing-price-item {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-}
-
-.printing-price-label {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-.printing-price-value {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.printing-price-na {
-  color: var(--color-text-muted);
-}
-
-.printings-show-all-btn {
-  width: 100%;
-  margin-top: var(--space-2);
+.payment-method-icon {
+  font-size: 24px;
+  width: 28px;
   text-align: center;
-  font-size: var(--text-sm) !important;
+  flex-shrink: 0;
 }
-
-/* --- Mobile responsive for filters --- */
-@media (max-width: 768px) {
-  .filter-toggle-btn {
-    display: flex;
-    align-items: center;
-  }
-
-  .filter-sidebar {
-    display: none;
-  }
-
-  .filter-sidebar-open {
-    display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 100;
-    background: var(--color-bg-primary);
-    padding: var(--space-4);
-    overflow-y: auto;
-  }
-
-  .printing-row {
-    gap: var(--space-2);
-    padding: var(--space-2);
-  }
-
-  .printing-image {
-    width: 36px;
-    height: 50px;
-  }
-
-  .printing-prices {
-    font-size: var(--text-xs);
-  }
+.payment-method-label {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--text-base);
 }
-
-/* Search main container */
-.search-main {
-  flex: 1;
-  min-width: 0;
-}
-
-/* ===== SOUL DOCUMENT / DATA INTEGRITY BADGE ===== */
-.footer-soul-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-4);
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: var(--radius-lg);
+.payment-method-desc {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+  line-height: 1.4;
 }
-.soul-badge-icon {
-  font-size: 1.1rem;
+.payment-method-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding-left: calc(24px + var(--space-3));
 }
-.soul-badge-link {
-  color: rgb(34, 197, 94);
-  text-decoration: none;
-  border-bottom: 1px solid rgba(34, 197, 94, 0.3);
-}
-.soul-badge-link:hover {
-  color: rgb(74, 222, 128);
-  border-bottom-color: rgb(74, 222, 128);
+.payment-method-badge-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
-/* ===== TICKER PRICE (replaces fake change %) ===== */
-.ticker-price {
-  margin-left: var(--space-1);
-  color: var(--color-text-muted);
+/* Payment error */
+.payment-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: #ef4444;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+/* SumUp containers */
+.sumup-wallet-container {
+  min-height: 56px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+}
+.sumup-card-container {
+  min-height: 200px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+  padding: var(--space-4);
+}
+
+/* Payment info & security */
+.checkout-payment-info {
+  margin-top: var(--space-4);
+}
+.payment-security-badges {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 767px) {
+  .payment-method-badge { padding-left: 0; }
+  .payment-security-badges { justify-content: center; }
 }
