@@ -5,7 +5,10 @@
 import React from 'react';
 import { getTopCommanders, getCommanderDetail, getRecentTournaments, getStaples } from '../utils/edhtop16-api.js';
 import { setTopDeckApiKey, getRecentCEDHTournaments } from '../utils/topdeck-api.js';
-import { getScryfallImageUrl } from '../utils/helpers.js';
+/* Scryfall named card image URL — returns art_crop via redirect */
+function scryfallArtUrl(cardName) {
+  return 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(cardName) + '&format=image&version=art_crop';
+}
 import { SkeletonCard } from './shared/SkeletonCard.js';
 
 /* Initialize TopDeck API key */
@@ -83,7 +86,7 @@ function CommanderRow(props) {
     h('td', { className: 'meta-rank' }, rank),
     h('td', { className: 'meta-cmd-cell' },
       h('img', {
-        src: getScryfallImageUrl(firstName, 'art_crop'),
+        src: scryfallArtUrl(firstName),
         alt: firstName,
         className: 'meta-cmd-thumb',
         loading: 'lazy',
