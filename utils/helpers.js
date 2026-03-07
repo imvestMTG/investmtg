@@ -7,7 +7,76 @@ export function formatUSD(amount) {
 
 export function getCardPrice(card) {
   if (!card || !card.prices) return 0;
-  return parseFloat(card.prices.usd) || parseFloat(card.prices.usd_foil) || 0;
+  return parseFloat(card.prices.usd) || parseFloat(card.prices.usd_foil) || parseFloat(card.prices.usd_etched) || 0;
+}
+
+// Get all available prices for a card as { label, value } pairs
+export function getAllPrices(card) {
+  if (!card || !card.prices) return [];
+  var result = [];
+  if (card.prices.usd) result.push({ label: 'Market', value: parseFloat(card.prices.usd) });
+  if (card.prices.usd_foil) result.push({ label: 'Foil', value: parseFloat(card.prices.usd_foil) });
+  if (card.prices.usd_etched) result.push({ label: 'Etched', value: parseFloat(card.prices.usd_etched) });
+  if (card.prices.tix) result.push({ label: 'MTGO', value: parseFloat(card.prices.tix), isTix: true });
+  return result;
+}
+
+// Get finish tags for a card (foil, etched, nonfoil)
+export function getFinishTags(card) {
+  if (!card || !card.finishes) return [];
+  return card.finishes;
+}
+
+// Get a human-readable finish label
+export function getFinishLabel(finish) {
+  if (finish === 'foil') return 'Foil';
+  if (finish === 'etched') return 'Etched';
+  if (finish === 'nonfoil') return 'Non-Foil';
+  if (finish === 'glossy') return 'Glossy';
+  return finish || '';
+}
+
+// Get variant descriptor for display (e.g., "Borderless", "Extended Art", "Showcase")
+export function getVariantLabel(card) {
+  if (!card) return '';
+  var labels = [];
+  if (card.full_art) labels.push('Full Art');
+  if (card.textless) labels.push('Textless');
+  if (card.promo) labels.push('Promo');
+  if (card.border_color === 'borderless') labels.push('Borderless');
+  if (card.frame_effects && card.frame_effects.length > 0) {
+    card.frame_effects.forEach(function(fx) {
+      if (fx === 'showcase') labels.push('Showcase');
+      if (fx === 'extendedart') labels.push('Extended Art');
+      if (fx === 'inverted') labels.push('Inverted');
+      if (fx === 'etched') labels.push('Etched');
+      if (fx === 'snow') labels.push('Snow');
+      if (fx === 'miracle') labels.push('Miracle');
+      if (fx === 'nyxtouched') labels.push('Nyx');
+      if (fx === 'draft') labels.push('Draft');
+      if (fx === 'devoid') labels.push('Devoid');
+      if (fx === 'colorshifted') labels.push('Colorshifted');
+      if (fx === 'companion') labels.push('Companion');
+      if (fx === 'waxingandwaningmoondfc') labels.push('Moon DFC');
+      if (fx === 'legendary') labels.push('Legendary Frame');
+    });
+  }
+  return labels.join(' · ');
+}
+
+// Get the type line category for filtering
+export function getTypeCategory(card) {
+  if (!card || !card.type_line) return 'other';
+  var t = card.type_line.toLowerCase();
+  if (t.indexOf('creature') !== -1) return 'creature';
+  if (t.indexOf('instant') !== -1) return 'instant';
+  if (t.indexOf('sorcery') !== -1) return 'sorcery';
+  if (t.indexOf('enchantment') !== -1) return 'enchantment';
+  if (t.indexOf('artifact') !== -1) return 'artifact';
+  if (t.indexOf('planeswalker') !== -1) return 'planeswalker';
+  if (t.indexOf('land') !== -1) return 'land';
+  if (t.indexOf('battle') !== -1) return 'battle';
+  return 'other';
 }
 
 export function generateMockPriceHistory(currentPrice, days) {
