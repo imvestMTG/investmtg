@@ -5,16 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>investMTG — Redirecting...</title>
   <script>
-    // GitHub Pages SPA redirect — preserves the route in the hash
-    var path = window.location.pathname;
+    // GitHub Pages SPA redirect — preserves the hash route
     var hash = window.location.hash;
-    var search = window.location.search;
-    // Redirect to index with the path as a hash route
-    if (path && path !== '/' && path !== '/index.html') {
-      window.location.replace('/' + search + hash);
-    } else {
-      window.location.replace('/' + search + hash);
-    }
+    window.location.replace('/' + hash);
   </script>
 </head>
 <body>

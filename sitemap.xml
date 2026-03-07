@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NOTE: This SPA uses hash-based routing (e.g. /#search, /#store).
+  Search engines may not index hash routes reliably.
+  The root URL (/) renders the full app; all routes are client-side.
+  For improved SEO, consider migrating to path-based routing with
+  server-side rendering or prerendering in the future.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.investmtg.com/</loc>

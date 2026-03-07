@@ -3,11 +3,12 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
 import { CreditCardIcon, TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
+import { SUMUP_PUBLIC_KEY, GUAM_GRT_RATE, SHIPPING_FLAT_RATE, RESERVE_PROCESSING_DELAY } from '../utils/config.js';
+import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
+import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
-// SumUp credentials
-var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
-var SUMUP_MERCHANT_CODE = 'M55T01IN';
+// merchant code moved server-side to Cloudflare Worker
 
 function generateOrderId() {
   var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -16,16 +17,6 @@ function generateOrderId() {
     id += chars[Math.floor(Math.random() * chars.length)];
   }
   return id;
-}
-
-function groupBySeller(cart) {
-  var groups = {};
-  cart.forEach(function(item) {
-    var seller = item.seller || 'Unknown Seller';
-    if (!groups[seller]) { groups[seller] = []; }
-    groups[seller].push(item);
-  });
-  return groups;
 }
 
 // Load SumUp Swift Checkout SDK dynamically
@@ -95,53 +86,56 @@ export function CheckoutView(props) {
   var ref13 = React.useState(false);
   var cardMounted = ref13[0], setCardMounted = ref13[1];
 
+  var sdkInitRef = React.useRef(false);
+
   var subtotal = cart.reduce(function(sum, item) {
     return sum + (item.price || 0) * (item.qty || 1);
   }, 0);
-  var tax = subtotal * 0.04;
-  var shipping = fulfillment === 'ship' ? 5.00 : 0;
+  var tax = subtotal * GUAM_GRT_RATE;
+  var shipping = fulfillment === 'ship' ? SHIPPING_FLAT_RATE : 0;
   var total = subtotal + tax + shipping;
 
   var sellerGroups = groupBySeller(cart);
 
   // Load Swift Checkout SDK when reaching payment step
   React.useEffect(function() {
-    if (step === 4) {
-      loadSwiftCheckoutSDK().then(function(SumUp) {
-        if (SumUp && SumUp.SwiftCheckout) {
-          setSdkLoaded(true);
-          try {
-            var client = new SumUp.SwiftCheckout(SUMUP_PUBLIC_KEY);
-            var paymentRequest = client.paymentRequest({
-              countryCode: 'US',
-              locale: 'en-US',
-              total: {
-                label: 'investMTG Order',
-                amount: {
-                  currency: 'USD',
-                  value: total.toFixed(2)
-                }
-              }
-            });
-            paymentRequest.canMakePayment().then(function(result) {
-              if (result) {
-                setWalletAvailable(true);
-              }
-            }).catch(function() {
-              // Wallet not available in this browser
-            });
-          } catch(e) {
-            console.log('Swift Checkout init:', e);
-          }
-        }
-      });
+    if (step !== 4 || sdkInitRef.current) return;
+    sdkInitRef.current = true;
 
-      // Also try to mount card widget if SumUpCard is available
-      if (window.SumUpCard) {
-        setCardWidgetReady(true);
+    loadSwiftCheckoutSDK().then(function(SumUp) {
+      if (SumUp && SumUp.SwiftCheckout) {
+        setSdkLoaded(true);
+        try {
+          var client = new SumUp.SwiftCheckout(SUMUP_PUBLIC_KEY);
+          var paymentRequest = client.paymentRequest({
+            countryCode: 'US',
+            locale: 'en-US',
+            total: {
+              label: 'investMTG Order',
+              amount: {
+                currency: 'USD',
+                value: total.toFixed(2)
+              }
+            }
+          });
+          paymentRequest.canMakePayment().then(function(result) {
+            if (result) {
+              setWalletAvailable(true);
+            }
+          }).catch(function() {
+            // Wallet not available in this browser
+          });
+        } catch(e) {
+          // Swift Checkout init failed — wallet payments unavailable
+        }
       }
+    });
+
+    // Also try to mount card widget if SumUpCard is available
+    if (window.SumUpCard) {
+      setCardWidgetReady(true);
     }
-  }, [step, total]);
+  }, [step]);
 
   function updateContact(key, val) {
     setContact(function(prev) { return Object.assign({}, prev, { [key]: val }); });
@@ -151,7 +145,7 @@ export function CheckoutView(props) {
   function validateContact() {
     var errors = {};
     if (!contact.name.trim()) { errors.name = 'Name is required'; }
-    if (!contact.email.trim() || !contact.email.includes('@')) { errors.email = 'Valid email is required'; }
+    if (!contact.email.trim() || !isValidEmail(contact.email)) { errors.email = 'Valid email is required'; }
     if (!contact.phone.trim()) { errors.phone = 'Phone number is required'; }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -169,7 +163,11 @@ export function CheckoutView(props) {
       total: total,
       fulfillment: fulfillment,
       pickupStore: store || null,
-      contact: Object.assign({}, contact),
+      contact: {
+        name: sanitizeInput(contact.name, 100),
+        email: sanitizeInput(contact.email, 200),
+        phone: sanitizeInput(contact.phone, 20)
+      },
       date: new Date().toISOString(),
       paymentMethod: paymentMethod
     };
@@ -387,7 +385,7 @@ export function CheckoutView(props) {
                 h(TruckIcon, null),
                 h('div', null,
                   h('div', { className: 'fulfillment-option-title' }, 'Ship to Guam'),
-                  h('div', { className: 'fulfillment-option-price' }, '$5.00 flat rate')
+                  h('div', { className: 'fulfillment-option-price' }, '$' + SHIPPING_FLAT_RATE.toFixed(2) + ' flat rate')
                 )
               ),
               h('p', { className: 'fulfillment-option-desc' },
@@ -426,7 +424,7 @@ export function CheckoutView(props) {
 
         h('div', { className: 'checkout-summary-mini' },
           h('span', null, 'Order total:'),
-          h('strong', null, ' ' + formatUSD(subtotal + tax + (fulfillment === 'ship' ? 5 : 0)))
+          h('strong', null, ' ' + formatUSD(subtotal + tax + (fulfillment === 'ship' ? SHIPPING_FLAT_RATE : 0)))
         ),
 
         h('div', { className: 'checkout-actions' },
@@ -613,7 +611,7 @@ export function CheckoutView(props) {
             h('span', null, 'Guam GRT (4%)'), h('span', null, formatUSD(tax))
           ),
           fulfillment === 'ship' && h('div', { className: 'checkout-summary-row' },
-            h('span', null, 'Shipping'), h('span', null, formatUSD(5))
+            h('span', null, 'Shipping'), h('span', null, formatUSD(SHIPPING_FLAT_RATE))
           ),
           h('div', { className: 'checkout-summary-row checkout-summary-total' },
             h('span', null, 'Total'), h('span', null, formatUSD(total))
@@ -631,7 +629,7 @@ export function CheckoutView(props) {
             className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
             onClick: function() {
               setPaymentProcessing(true);
-              setTimeout(function() { completeOrder(); }, 1500);
+              setTimeout(function() { completeOrder(); }, RESERVE_PROCESSING_DELAY);
             },
             disabled: paymentProcessing
           },
@@ -667,7 +665,7 @@ export function CheckoutView(props) {
             '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
           ),
           paymentMethod === 'card' && h('p', { className: 'checkout-payment-note' },
-            '\uD83D\uDD10 Your payment is processed securely by SumUp. Card details never touch our servers. Merchant: investMTG (M55T01IN).'
+            '\uD83D\uDD10 Your payment is processed securely by SumUp. Card details never touch our servers. Merchant: investMTG.'
           ),
           paymentMethod === 'wallet' && h('p', { className: 'checkout-payment-note' },
             '\uD83D\uDCF1 Your digital wallet handles authentication. Payment processed via SumUp.'

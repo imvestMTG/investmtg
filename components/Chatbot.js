@@ -1,21 +1,23 @@
 /* Chatbot.js */
 import React from 'react';
 import { ChatIcon, CloseIcon, SendIcon, PortfolioIcon } from './shared/Icons.js';
+import { PROXY_BASE, CHATBOT_RATE_WINDOW, CHATBOT_RATE_MAX, CHATBOT_COOLDOWN, CHATBOT_MAX_INPUT } from '../utils/config.js';
+import { sanitizeInput } from '../utils/sanitize.js';
 var h = React.createElement;
 
-/* AI Chat API — free, no API key required */
-var CHAT_API = 'https://text.pollinations.ai/openai/chat/completions';
+/* AI Chat API — routed through Cloudflare Worker proxy */
+var CHAT_API = PROXY_BASE + '/chatbot';
 var SYSTEM_PROMPT = 'You are an expert Magic: The Gathering investment advisor and card analyst for investMTG.com — a local Guam marketplace for MTG cards. You help users make smart decisions about buying, selling, and collecting MTG cards. You know about card prices, market trends, format legality, deck building, set releases, reserved list cards, and investment strategies. Keep responses concise (2-4 sentences unless more detail is requested). Use dollar amounts when discussing prices. Be friendly and enthusiastic about MTG. If you don\'t know a specific current price, say so and recommend checking the card on investMTG. Never give financial advice disclaimers unless specifically asked about real money investment risk.';
 
 /* Client-side rate limiter — prevents rapid-fire abuse */
 var rateLimitState = { lastRequest: 0, count: 0, windowStart: 0 };
-var RATE_WINDOW = 60000; /* 1 minute */
-var RATE_MAX = 8; /* max 8 messages per minute */
+var RATE_WINDOW = CHATBOT_RATE_WINDOW;
+var RATE_MAX = CHATBOT_RATE_MAX;
 
 function checkRateLimit() {
   var now = Date.now();
-  /* Minimum 2 seconds between messages */
-  if (now - rateLimitState.lastRequest < 2000) return false;
+  /* Minimum cooldown between messages */
+  if (now - rateLimitState.lastRequest < CHATBOT_COOLDOWN) return false;
   /* Reset window if expired */
   if (now - rateLimitState.windowStart > RATE_WINDOW) {
     rateLimitState.windowStart = now;
@@ -25,16 +27,6 @@ function checkRateLimit() {
   rateLimitState.count++;
   rateLimitState.lastRequest = now;
   return true;
-}
-
-/* Input sanitization — strips dangerous patterns */
-function sanitizeInput(str) {
-  if (!str) return '';
-  /* Trim and limit length */
-  var s = str.trim().slice(0, 500);
-  /* Remove null bytes and control characters (except newlines) */
-  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  return s;
 }
 
 export function Chatbot() {
@@ -68,7 +60,7 @@ export function Chatbot() {
     if (busy) return;
     var input = inputRef.current;
     if (!input) return;
-    var msg = sanitizeInput(input.value);
+    var msg = sanitizeInput(input.value, CHATBOT_MAX_INPUT);
     if (!msg) return;
 
     /* Rate limit check */

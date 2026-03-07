@@ -1,6 +1,5 @@
 /* shared/BackToTop.js */
 import React from 'react';
-import { ChevronLeftIcon } from './Icons.js';
 var h = React.createElement;
 
 export function BackToTop() {

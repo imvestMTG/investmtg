@@ -4,9 +4,14 @@ import { filterMarketplace } from '../utils/marketplace-data.js';
 import { formatUSD } from '../utils/helpers.js';
 import { GUAM_STORES } from '../utils/stores.js';
 import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon } from './shared/Icons.js';
+import { ConfirmModal } from './shared/ConfirmModal.js';
 var h = React.createElement;
 
-export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
+export function StoreView(props) {
+  var state = props.state;
+  var updateCart = props.updateCart;
+  var updateListings = props.updateListings;
+  var onBuyLocal = props.onBuyLocal;
   var listings = state.listings;
   var ref1 = React.useState({ search: '', condition: '', type: '', sort: 'newest' });
   var filter = ref1[0], setFilter = ref1[1];
@@ -15,6 +20,9 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
 
   var ref3 = React.useState(null);
   var addedToCart = ref3[0], setAddedToCart = ref3[1];
+
+  var ref4 = React.useState(null);
+  var contactModal = ref4[0], setContactModal = ref4[1];
 
   var filtered = filterMarketplace(listings, filter);
 
@@ -47,6 +55,10 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
     setTimeout(function() { setAddedToCart(null); }, 1500);
   }
 
+  function handleContact(listing) {
+    setContactModal({ contact: listing.contact || listing.seller, notes: listing.notes });
+  }
+
   return h('div', { className: 'container store-page' },
 
     // Page header
@@ -58,11 +70,17 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
       h('div', { className: 'store-page-links' },
         h('button', {
           className: 'btn ' + (activeTab === 'listings' ? 'btn-primary' : 'btn-secondary'),
-          onClick: function() { setActiveTab('listings'); }
+          role: 'tab',
+          'aria-selected': activeTab === 'listings' ? 'true' : 'false',
+          onClick: function() { setActiveTab('listings'); },
+          onKeyDown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('listings'); } }
         }, 'Marketplace Listings'),
         h('button', {
           className: 'btn ' + (activeTab === 'stores' ? 'btn-primary' : 'btn-secondary'),
-          onClick: function() { setActiveTab('stores'); }
+          role: 'tab',
+          'aria-selected': activeTab === 'stores' ? 'true' : 'false',
+          onClick: function() { setActiveTab('stores'); },
+          onKeyDown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('stores'); } }
         }, 'Local Stores'),
         h('a', {
           href: '#seller',
@@ -139,18 +157,27 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
           h('option', { value: 'price_asc' }, 'Price: Low to High'),
           h('option', { value: 'price_desc' }, 'Price: High to Low')
         ),
-        h('div', { className: 'mp-type-toggles' },
+        h('div', { className: 'mp-type-toggles', role: 'tablist' },
           h('button', {
             className: 'mp-type-toggle' + (filter.type === '' ? ' active' : ''),
-            onClick: function() { updateFilter('type', ''); }
+            role: 'tab',
+            'aria-selected': filter.type === '' ? 'true' : 'false',
+            onClick: function() { updateFilter('type', ''); },
+            onKeyDown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); updateFilter('type', ''); } }
           }, 'All'),
           h('button', {
             className: 'mp-type-toggle' + (filter.type === 'sale' ? ' active' : ''),
-            onClick: function() { updateFilter('type', 'sale'); }
+            role: 'tab',
+            'aria-selected': filter.type === 'sale' ? 'true' : 'false',
+            onClick: function() { updateFilter('type', 'sale'); },
+            onKeyDown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); updateFilter('type', 'sale'); } }
           }, 'For Sale'),
           h('button', {
             className: 'mp-type-toggle' + (filter.type === 'trade' ? ' active' : ''),
-            onClick: function() { updateFilter('type', 'trade'); }
+            role: 'tab',
+            'aria-selected': filter.type === 'trade' ? 'true' : 'false',
+            onClick: function() { updateFilter('type', 'trade'); },
+            onKeyDown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); updateFilter('type', 'trade'); } }
           }, 'Trades')
         )
       ),
@@ -167,6 +194,7 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
                 listing: listing,
                 onBuyLocal: onBuyLocal,
                 onAddToCart: handleAddToCart,
+                onContact: handleContact,
                 justAdded: addedToCart === listing.id
               });
             })
@@ -199,11 +227,25 @@ export function StoreView({ state, updateCart, updateListings, onBuyLocal }) {
           h('a', { href: '#seller', className: 'btn btn-primary' }, 'Become a Seller')
         )
       )
-    )
+    ),
+
+    // Contact modal
+    contactModal && h(ConfirmModal, {
+      title: 'Seller Contact',
+      message: 'Contact: ' + contactModal.contact + (contactModal.notes ? '\nNotes: ' + contactModal.notes : ''),
+      isAlert: true,
+      onConfirm: function() { setContactModal(null); },
+      onCancel: function() { setContactModal(null); }
+    })
   );
 }
 
-function ListingCard({ listing, onBuyLocal, onAddToCart, justAdded }) {
+function ListingCard(props) {
+  var listing = props.listing;
+  var onBuyLocal = props.onBuyLocal;
+  var onAddToCart = props.onAddToCart;
+  var onContact = props.onContact;
+  var justAdded = props.justAdded;
   var condClass = { NM: 'cond-nm', LP: 'cond-lp', MP: 'cond-mp', HP: 'cond-hp' }[listing.condition] || 'cond-nm';
   return h('div', { className: 'mp-listing-card' },
     h('div', { className: 'mp-listing-image' },
@@ -247,8 +289,7 @@ function ListingCard({ listing, onBuyLocal, onAddToCart, justAdded }) {
         h('button', {
           className: 'btn mp-btn-msg',
           onClick: function() {
-            var contact = listing.contact || listing.seller;
-            alert('Contact: ' + contact + (listing.notes ? '\nNotes: ' + listing.notes : ''));
+            if (onContact) onContact(listing);
           }
         }, listing.type === 'trade' ? 'Trade Offer' : 'Message')
       )
@@ -256,7 +297,8 @@ function ListingCard({ listing, onBuyLocal, onAddToCart, justAdded }) {
   );
 }
 
-function StoreCard({ store }) {
+function StoreCard(props) {
+  var store = props.store;
   return h('div', { className: 'store-card-detailed' },
     h('div', { className: 'store-card-header' },
       h('div', null,

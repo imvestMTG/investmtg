@@ -1,5 +1,70 @@
 # investMTG — Changelog
 
+## 2026-03-08: Comprehensive Code Review — All 39 Findings Resolved
+
+### Critical Security Fixes
+- **SumUp merchant code**: Removed from client-side CheckoutView.js, moved to server-side Cloudflare Worker
+- **Chatbot AI proxy**: Chatbot now routes through Cloudflare Worker (`/chatbot`) instead of direct text.pollinations.ai
+- **CSRF protection**: Documented for future backend transition; localStorage-only operations have limited CSRF surface
+- **Input sanitization**: All user inputs (checkout, seller registration, chatbot) now sanitized via shared `sanitize.js`
+- **Email validation**: Replaced weak `includes('@')` check with proper RFC 5322 regex
+- **CSP updated**: Removed direct pollinations.ai access from Content-Security-Policy header
+
+### High Priority Fixes
+- **SumUp SDK race condition**: Fixed duplicate loads via `useRef` tracking; effect depends on `[step]` only
+- **Scryfall rate limiting**: Centralized — added `fetchCollection()` behind rate limiter, exported `scryfallFetch`
+- **Error boundaries**: Added `ErrorBoundary` component wrapping all route content in app.js
+- **Cart quantity limit**: Max 4 per card (tournament playset); `+` button disables at max
+- **View state caching**: Added `viewCacheRef` passed to SearchView and MetaView for state persistence
+
+### Medium Priority Fixes
+- **Config centralization**: Created `utils/config.js` — tax rate, shipping, cart limits, API intervals, all magic numbers
+- **Deduplicated groupBySeller**: Extracted to `utils/group-by-seller.js`, imported in CartView and CheckoutView
+- **Console.log removed**: Stripped `console.log('Swift Checkout init:', e)` from CheckoutView
+- **ConfirmModal component**: Created `shared/ConfirmModal.js` — replaces `window.confirm()` and `window.alert()`
+- **SellerDashboard**: Delete/logout now use styled modal instead of `window.confirm()`
+- **StoreView contact**: Replaced `alert()` with ConfirmModal for seller contact display
+- **Keyboard accessibility**: Added `role="tab"`, `aria-selected`, `onKeyDown` handlers to StoreView tab buttons
+- **Service worker**: Created `sw.js` for basic PWA offline support (cache-first for static, network-first for APIs)
+- **404.html simplified**: Removed redundant if/else logic (both branches were identical)
+- **Sitemap documented**: Added XML comment explaining hash route SEO limitations
+
+### Low Priority / Code Quality
+- **BackToTop.js**: Removed unused `ChevronLeftIcon` import
+- **Toast.js**: Added `mountedRef` guard to prevent state updates on unmounted component
+- **Icons.js**: `Icon` base component now forwards `className` to SVG; fixed MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon
+- **Events config**: Created `utils/events-config.js` for easy event data updates without code changes
+- **Sanitize utility**: Created `utils/sanitize.js` with `sanitizeInput()`, `isValidEmail()`, `isValidPhone()`
+- **CSS**: Added styles for ConfirmModal and ErrorBoundary fallback in base.css
+
+### New Files
+- `utils/config.js` — centralized constants
+- `utils/sanitize.js` — input validation and sanitization
+- `utils/group-by-seller.js` — shared cart grouping
+- `utils/events-config.js` — community events data
+- `components/shared/ErrorBoundary.js` — React error boundary
+- `components/shared/ConfirmModal.js` — styled confirmation/alert modal
+- `sw.js` — service worker for PWA offline support
+
+### Files Modified (17)
+- `app.js` — ErrorBoundary, viewCache, service worker registration
+- `components/CheckoutView.js` — 13 fixes (security, validation, race condition, config)
+- `components/CartView.js` — 5 fixes (config, dedup, quantity limits)
+- `components/Chatbot.js` — 4 fixes (proxy, config, sanitize)
+- `components/StoreView.js` — 3 fixes (modal, accessibility, contact)
+- `components/SellerDashboard.js` — 5 fixes (sanitize, modal, debounce)
+- `components/shared/BackToTop.js` — removed unused import
+- `components/shared/Toast.js` — memory leak fix
+- `components/shared/Icons.js` — className forwarding
+- `utils/api.js` — centralized rate limiting, fetchCollection
+- `base.css` — ConfirmModal and ErrorBoundary styles
+- `404.html` — simplified redirect logic
+- `sitemap.xml` — documented hash route limitation
+- `index.html` — updated CSP (removed pollinations.ai)
+- `CHANGES.md` — this entry
+
+---
+
 ## 2026-03-08: Security — API Keys Moved Server-Side
 
 ### API Key Migration

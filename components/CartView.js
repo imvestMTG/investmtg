@@ -3,6 +3,8 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { getJustTCGPricing } from '../utils/justtcg-api.js';
 import { TrashIcon, MapPinIcon, TruckIcon, ChevronRightIcon } from './shared/Icons.js';
+import { GUAM_GRT_RATE, CART_MAX_QUANTITY } from '../utils/config.js';
+import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
 /* ConditionChip — interactive React component with hover pop effect */
@@ -68,17 +70,9 @@ function ConditionChip(_ref) {
   );
 }
 
-function groupBySeller(cart) {
-  var groups = {};
-  cart.forEach(function(item) {
-    var seller = item.seller || 'Unknown Seller';
-    if (!groups[seller]) { groups[seller] = []; }
-    groups[seller].push(item);
-  });
-  return groups;
-}
-
-export function CartView({ state, updateCart }) {
+export function CartView(props) {
+  var state = props.state;
+  var updateCart = props.updateCart;
   var cart = state.cart;
   var ref1 = React.useState({});
   var jtcgPrices = ref1[0], setJtcgPrices = ref1[1];
@@ -112,7 +106,7 @@ export function CartView({ state, updateCart }) {
   }, [cart.length]);
 
   var subtotal = cart.reduce(function(sum, item) { return sum + (item.price || 0) * (item.qty || 1); }, 0);
-  var tax = subtotal * 0.04;
+  var tax = subtotal * GUAM_GRT_RATE;
   var total = subtotal + tax;
 
   var sellerGroups = groupBySeller(cart);
@@ -120,6 +114,8 @@ export function CartView({ state, updateCart }) {
   function updateQty(id, qty) {
     if (qty < 1) {
       updateCart(cart.filter(function(item) { return item.id !== id; }));
+    } else if (qty > CART_MAX_QUANTITY) {
+      return;
     } else {
       updateCart(cart.map(function(item) {
         return item.id === id ? Object.assign({}, item, { qty: qty }) : item;
@@ -262,7 +258,8 @@ export function CartView({ state, updateCart }) {
                   h('button', {
                     className: 'qty-btn',
                     onClick: function() { updateQty(item.id, (item.qty || 1) + 1); },
-                    'aria-label': 'Increase quantity'
+                    'aria-label': 'Increase quantity',
+                    disabled: (item.qty || 1) >= CART_MAX_QUANTITY
                   }, '+')
                 ),
                 h('div', { className: 'cart-item-price' }, formatUSD((item.price || 0) * (item.qty || 1))),

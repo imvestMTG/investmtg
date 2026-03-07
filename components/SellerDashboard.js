@@ -3,6 +3,8 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { STORE_OPTIONS } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
+import { sanitizeInput } from '../utils/sanitize.js';
+import { ConfirmModal } from './shared/ConfirmModal.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
@@ -46,19 +48,21 @@ function useScryfallAutocomplete(query) {
     }
     setLoading(true);
     var cancelled = false;
-    var url = 'https://api.scryfall.com/cards/autocomplete?q=' + encodeURIComponent(query) + '&include_extras=false';
-    fetch(url)
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!cancelled) {
-          setResults(data.data || []);
-          setLoading(false);
-        }
-      })
-      .catch(function() {
-        if (!cancelled) { setLoading(false); }
-      });
-    return function() { cancelled = true; };
+    var timerId = setTimeout(function() {
+      var url = 'https://api.scryfall.com/cards/autocomplete?q=' + encodeURIComponent(query) + '&include_extras=false';
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!cancelled) {
+            setResults(data.data || []);
+            setLoading(false);
+          }
+        })
+        .catch(function() {
+          if (!cancelled) { setLoading(false); }
+        });
+    }, 100);
+    return function() { cancelled = true; clearTimeout(timerId); };
   }, [query]);
 
   return { results: results, loading: loading };
@@ -90,10 +94,10 @@ function RegistrationForm({ onRegister }) {
     var id = generateSellerId();
     var seller = {
       id: id,
-      name: form.name.trim(),
-      contact: form.contact.trim(),
+      name: sanitizeInput(form.name.trim(), 100),
+      contact: sanitizeInput(form.contact.trim(), 200),
       storeId: form.storeId,
-      bio: form.bio.trim(),
+      bio: sanitizeInput(form.bio.trim(), 500),
       joinDate: new Date().toISOString(),
       listings: [],
       reputationScore: 100
@@ -375,6 +379,9 @@ export function SellerDashboard() {
   var ref4 = React.useState(null); // success flash message
   var flashMsg = ref4[0], setFlashMsg = ref4[1];
 
+  var ref5 = React.useState(null);
+  var confirmAction = ref5[0], setConfirmAction = ref5[1];
+
   function flash(msg) {
     setFlashMsg(msg);
     setTimeout(function() { setFlashMsg(null); }, 3000);
@@ -412,18 +419,30 @@ export function SellerDashboard() {
   }
 
   function handleDeleteListing(id) {
-    if (!window.confirm('Delete this listing?')) return;
-    var updatedSeller = Object.assign({}, seller);
-    updatedSeller.listings = (updatedSeller.listings || []).filter(function(l) { return l.id !== id; });
-    saveSellerData(seller.id, updatedSeller);
-    setSeller(updatedSeller);
-    flash('Listing deleted.');
+    setConfirmAction({
+      title: 'Delete Listing',
+      message: 'Are you sure you want to delete this listing?',
+      onConfirm: function() {
+        var updatedSeller = Object.assign({}, seller);
+        updatedSeller.listings = (updatedSeller.listings || []).filter(function(l) { return l.id !== id; });
+        saveSellerData(seller.id, updatedSeller);
+        setSeller(updatedSeller);
+        flash('Listing deleted.');
+        setConfirmAction(null);
+      }
+    });
   }
 
   function handleLogout() {
-    if (!window.confirm('Log out from seller account?')) return;
-    localStorage.removeItem('investmtg-active-seller');
-    setSeller(null);
+    setConfirmAction({
+      title: 'Log Out',
+      message: 'Are you sure you want to log out from your seller account?',
+      onConfirm: function() {
+        localStorage.removeItem('investmtg-active-seller');
+        setSeller(null);
+        setConfirmAction(null);
+      }
+    });
   }
 
   if (!seller) {
@@ -612,6 +631,14 @@ export function SellerDashboard() {
             )
           )
     ),
+
+    // ===== CONFIRM MODAL =====
+    confirmAction && h(ConfirmModal, {
+      title: confirmAction.title,
+      message: confirmAction.message,
+      onConfirm: confirmAction.onConfirm,
+      onCancel: function() { setConfirmAction(null); }
+    }),
 
     // ===== PROFILE TAB =====
     activeTab === 'profile' && h('div', { className: 'seller-tab-content' },

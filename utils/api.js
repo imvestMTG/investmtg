@@ -1,7 +1,8 @@
 /* api.js — Scryfall API wrapper with rate limiting */
+import { SCRYFALL_RATE_LIMIT_MS } from './config.js';
 
 var lastRequestTime = 0;
-var MIN_INTERVAL = 100;
+var MIN_INTERVAL = SCRYFALL_RATE_LIMIT_MS;
 
 function rateLimit() {
   var now = Date.now();
@@ -61,4 +62,20 @@ export function getCardPrintings(oracleId) {
 
 export function searchSet(setCode) {
   return apiFetch(BASE + '/cards/search?order=collector_number&dir=asc&q=e%3A' + encodeURIComponent(setCode) + '+-is%3Adigital+has%3Ausd');
+}
+
+export { apiFetch as scryfallFetch };
+
+export function fetchCollection(identifiers) {
+  return rateLimit().then(function() {
+    lastRequestTime = Date.now();
+    return fetch(BASE + '/cards/collection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifiers: identifiers })
+    });
+  }).then(function(res) {
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    return res.json();
+  });
 }

@@ -9,6 +9,7 @@ import { Footer } from './components/Footer.js';
 import { BackToTop } from './components/shared/BackToTop.js';
 import { ToastContainer, showToast } from './components/shared/Toast.js';
 import { CookieNotice } from './components/CookieNotice.js';
+import { ErrorBoundary } from './components/shared/ErrorBoundary.js';
 
 var h = React.createElement;
 
@@ -159,6 +160,7 @@ function App() {
   var listingModalCard = ref2[0], setListingModalCard = ref2[1];
   var ref3 = React.useState(null);
   var buyLocalCard = ref3[0], setBuyLocalCard = ref3[1];
+  var viewCacheRef = React.useRef({});
 
   var cartCount = gs.state.cart.reduce(function(sum, item) { return sum + (item.qty || 1); }, 0);
 
@@ -169,6 +171,7 @@ function App() {
       cartCount: cartCount
     }),
     h('main', { className: 'main-content', id: 'main-content' },
+      h(ErrorBoundary, null,
       route.page === 'home' && h(HomeView, {
         state: gs.state,
         updateCart: gs.updateCart,
@@ -181,7 +184,8 @@ function App() {
         updateCart: gs.updateCart,
         updatePortfolio: gs.updatePortfolio,
         updateWatchlist: gs.updateWatchlist,
-        onOpenListing: setListingModalCard
+        onOpenListing: setListingModalCard,
+        viewCache: viewCacheRef.current
       }),
       route.page === 'card' && h(CardDetailView, {
         cardId: route.id,
@@ -215,9 +219,10 @@ function App() {
       }),
       route.page === 'decks' && h(DecklistView, null),
       route.page === 'movers' && h(MarketMoversView, null),
-      route.page === 'meta' && h(MetaView, null),
+      route.page === 'meta' && h(MetaView, { viewCache: viewCacheRef.current }),
       route.page === 'privacy' && h(PrivacyPolicyView, null),
       route.page === 'terms' && h(TermsView, null)
+      )
     ),
     h(Footer, null),
     h(CookieNotice, null),
@@ -242,3 +247,10 @@ function App() {
 // ===== MOUNT =====
 var root = createRoot(document.getElementById('root'));
 root.render(h(App, null));
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function() {
+    // Service worker registration failed — non-critical
+  });
+}
