@@ -32,9 +32,10 @@ The marketplace listings must come from real people. Seller identities on the pl
 
 We never populate the marketplace with fake sellers or fabricated listings to make it "look active."
 
-### 4. Transparent Pricing
+### 4. Transparent Pricing — USD Only
+- **All prices are displayed in US Dollars (USD) only** — no EUR, GBP, tix, or other currencies
 - **Market prices** are sourced from Scryfall, which aggregates from TCGplayer, Cardmarket, and Cardhoarder
-- **Condition prices** are sourced from JustTCG when viewing the cart — showing real market values for each condition grade
+- **Condition prices** are sourced from JustTCG when viewing the cart — showing real market values for each condition grade (DMG, HP, MP, LP, NM)
 - **Seller prices** are set by individual sellers and may differ from market price
 - We clearly label where every price comes from
 - Price data refreshes on every page visit (with 5-minute caching to respect API limits)
@@ -58,7 +59,7 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 
 | Data | Source | Update Frequency |
 |------|--------|-----------------|
-| Card prices (USD, EUR, foil) | [Scryfall API](https://scryfall.com/docs/api) | Live on each visit (5-min cache) |
+| Card prices (USD, foil) | [Scryfall API](https://scryfall.com/docs/api) | Live on each visit (5-min cache) |
 | Card images | [Scryfall](https://scryfall.com) | Live |
 | Card legality, oracle text, set info | [Scryfall](https://scryfall.com) | Live |
 | Condition pricing (NM/LP/MP/HP/DMG) | [JustTCG API](https://justtcg.com) | On cart view (10-min cache) |
