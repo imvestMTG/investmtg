@@ -4687,6 +4687,26 @@ a.market-card:hover {
   text-decoration: none;
 }
 .meta-tournament-name a:hover { color: var(--color-accent, #D4A843); }
+.meta-tournament-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.meta-source-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.meta-source-edhtop16 {
+  background: rgba(212, 168, 67, 0.15);
+  color: #D4A843;
+  border: 1px solid rgba(212, 168, 67, 0.3);
+}
+.meta-source-topdeck {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
 .meta-tournament-meta {
   display: flex;
   gap: var(--space-2);
