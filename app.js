@@ -22,6 +22,7 @@ import { SellerDashboard } from './components/SellerDashboard.js';
 import { OrderConfirmation } from './components/OrderConfirmation.js';
 import { DecklistView } from './components/DecklistView.js';
 import { MarketMoversView } from './components/MarketMoversView.js';
+import { MetaView } from './components/MetaView.js';
 
 var h = React.createElement;
 
@@ -58,6 +59,7 @@ function parseHash() {
   if (hash === 'seller') return { page: 'seller' };
   if (hash === 'decks') return { page: 'decks' };
   if (hash === 'movers') return { page: 'movers' };
+  if (hash === 'meta') return { page: 'meta' };
   return { page: 'home' };
 }
 
@@ -187,7 +189,8 @@ function App() {
         orderId: route.id
       }),
       route.page === 'decks' && h(DecklistView, null),
-      route.page === 'movers' && h(MarketMoversView, null)
+      route.page === 'movers' && h(MarketMoversView, null),
+      route.page === 'meta' && h(MetaView, null)
     ),
     h(Footer, null),
     h(Chatbot, null),
