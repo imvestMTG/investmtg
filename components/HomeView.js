@@ -122,7 +122,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
 
   var stats = [
     { value: 'Real Prices', label: 'No Guesswork' },
-    { value: '4 Stores', label: 'On-Island' },
+    { value: 'Guam Built', label: 'For The Island' },
     { value: 'Live Data', label: 'Every Visit' },
     { value: '100% Free', label: 'Always' },
   ];
@@ -130,7 +130,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
   return h('div', null,
     h('section', { className: 'hero' },
       h('h1', { className: 'hero-tagline' }, 'Know What Your Cards Are Worth'),
-      h('p', { className: 'hero-sub' }, 'Guam\'s only MTG marketplace with live market pricing, local store inventory, and zero markup. Real cards. Real data. Fair play.'),
+      h('p', { className: 'hero-sub' }, 'Guam\'s MTG marketplace with live market pricing, portfolio tracking, and zero markup. Real cards. Real data. Fair play.'),
       h('form', { className: 'hero-search', onSubmit: handleHeroSearch },
         h('div', { className: 'search-icon' }, h(SearchIcon, null)),
         h('input', {
