@@ -20,6 +20,8 @@ import { ToastContainer, showToast } from './components/shared/Toast.js';
 import { CheckoutView } from './components/CheckoutView.js';
 import { SellerDashboard } from './components/SellerDashboard.js';
 import { OrderConfirmation } from './components/OrderConfirmation.js';
+import { DecklistView } from './components/DecklistView.js';
+import { MarketMoversView } from './components/MarketMoversView.js';
 
 var h = React.createElement;
 
@@ -54,6 +56,8 @@ function parseHash() {
   if (hash === 'store') return { page: 'store' };
   if (hash === 'checkout') return { page: 'checkout' };
   if (hash === 'seller') return { page: 'seller' };
+  if (hash === 'decks') return { page: 'decks' };
+  if (hash === 'movers') return { page: 'movers' };
   return { page: 'home' };
 }
 
@@ -181,7 +185,9 @@ function App() {
       route.page === 'seller' && h(SellerDashboard, null),
       route.page === 'order' && h(OrderConfirmation, {
         orderId: route.id
-      })
+      }),
+      route.page === 'decks' && h(DecklistView, null),
+      route.page === 'movers' && h(MarketMoversView, null)
     ),
     h(Footer, null),
     h(Chatbot, null),
