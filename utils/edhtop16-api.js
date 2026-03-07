@@ -107,7 +107,7 @@ export function getTopCommanders(opts) {
  */
 export function getCommanderDetail(name) {
   var cacheKey = 'cmd_detail_' + name;
-  var query = '{ commander(name: "' + name.replace(/"/g, '\\"') + '") { name colorId breakdownUrl staples { name percentage } stats(filters: { timePeriod: THREE_MONTHS }) { count topCuts metaShare conversionRate winRate } entries(first: 10, sortBy: NEW) { edges { node { standing winRate wins losses draws decklist tournament { name tournamentDate size TID } player { name } } } } } }';
+  var query = '{ commander(name: "' + name.replace(/"/g, '\\"') + '") { name colorId breakdownUrl staples { name playRateLastYear type } stats(filters: { timePeriod: THREE_MONTHS }) { count topCuts metaShare conversionRate winRate } entries(first: 10, sortBy: NEW) { edges { node { standing winRate wins losses draws decklist tournament { name tournamentDate size TID } player { name } } } } } }';
 
   return cached(cacheKey, function() {
     return gqlFetch(query).then(function(data) {
@@ -119,7 +119,7 @@ export function getCommanderDetail(name) {
         colorId: c.colorId,
         breakdownUrl: c.breakdownUrl,
         staples: (c.staples || []).map(function(st) {
-          return { name: st.name, percentage: st.percentage };
+          return { name: st.name, percentage: st.playRateLastYear || 0, type: st.type || '' };
         }),
         stats: {
           count: s.count || 0,
@@ -201,12 +201,19 @@ export function getStaples(colorId) {
   var args = '';
   if (colorId) args = '(colorId: "' + colorId + '")';
 
-  var query = '{ staples' + args + ' { name percentage type } }';
+  var query = '{ staples' + args + ' { name playRateLastYear type manaCost } }';
 
   return cached(cacheKey, function() {
     return gqlFetch(query).then(function(data) {
       if (!data || !data.staples) return [];
-      return data.staples;
+      return data.staples.map(function(s) {
+        return {
+          name: s.name,
+          percentage: s.playRateLastYear || 0,
+          type: s.type || '',
+          manaCost: s.manaCost || ''
+        };
+      });
     });
   });
 }
