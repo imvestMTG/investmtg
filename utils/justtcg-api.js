@@ -1,6 +1,6 @@
 /* justtcg-api.js — JustTCG pricing API integration */
 
-var JUSTTCG_KEY = 'tcg_3bc4059b01254581b2aa0f2516565595';
+var JUSTTCG_KEY = 'tcg_1f6c8c6d907f42a0aacba9ff6005300c';
 var JUSTTCG_BASE = 'https://api.justtcg.com/v1';
 
 /* ── In-memory cache with TTL ── */
