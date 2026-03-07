@@ -3994,42 +3994,85 @@ a.cart-item-image:hover {
   transform: scale(1.05);
 }
 
-/* Cart JustTCG condition chips */
+/* Cart JustTCG condition chips — interactive pop design */
 .cart-condition-row {
   display: flex;
-  gap: var(--space-1);
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
+  align-items: center;
+}
+.cart-condition-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
 }
 
 .cart-cond-chip {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-elevated, rgba(255,255,255,0.05));
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: var(--color-surface-elevated, rgba(255,255,255,0.06));
   color: var(--color-text-muted);
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: 1.5px solid rgba(255,255,255,0.08);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.18s ease,
+              background 0.15s ease,
+              border-color 0.15s ease,
+              color 0.15s ease;
   font-family: inherit;
-  line-height: 1.2;
+  line-height: 1;
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.cart-cond-chip:hover {
-  background: var(--color-surface-hover, rgba(255,255,255,0.1));
-  color: var(--color-text-secondary, #ccc);
-  border-color: var(--color-border, rgba(255,255,255,0.15));
+.cond-chip-abbr {
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
+.cond-chip-price {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Active state base (React inline styles handle colors) */
 .cart-cond-chip--active {
-  background: var(--color-accent, #00C9A7);
-  color: #fff;
-  border-color: var(--color-accent, #00C9A7);
+  font-weight: 700;
 }
-.cart-cond-chip--active:hover {
-  background: var(--color-accent, #00C9A7);
-  color: #fff;
-  opacity: 0.9;
+.cart-cond-chip--active .cond-chip-price {
+  opacity: 1;
+}
+
+/* Pulse ring animation on selection */
+@keyframes condChipPulse {
+  0%   { box-shadow: 0 0 0 0 currentColor; opacity: 0.5; }
+  100% { box-shadow: 0 0 0 8px currentColor; opacity: 0; }
+}
+.cart-cond-chip--active::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 20px;
+  animation: condChipPulse 0.4s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Touch device: larger tap target */
+@media (hover: none) {
+  .cart-cond-chip {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
 }
 
 .cart-jtcg-note {
