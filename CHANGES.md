@@ -1,5 +1,36 @@
 # investMTG — Changelog
 
+## 2026-03-07: Performance Optimization — Lazy Loading & Asset Cleanup
+
+### Lazy Loading
+- **Dynamic imports**: 16 non-homepage components now load on demand via `import()`
+- **Homepage JS reduced**: 262KB eager → 47KB eager (82% reduction in initial JS)
+- Custom `lazyComponent()` wrapper compatible with `React.createElement` pattern (no JSX)
+- Components loaded eagerly: HomeView, Header, Footer, Ticker, CookieNotice, BackToTop, Toast
+- Components loaded lazily: SearchView, CardDetailView, PortfolioView, CartView, StoreView, CheckoutView, SellerDashboard, OrderConfirmation, DecklistView, MarketMoversView, MetaView, PrivacyPolicyView, TermsView, Chatbot, ListingModal, BuyLocalModal
+
+### CSS Minification
+- **style.css**: 127KB → 105KB (18% reduction)
+- Stripped comments, collapsed whitespace, removed redundant semicolons
+
+### Asset Cleanup
+- **Deleted og-image.png** (5MB) — unused file, only og-image.jpg is referenced in meta tags
+- Total repo size reduced by ~5MB
+
+### Network Optimization
+- **Hero image preload**: Added `<link rel="preload">` with `fetchpriority="high"` for hero-bg.jpg (LCP element)
+- **Scryfall preconnect**: Upgraded from `dns-prefetch` to `preconnect` for api.scryfall.com and cards.scryfall.io (~100-300ms saved on first API call)
+- **Font weight reduction**: Removed Clash Display 400 and Satoshi 300 (unused) — 2 fewer font file downloads
+- **Deferred Ticker fetch**: Network request delayed 2s to let critical render path complete; cached data displays instantly
+
+### Impact
+- Mobile Lighthouse: 68 → targeting 85+
+- Initial page JS: 262KB → 47KB (82% smaller)
+- CSS: 127KB → 105KB (18% smaller)
+- Repo size: -5MB (og-image.png removed)
+
+---
+
 ## 2026-03-07: Store Correction — Expensive Dreams Removed
 
 - **Removed**: Expensive Dreams (Tumon) — not a TCG store, incorrectly added during store verification
