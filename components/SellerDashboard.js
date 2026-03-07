@@ -1,4 +1,4 @@
-/* SellerDashboard.js — Seller management portal (real data only, no mock data) */
+/* SellerDashboard.js — Seller management portal */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
@@ -8,14 +8,13 @@ var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
 var LISTING_TYPES = ['sale', 'trade'];
 var STORE_OPTIONS = [
   { id: '', name: 'No affiliation' },
-  { id: 's1', name: 'Geek Out' },
-  { id: 's2', name: 'The Inventory' },
-  { id: 's3', name: 'My Wife Told Me To Sell It' },
-  { id: 's4', name: 'ComicBook Guam' }
+  { id: 's1', name: 'Geek Out Guam' },
+  { id: 's2', name: 'The Grid GU' },
+  { id: 's3', name: 'Fokai Guam' },
+  { id: 's4', name: 'Inventory Guam' }
 ];
 
-// Sales history will be populated by real transactions once payment integration is active.
-// No mock data — investmtg.com only displays real, verifiable information.
+
 
 function generateSellerId() {
   return 'seller-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
@@ -438,7 +437,15 @@ export function SellerDashboard() {
   }
 
   var listings = seller.listings || [];
-  var salesTotal = 0; // Real sales will populate when payment integration is active
+  // Real sales loaded from localStorage orders
+  var allOrders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
+  var sellerSales = allOrders.filter(function(o) {
+    return o.items && o.items.some(function(i) { return i.seller === seller.name; });
+  });
+  var salesTotal = sellerSales.reduce(function(s, o) {
+    return s + o.items.filter(function(i) { return i.seller === seller.name; })
+      .reduce(function(sum, i) { return sum + (i.price || 0) * (i.qty || 1); }, 0);
+  }, 0);
   var storeLabel = STORE_OPTIONS.find(function(s) { return s.id === seller.storeId; });
   storeLabel = storeLabel ? storeLabel.name : 'No affiliation';
 
@@ -579,14 +586,37 @@ export function SellerDashboard() {
     // ===== SALES HISTORY TAB =====
     activeTab === 'history' && h('div', { className: 'seller-tab-content' },
       h('h2', { className: 'seller-section-title' }, 'Sales History'),
-      h('div', { className: 'empty-state' },
-        h(OrderIcon, null),
-        h('h3', null, 'Sales History — Coming Soon'),
-        h('p', null, 'Your completed sales will appear here once payment processing via SumUp is integrated. '),
-        h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' } },
-          'investmtg.com only displays real, verified transaction data — never mock or demo data.'
-        )
-      )
+      sellerSales.length === 0
+        ? h('div', { className: 'empty-state' },
+            h('h3', null, 'No sales yet'),
+            h('p', null, 'Your completed sales will appear here once buyers place orders for your listings.')
+          )
+        : h('div', { className: 'sales-history-table' },
+            h('div', { className: 'sales-history-header' },
+              h('span', null, 'Order'),
+              h('span', null, 'Items'),
+              h('span', null, 'Total'),
+              h('span', null, 'Date')
+            ),
+            sellerSales.map(function(order) {
+              var myItems = order.items.filter(function(i) { return i.seller === seller.name; });
+              var orderTotal = myItems.reduce(function(sum, i) { return sum + (i.price || 0) * (i.qty || 1); }, 0);
+              return h('div', { key: order.id, className: 'sales-history-row' },
+                h('span', null, order.id),
+                h('span', null, myItems.length + ' card' + (myItems.length !== 1 ? 's' : '')),
+                h('span', { className: 'sales-price' }, formatUSD(orderTotal)),
+                h('span', { style: { color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' } },
+                  new Date(order.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                )
+              );
+            }),
+            h('div', { className: 'sales-history-total-row' },
+              h('span', null, 'Total Sales'),
+              h('span', null),
+              h('span', { className: 'sales-price sales-grand-total' }, formatUSD(salesTotal)),
+              h('span', null)
+            )
+          )
     ),
 
     // ===== PROFILE TAB =====
