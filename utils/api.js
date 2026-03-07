@@ -27,7 +27,7 @@ function apiFetch(url) {
 var BASE = 'https://api.scryfall.com';
 
 export function searchCards(query) {
-  return apiFetch(BASE + '/cards/search?q=' + encodeURIComponent(query) + '+has%3Ausd&order=usd&dir=desc');
+  return apiFetch(BASE + '/cards/search?q=' + encodeURIComponent(query) + '+-is%3Adigital+has%3Ausd&order=usd&dir=desc');
 }
 
 export function searchCardsCheapest(query) {
@@ -43,7 +43,7 @@ export function getCard(id) {
 }
 
 export function randomCard() {
-  return apiFetch(BASE + '/cards/random?q=usd%3E0.5+has%3Aimage');
+  return apiFetch(BASE + '/cards/random?q=usd%3E0.5+has%3Aimage+-is%3Adigital');
 }
 
 export function autocomplete(query) {
