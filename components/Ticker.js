@@ -1,35 +1,70 @@
-/* Ticker.js */
+/* Ticker.js — Live price ticker using real Scryfall data */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 var h = React.createElement;
 
-var TICKER_CARDS = [
-  { name: 'Black Lotus', change: '+2.1%' },
-  { name: 'Mox Pearl', change: '+1.8%' },
-  { name: 'Ancestral Recall', change: '-0.5%' },
-  { name: 'Time Walk', change: '+3.2%' },
-  { name: 'Jace, the Mind Sculptor', change: '+0.9%' },
-  { name: 'Force of Will', change: '-1.2%' },
-  { name: 'Liliana of the Veil', change: '+2.7%' },
-  { name: 'Snapcaster Mage', change: '+0.4%' },
-  { name: 'Dark Confidant', change: '-0.8%' },
-  { name: 'Tarmogoyf', change: '+1.1%' },
-  { name: 'Ragavan, Nimble Pilferer', change: '+4.2%' },
-  { name: 'The One Ring', change: '-2.1%' },
-  { name: 'Doubling Season', change: '+1.5%' },
-  { name: 'Mana Crypt', change: '+0.7%' },
-  { name: 'Wrenn and Six', change: '-1.4%' },
+var TICKER_CARD_NAMES = [
+  'Black Lotus', 'Mox Pearl', 'Ancestral Recall', 'Time Walk',
+  'Jace, the Mind Sculptor', 'Force of Will', 'Liliana of the Veil',
+  'Snapcaster Mage', 'Dark Confidant', 'Tarmogoyf',
+  'Ragavan, Nimble Pilferer', 'The One Ring', 'Doubling Season',
+  'Mana Crypt', 'Wrenn and Six'
 ];
 
+function fetchTickerPrices() {
+  var cards = TICKER_CARD_NAMES.map(function(name) {
+    var url = 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(name);
+    return fetch(url).then(function(r) {
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function(card) {
+      if (!card) return null;
+      var price = card.prices && (card.prices.usd || card.prices.usd_foil);
+      return {
+        name: card.name,
+        price: price ? '$' + price : null
+      };
+    }).catch(function() { return null; });
+  });
+  return Promise.all(cards).then(function(results) {
+    return results.filter(function(r) { return r && r.price; });
+  });
+}
+
 export function Ticker() {
-  var items = TICKER_CARDS.concat(TICKER_CARDS);
+  var ref = React.useState([]);
+  var items = ref[0], setItems = ref[1];
+  var ref2 = React.useState(true);
+  var loading = ref2[0], setLoading = ref2[1];
+
+  React.useEffect(function() {
+    var cancelled = false;
+    fetchTickerPrices().then(function(data) {
+      if (!cancelled && data.length > 0) {
+        setItems(data);
+      }
+      setLoading(false);
+    });
+    // Refresh every 5 minutes
+    var interval = setInterval(function() {
+      fetchTickerPrices().then(function(data) {
+        if (!cancelled && data.length > 0) {
+          setItems(data);
+        }
+      });
+    }, 300000);
+    return function() { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  if (loading || items.length === 0) return null;
+
+  var doubled = items.concat(items);
   return h('div', { className: 'ticker-strip', 'aria-hidden': 'true' },
     h('div', { className: 'ticker-track' },
-      items.map(function(item, i) {
-        var isUp = item.change.startsWith('+');
+      doubled.map(function(item, i) {
         return h('span', { key: i, className: 'ticker-item' },
           h('span', { className: 'ticker-name' }, item.name),
-          h('span', { className: isUp ? 'up' : 'down' }, item.change)
+          h('span', { className: 'ticker-price' }, item.price)
         );
       })
     )

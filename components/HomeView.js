@@ -1,7 +1,7 @@
 /* HomeView.js */
 import React from 'react';
 import { searchCards, randomCard } from '../utils/api.js';
-import { getCardPrice, formatUSD, generateMockChange, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
+import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon } from './shared/Icons.js';

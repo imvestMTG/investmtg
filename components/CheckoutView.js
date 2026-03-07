@@ -1,15 +1,15 @@
-/* CheckoutView.js — Full checkout page with SumUp integration placeholder */
+/* CheckoutView.js — Checkout page (payment integration coming soon) */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { CreditCardIcon, TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-// Guam stores for pickup selection
+// Verified Guam stores for pickup selection (Google Maps verified, March 2026)
 var PICKUP_STORES = [
-  { id: 's1', name: 'Geek Out Guam', address: '404 W. O\'Brien Dr., Suite 101, Hagatna, GU 96910', phone: '(671) 477-4335' },
-  { id: 's2', name: 'Inventory Game Store', address: 'Tamuning, GU 96913', phone: '(671) 649-4263' },
-  { id: 's3', name: 'Pacific Card Exchange', address: 'Tumon, GU 96913', phone: '(671) 555-0198' },
-  { id: 's4', name: 'Island Hobby Center', address: 'Dededo, GU 96929', phone: '(671) 632-0044' }
+  { id: 's1', name: 'Geek Out', address: 'Micronesia Mall, 1088 Marine Corps Dr, 2F Concourse, Dededo, GU 96929', phone: '(671) 969-4335' },
+  { id: 's2', name: 'The Inventory', address: '230 W Soledad Ave, Suite 204, Hagåtña, GU 96910', phone: '(671) 969-4263' },
+  { id: 's3', name: 'My Wife Told Me To Sell It', address: 'Compadres Mall Grand Bazaar, Unit K9, Dededo, GU 96929', phone: null },
+  { id: 's4', name: 'ComicBook Guam', address: 'Agaña Shopping Center, 302 S Route 4 #100, Hagåtña, GU 96910', phone: '(671) 688-7040' }
 ];
 
 // SumUp integration notes (for future activation):
@@ -34,15 +34,6 @@ var PICKUP_STORES = [
 //   }
 // });
 
-function generateOrderId() {
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  var id = 'INV-';
-  for (var i = 0; i < 8; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return id;
-}
-
 function groupBySeller(cart) {
   var groups = {};
   cart.forEach(function(item) {
@@ -56,7 +47,7 @@ function groupBySeller(cart) {
 export function CheckoutView({ state, updateCart }) {
   var cart = state.cart;
 
-  // Step: 1=review, 2=fulfillment, 3=contact, 4=payment
+  // Step: 1=review, 2=fulfillment, 3=contact
   var ref1 = React.useState(1);
   var step = ref1[0], setStep = ref1[1];
 
@@ -68,12 +59,6 @@ export function CheckoutView({ state, updateCart }) {
 
   var ref4 = React.useState({ name: '', email: '', phone: '' });
   var contact = ref4[0], setContact = ref4[1];
-
-  var ref5 = React.useState(false);
-  var paymentProcessing = ref5[0], setPaymentProcessing = ref5[1];
-
-  var ref6 = React.useState(null);
-  var completedOrder = ref6[0], setCompletedOrder = ref6[1];
 
   var ref7 = React.useState({});
   var fieldErrors = ref7[0], setFieldErrors = ref7[1];
@@ -101,37 +86,8 @@ export function CheckoutView({ state, updateCart }) {
     return Object.keys(errors).length === 0;
   }
 
-  function handleSimulatePayment() {
-    setPaymentProcessing(true);
-    setTimeout(function() {
-      var orderId = generateOrderId();
-      var store = PICKUP_STORES.find(function(s) { return s.id === pickupStore; });
-      var order = {
-        id: orderId,
-        items: cart.slice(),
-        subtotal: subtotal,
-        tax: tax,
-        shipping: shipping,
-        total: total,
-        fulfillment: fulfillment,
-        pickupStore: store || null,
-        contact: Object.assign({}, contact),
-        date: new Date().toISOString()
-      };
-      // Save order to localStorage
-      var orders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
-      orders.unshift(order);
-      localStorage.setItem('investmtg-orders', JSON.stringify(orders));
-      // Clear cart
-      updateCart([]);
-      setPaymentProcessing(false);
-      setCompletedOrder(order);
-      window.location.hash = 'order/' + orderId;
-    }, 1800);
-  }
-
   // Empty cart
-  if (cart.length === 0 && !completedOrder) {
+  if (cart.length === 0) {
     return h('div', { className: 'container checkout-page' },
       h('h1', { className: 'page-heading' }, 'Checkout'),
       h('div', { className: 'empty-state' },
@@ -316,7 +272,7 @@ export function CheckoutView({ state, updateCart }) {
       step === 3 && h('div', { className: 'checkout-section' },
         h('h2', { className: 'checkout-section-title' }, 'Contact Information'),
         h('p', { className: 'checkout-section-sub' },
-          'We\'ll send your order confirmation here and share it with the seller for coordination.'
+          'We\'ll share your details with the seller so they can coordinate pickup or shipping.'
         ),
 
         h('div', { className: 'checkout-form' },
@@ -352,7 +308,7 @@ export function CheckoutView({ state, updateCart }) {
               id: 'co-phone',
               type: 'tel',
               className: 'form-input' + (fieldErrors.phone ? ' error' : ''),
-              placeholder: '(671) 555-0100',
+              placeholder: '(671) 123-4567',
               value: contact.phone,
               onChange: function(e) { updateContact('phone', e.target.value); }
             }),
@@ -367,11 +323,11 @@ export function CheckoutView({ state, updateCart }) {
             onClick: function() {
               if (validateContact()) { setStep(4); }
             }
-          }, 'Proceed to Payment →')
+          }, 'Continue →')
         )
       ),
 
-      // ===== STEP 4: PAYMENT =====
+      // ===== STEP 4: PAYMENT (Coming Soon) =====
       step === 4 && h('div', { className: 'checkout-section' },
         h('h2', { className: 'checkout-section-title' }, 'Payment'),
 
@@ -396,21 +352,6 @@ export function CheckoutView({ state, updateCart }) {
           )
         ),
 
-        // SumUp payment area
-        h('div', { className: 'sumup-payment-area' },
-          h('div', { className: 'sumup-coming-soon' },
-            h(CreditCardIcon, null),
-            h('h3', null, 'SumUp Payment'),
-            h('p', null, 'Online card payment is coming soon. Your total of ',
-              h('strong', null, formatUSD(total)),
-              ' will be charged when SumUp is activated.'
-            ),
-            h('div', { className: 'sumup-badge' }, 'Powered by SumUp')
-          ),
-          // This div will be the SumUp widget mount point when activated
-          h('div', { id: 'sumup-card', style: { display: 'none' } })
-        ),
-
         // Order total
         h('div', { className: 'checkout-order-summary' },
           h('div', { className: 'checkout-summary-row' },
@@ -427,21 +368,25 @@ export function CheckoutView({ state, updateCart }) {
           )
         ),
 
-        h('div', { className: 'checkout-actions' },
-          h('button', { className: 'btn btn-secondary', onClick: function() { setStep(3); }, disabled: paymentProcessing }, '← Back'),
-          h('button', {
-            className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
-            onClick: handleSimulatePayment,
-            disabled: paymentProcessing
-          },
-            paymentProcessing
-              ? h('span', null, h('span', { className: 'spinner' }), ' Processing…')
-              : h('span', null, h(CreditCardIcon, null), ' Simulate Payment — ', formatUSD(total))
+        // Coming Soon payment notice
+        h('div', { className: 'sumup-payment-area' },
+          h('div', { className: 'sumup-coming-soon' },
+            h(CreditCardIcon, null),
+            h('h3', null, 'Online Payment — Coming Soon'),
+            h('p', null,
+              'Secure payment processing via SumUp is being integrated. ',
+              'For now, coordinate payment directly with the seller when you pick up or receive your cards.'
+            ),
+            h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: 'var(--space-3)' } },
+              'The investmtg.com marketplace operates on trust and transparency. ',
+              'All transactions are between real community members.'
+            )
           )
         ),
 
-        h('p', { className: 'checkout-payment-note' },
-          '⚠️ This is a demo payment. No real charge will occur. SumUp integration will be activated when API keys are configured.'
+        h('div', { className: 'checkout-actions' },
+          h('button', { className: 'btn btn-secondary', onClick: function() { setStep(3); } }, '← Back'),
+          h('a', { href: '#store', className: 'btn btn-primary' }, 'Back to Marketplace')
         )
       )
     )

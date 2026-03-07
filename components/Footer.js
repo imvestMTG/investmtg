@@ -5,6 +5,17 @@ var h = React.createElement;
 export function Footer() {
   return h('footer', { className: 'site-footer' },
     h('div', { className: 'footer-inner' },
+      h('div', { className: 'footer-soul-badge' },
+        h('span', { className: 'soul-badge-icon' }, '🛡️'),
+        h('span', null, 'All data on this site is real and verified. ',
+          h('a', {
+            href: 'https://github.com/imvestMTG/investmtg/blob/main/SOUL.md',
+            target: '_blank',
+            rel: 'noopener',
+            className: 'soul-badge-link'
+          }, 'Read our data integrity policy')
+        )
+      ),
       h('p', { className: 'footer-guam' }, '🏝️ Made in Guam'),
       h('div', { className: 'footer-links' },
         h('a', { href: '#search' }, 'Search Cards'),

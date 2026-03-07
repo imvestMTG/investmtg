@@ -79,23 +79,20 @@ export function getTypeCategory(card) {
   return 'other';
 }
 
+// DEPRECATED: Mock data functions removed per SOUL.md data integrity policy.
+// investmtg.com only displays real, verifiable data.
+// These stubs are kept to prevent import errors in case any code still references them.
 export function generateMockPriceHistory(currentPrice, days) {
+  // Returns flat line at current price — no fake fluctuations
   if (!days) days = 30;
   var prices = [];
-  var price = currentPrice * (0.85 + Math.random() * 0.15);
-  for (var i = 0; i < days; i++) {
-    var change = (Math.random() - 0.48) * currentPrice * 0.05;
-    price = Math.max(price + change, currentPrice * 0.5);
-    price = Math.min(price, currentPrice * 1.5);
-    prices.push(Math.round(price * 100) / 100);
-  }
-  prices[days - 1] = currentPrice;
+  for (var i = 0; i < days; i++) { prices.push(currentPrice); }
   return prices;
 }
 
 export function generateMockChange() {
-  var change = (Math.random() - 0.45) * 15;
-  return Math.round(change * 10) / 10;
+  // Returns 0 — no fake price changes
+  return 0;
 }
 
 export function getCardImageSmall(card) {

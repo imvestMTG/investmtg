@@ -1,4 +1,4 @@
-/* SellerDashboard.js — Seller management portal */
+/* SellerDashboard.js — Seller management portal (real data only, no mock data) */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
@@ -8,18 +8,14 @@ var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
 var LISTING_TYPES = ['sale', 'trade'];
 var STORE_OPTIONS = [
   { id: '', name: 'No affiliation' },
-  { id: 's1', name: 'Geek Out Guam' },
-  { id: 's2', name: 'Inventory Game Store' },
-  { id: 's3', name: 'Pacific Card Exchange' },
-  { id: 's4', name: 'Island Hobby Center' }
+  { id: 's1', name: 'Geek Out' },
+  { id: 's2', name: 'The Inventory' },
+  { id: 's3', name: 'My Wife Told Me To Sell It' },
+  { id: 's4', name: 'ComicBook Guam' }
 ];
 
-// Mock sales history data
-var MOCK_SALES = [
-  { id: 'sale-1', cardName: 'Ragavan, Nimble Pilferer', set: 'Modern Horizons 2', condition: 'NM', price: 42.00, buyer: 'JohnDoe', date: '2026-02-15' },
-  { id: 'sale-2', cardName: 'Force of Will', set: 'Alliances', condition: 'LP', price: 89.00, buyer: 'MTGFan99', date: '2026-02-08' },
-  { id: 'sale-3', cardName: 'Liliana of the Veil', set: 'Innistrad', condition: 'NM', price: 38.50, buyer: 'GuamPlayers', date: '2026-01-29' }
-];
+// Sales history will be populated by real transactions once payment integration is active.
+// No mock data — investmtg.com only displays real, verifiable information.
 
 function generateSellerId() {
   return 'seller-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
@@ -442,7 +438,7 @@ export function SellerDashboard() {
   }
 
   var listings = seller.listings || [];
-  var salesTotal = MOCK_SALES.reduce(function(s, sale) { return s + sale.price; }, 0);
+  var salesTotal = 0; // Real sales will populate when payment integration is active
   var storeLabel = STORE_OPTIONS.find(function(s) { return s.id === seller.storeId; });
   storeLabel = storeLabel ? storeLabel.name : 'No affiliation';
 
@@ -583,37 +579,12 @@ export function SellerDashboard() {
     // ===== SALES HISTORY TAB =====
     activeTab === 'history' && h('div', { className: 'seller-tab-content' },
       h('h2', { className: 'seller-section-title' }, 'Sales History'),
-      h('p', { style: { color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' } },
-        'Showing mock data. Real sales history will populate after SumUp payment integration is active.'
-      ),
-      h('div', { className: 'sales-history-table' },
-        h('div', { className: 'sales-history-header' },
-          h('span', null, 'Card'),
-          h('span', null, 'Condition'),
-          h('span', null, 'Buyer'),
-          h('span', null, 'Price'),
-          h('span', null, 'Date')
-        ),
-        MOCK_SALES.map(function(sale) {
-          return h('div', { key: sale.id, className: 'sales-history-row' },
-            h('div', null,
-              h('div', { className: 'sales-card-name' }, sale.cardName),
-              h('div', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' } }, sale.set)
-            ),
-            h('span', { className: 'mp-badge-condition cond-' + sale.condition.toLowerCase() }, sale.condition),
-            h('span', { style: { color: 'var(--color-text-muted)' } }, sale.buyer),
-            h('span', { className: 'sales-price' }, formatUSD(sale.price)),
-            h('span', { style: { color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' } },
-              new Date(sale.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            )
-          );
-        }),
-        h('div', { className: 'sales-history-total-row' },
-          h('span', null, 'Total Sales'),
-          h('span', null),
-          h('span', null),
-          h('span', { className: 'sales-price sales-grand-total' }, formatUSD(salesTotal)),
-          h('span', null)
+      h('div', { className: 'empty-state' },
+        h(OrderIcon, null),
+        h('h3', null, 'Sales History — Coming Soon'),
+        h('p', null, 'Your completed sales will appear here once payment processing via SumUp is integrated. '),
+        h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' } },
+          'investmtg.com only displays real, verified transaction data — never mock or demo data.'
         )
       )
     ),
