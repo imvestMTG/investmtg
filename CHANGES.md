@@ -1,5 +1,65 @@
 # investMTG — Changelog
 
+## 2026-03-07: Brand Foundation & Social Media Integration
+
+### Brand
+- **SOUL.md**: Added About, Vision, Mission, and Brand sections with The Fair Play Economy five pillars
+- **Brand tagline**: "Real cards. Real data. Fair play."
+- **Brand voice**: Direct and honest, community-first, island-local
+- **Store disclaimer**: Clarified that listed stores are community resources with no formal partnership agreements
+
+### Hero Copy Rework
+- **Headline**: Changed from "MTG Price Intelligence" to "Know What Your Cards Are Worth"
+- **Subtitle**: Changed to "Guam's MTG marketplace with live market pricing, portfolio tracking, and zero markup. Real cards. Real data. Fair play."
+- **Stats bar**: Changed from "Thousands/4/Live/Free" to "Real Prices / No Guesswork | Guam Built / For The Island | Live Data / Every Visit | 100% Free / Always"
+- Removed claims about store partnerships and "Guam's only" positioning
+
+### Social Media
+- YouTube Data API connected to Perplexity
+- YouTube Analytics API connected to Perplexity
+- Facebook Pages, LinkedIn pending connection
+- investmtg.com email domain verified (Google Workspace with MX + SPF records)
+
+### Documentation
+- **SOUL.md**: Brand Voice & Messaging, Social Media status, Changelog section added
+- **README.md**: Vision/Mission header, Fair Play Economy pillars, Connected Services table, store disclaimer, new components listed
+- **CHANGES.md**: This consolidated entry
+- **BUILD_SPEC.md**: Updated pages, APIs, and utils to reflect current state
+- **manifest.json**: Description aligned with brand voice
+
+---
+
+## 2026-03-07: Marketing & Compliance Audit Fixes
+
+### Legal & Compliance
+- **PrivacyPolicyView.js** (NEW): Full privacy policy page at `#privacy`
+- **TermsView.js** (NEW): Terms of service page at `#terms`
+- **CookieNotice.js** (NEW): Cookie consent banner (Cloudflare/SumUp cookies only)
+- **Footer.js**: Added WotC Fan Content Policy disclaimer, Privacy/Terms links
+- **app.js**: Added `#privacy` and `#terms` routes
+
+### Data Integrity
+- **marketplace-data.js**: Emptied all mock marketplace listings (SOUL.md compliance)
+- **SellerDashboard.js**: Removed mock sales history data
+- **CheckoutView.js**: Card payment shows "coming soon" instead of simulating
+- **SOUL.md**: Fixed EUR reference in data table
+
+### JustTCG Upgrade
+- **justtcg-api.js**: Updated API key to paid tier (`tcg_1f6c8c6d907f42a0aacba9ff6005300c`)
+
+### Accessibility & SEO
+- **index.html**: Added skip-to-content link, ARIA landmarks
+- **sitemap.xml**: Added `#movers`, `#meta`, `#decks`, `#privacy`, `#terms` routes
+- **Image assets**: og-image.jpg, favicon.svg, favicon.png, apple-touch-icon.png, icon-192.png, icon-512.png
+
+### Stores Reconciled
+- Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam verified across StoreView, CheckoutView, SellerDashboard
+
+### Files Changed (21 total)
+style.css, app.js, index.html, SOUL.md, sitemap.xml, components/Footer.js, components/PrivacyPolicyView.js, components/TermsView.js, components/CookieNotice.js, components/CheckoutView.js, components/SellerDashboard.js, components/StoreView.js, utils/marketplace-data.js, utils/justtcg-api.js, og-image.jpg, favicon.svg, favicon.png, apple-touch-icon.png, icon-192.png, icon-512.png, manifest.json
+
+---
+
 ## 2026-03-07: Multi-Source API Integration — JustTCG + Moxfield
 
 ### New Features
