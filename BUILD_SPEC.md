@@ -3,9 +3,7 @@
 ## Project Context
 investmtg.com is Guam's MTG marketplace and price intelligence platform. Built on The Fair Play Economy — every piece of data must be real, verifiable, and transparent.
 
-It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded via esm.sh import maps. Hosted on GitHub Pages.
-
-The codebase is at `/home/user/workspace/investmtg_build/`. All files are served statically.
+It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded via esm.sh import maps. Hosted on GitHub Pages at [www.investmtg.com](https://www.investmtg.com).
 
 ## Architecture Rules (CRITICAL)
 - Use `var h = React.createElement;` pattern — NO JSX

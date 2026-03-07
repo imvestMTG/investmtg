@@ -62,7 +62,7 @@ investMTG operates under a governing philosophy called The Fair Play Economy —
 ### 2. Real Stores Only
 The local stores listed on investMTG are real, verified businesses on Guam:
 - **The Inventory** — Hagåtña (verified, WPN-authorized)
-- **Geek Out Next Level** — Tamuning (verified, WPN-authorized)
+- **Geek Out Next Level** — Micronesia Mall, Dededo (verified, WPN-authorized, 671-477-4335)
 - **My Wife Told Me To Sell It** — Compadres Mall, Dededo (verified, 5.0★, mywifetcg.com, @mywifetoldmetosellit)
 - **Fraim's Collectibles** — Mangilao, across Mobil (verified, @fraimscollectibles)
 - **Poke Violet 671** — DNA Building, Hagåtña (verified, pokeviolet671.com, @pokeviolet671)
@@ -210,6 +210,8 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 | 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
 | 2026-03-07 | Store directory updated: removed Fokai Guam, The Grid GU, and Expensive Dreams (not a TCG store). Added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 5 verified stores |
 | 2026-03-07 | Added About, Vision, Mission, and Brand sections; clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
+| 2026-03-07 | Repo cleanup: .gitignore added, redundant docs removed, store addresses corrected, stale references cleaned from README/BUILD_SPEC/CHANGES, full data attribution in footer |
+| 2026-03-07 | Audit response: replaced all hardcoded fake store lists in BuyLocalModal, CheckoutView, SellerDashboard with 5 verified stores; added Scryfall attribution to SearchView; expanded footer to credit all 5 data sources |
 | 2026-03-06 | Audit fixes: legal pages, cookie notice, accessibility, fake data removal, SOUL.md EUR fix |
 
 ---

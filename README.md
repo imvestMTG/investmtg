@@ -64,7 +64,6 @@ investmtg/
 ├── SOUL.md                 # Ethical guidelines — The Fair Play Economy
 ├── BUILD_SPEC.md           # Original build specification
 ├── CHANGES.md              # Build changelog
-├── OPTIMIZATION_SUMMARY.md # Performance optimization log
 │
 ├── images/
 │   ├── hero-bg.jpg          # AI-generated hero background (golden energy trails)
@@ -161,24 +160,15 @@ Key rules:
 
 ## Development
 
-This is a no-build project. To work on it locally:
+This is a no-build project:
 
-1. Clone the repo: `git clone https://github.com/imvestMTG/investmtg.git`
-2. Serve the files with any static server (e.g., `npx serve .`)
-3. Open `http://localhost:3000` in your browser
-4. Edit files directly — no compilation step needed
+```bash
+git clone https://github.com/imvestMTG/investmtg.git
+npx serve .
+# Open http://localhost:3000
+```
 
-## Connected Services
-
-| Platform | Status |
-|----------|--------|
-| YouTube (Data + Analytics) | Connected |
-| Facebook Pages | Pending |
-| LinkedIn | Pending |
-| X (Twitter) | Pending (no connector) |
-| Instagram | Pending (no connector) |
-
-**Email domain:** investmtg.com (Google Workspace)
+Edit files directly — no compilation step needed. Push to `main` to deploy via GitHub Pages.
 
 ## License
 

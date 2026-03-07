@@ -1,5 +1,25 @@
 # investMTG — Changelog
 
+## 2026-03-07: Audit Fixes — Store Lists & Data Attribution
+
+### Store Lists Fixed
+- **BuyLocalModal.js**: Replaced 4 fake hardcoded stores (Geek Out Guam, Inventory Game Store, Pacific Card Exchange, Island Hobby Center) with 5 verified stores
+- **CheckoutView.js**: Replaced 4 outdated pickup stores (Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam) with 5 verified stores
+- **SellerDashboard.js**: Replaced 4 outdated store affiliations with 5 verified stores
+- All store selection surfaces now consistent: The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671
+
+### Data Attribution
+- **Footer.js**: Expanded attribution to credit all 5 data sources (Scryfall, JustTCG, EDH Top 16, TopDeck.gg, Moxfield)
+- **SearchView.js**: Added Scryfall attribution after search results
+
+### Repo Cleanup
+- Added `.gitignore`
+- Removed redundant `OPTIMIZATION_SUMMARY.md` (content already in CHANGES.md)
+- Fixed Geek Out Next Level address in SOUL.md (was Tamuning, corrected to Micronesia Mall, Dededo)
+- Cleaned up README.md and BUILD_SPEC.md (removed stale references, local paths, pending social media statuses)
+
+---
+
 ## 2026-03-07: Performance Optimization — Lazy Loading & Asset Cleanup
 
 ### Lazy Loading
@@ -131,7 +151,7 @@
 - **Image assets**: og-image.jpg, favicon.svg, favicon.png, apple-touch-icon.png, icon-192.png, icon-512.png
 
 ### Stores Reconciled
-- Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam verified across StoreView, CheckoutView, SellerDashboard
+- Store names verified and corrected across StoreView, CheckoutView, SellerDashboard (removed Fokai Guam, The Grid GU; renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory)
 
 ### Files Changed (21 total)
 style.css, app.js, index.html, SOUL.md, sitemap.xml, components/Footer.js, components/PrivacyPolicyView.js, components/TermsView.js, components/CookieNotice.js, components/CheckoutView.js, components/SellerDashboard.js, components/StoreView.js, utils/marketplace-data.js, utils/justtcg-api.js, og-image.jpg, favicon.svg, favicon.png, apple-touch-icon.png, icon-192.png, icon-512.png, manifest.json
