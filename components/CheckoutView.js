@@ -8,12 +8,13 @@ var h = React.createElement;
 var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
 var SUMUP_MERCHANT_CODE = 'M55T01IN';
 
-// Guam stores for pickup selection
+// Guam stores for pickup selection — verified data only
 var PICKUP_STORES = [
-  { id: 's1', name: 'Geek Out Guam', address: 'Tamuning, GU 96913', phone: '(671) 477-4335' },
-  { id: 's2', name: 'The Grid GU', address: 'Dededo, GU 96929', phone: null },
-  { id: 's3', name: 'Fokai Guam', address: 'Hag\u00e5t\u00f1a, GU 96910', phone: null },
-  { id: 's4', name: 'Inventory Guam', address: 'Tamuning, GU 96913', phone: null }
+  { id: 's1', name: 'The Inventory', address: 'Hag\u00e5t\u00f1a, GU 96910', phone: null },
+  { id: 's2', name: 'Geek Out Next Level', address: 'Micronesia Mall, Dededo, GU 96929', phone: '(671) 477-4335' },
+  { id: 's3', name: 'My Wife Told Me To Sell It', address: 'Compadres Mall, Dededo, GU 96929', phone: '(671) 637-4335' },
+  { id: 's4', name: "Fraim's Collectibles", address: 'Mangilao, GU 96913', phone: null },
+  { id: 's5', name: 'Poke Violet 671', address: 'DNA Building, Hag\u00e5t\u00f1a, GU 96910', phone: null }
 ];
 
 function generateOrderId() {
