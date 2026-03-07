@@ -1,7 +1,9 @@
 # investMTG — Build Specification
 
 ## Project Context
-investmtg.com is a local Guam Magic: The Gathering marketplace. It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded via esm.sh import maps. Hosted on GitHub Pages.
+investmtg.com is Guam's MTG marketplace and price intelligence platform. Built on The Fair Play Economy — every piece of data must be real, verifiable, and transparent.
+
+It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded via esm.sh import maps. Hosted on GitHub Pages.
 
 The codebase is at `/home/user/workspace/investmtg_build/`. All files are served statically.
 
@@ -35,6 +37,11 @@ All data must be real and verifiable:
 | StoreView | `#store` | Local stores + community marketplace |
 | SellerDashboard | `#seller` | Seller registration, listing CRUD, sales history |
 | OrderConfirmation | `#order/{id}` | Post-payment confirmation |
+| MarketMoversView | `#movers` | Most valuable cards by category with real pricing |
+| MetaView | `#meta` | cEDH metagame dashboard (EDH Top 16 + TopDeck.gg) |
+| DecklistView | `#decks` | Deck browser with Moxfield import |
+| PrivacyPolicyView | `#privacy` | Privacy policy |
+| TermsView | `#terms` | Terms of service |
 
 ### Shared Components
 | Component | Description |
@@ -48,13 +55,18 @@ All data must be real and verifiable:
 | SkeletonCard | Loading placeholder |
 | Toast | Notification system |
 | BackToTop | Scroll-to-top button |
+| CookieNotice | Cookie consent banner |
 
 ### Utils
 | File | Description |
 |------|-------------|
 | api.js | Scryfall API wrapper with 100ms rate limiting |
 | helpers.js | formatUSD, getCardPrice, image URL helpers, debounce |
-| marketplace-data.js | Initial marketplace seed data |
+| justtcg-api.js | JustTCG condition pricing API (paid tier) |
+| edhtop16-api.js | EDH Top 16 GraphQL API wrapper |
+| topdeck-api.js | TopDeck.gg REST API wrapper |
+| moxfield-api.js | Moxfield decklist API wrapper |
+| marketplace-data.js | Marketplace data management (empty — no mock data per SOUL.md) |
 
 ## Payment Integration (ACTIVE)
 
@@ -85,6 +97,10 @@ All data must be real and verifiable:
 | Service | Endpoint | Auth |
 |---------|----------|------|
 | Scryfall | `https://api.scryfall.com` | None (free, 100ms rate limit) |
+| JustTCG | `https://api.justtcg.com` | API key (paid tier) |
+| EDH Top 16 | `https://edhtop16.com` (via CORS proxy) | None |
+| TopDeck.gg | `https://topdeck.gg` (via CORS proxy) | API key |
+| Moxfield | `https://api2.moxfield.com` | None |
 | Pollinations AI | `https://text.pollinations.ai/openai/chat/completions` | None (free) |
 | SumUp | `https://js.sumup.com` / `https://api.sumup.com` | Public key |
 | Fontshare | `https://api.fontshare.com` | None |
