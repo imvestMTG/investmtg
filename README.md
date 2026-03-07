@@ -1,8 +1,16 @@
-# investMTG — Guam's MTG Marketplace
+# investMTG — Know What Your Cards Are Worth
 
 **[www.investmtg.com](https://www.investmtg.com)**
 
-A local Magic: The Gathering marketplace for the Guam community. Track real-time card prices in USD, buy and sell locally, manage your portfolio, browse cEDH metagame data, and discover cards from Guam's local game stores.
+> Real cards. Real data. Fair play.
+
+investMTG is a free Magic: The Gathering marketplace and price intelligence platform built for the Guam community. We give island players the same pricing transparency, portfolio tools, and market data that mainland players take for granted — without the markup, without the guesswork, and without the games.
+
+### Vision
+To be Guam's trusted home for Magic: The Gathering — the place every island player checks before they buy, sell, or trade a card.
+
+### Mission
+To prove that a trading card marketplace can run on honesty. investMTG exists to give Guam's MTG community free access to real market data, fair pricing tools, and a local marketplace built without fake data, dark patterns, or hidden agendas.
 
 ---
 
@@ -19,10 +27,11 @@ A local Magic: The Gathering marketplace for the Guam community. Track real-time
 - **Portfolio Tracker** — Track your collection's value against live market prices
 - **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
 - **Seller Dashboard** — Register as a seller, manage listings, track sales
-- **4 Local Stores** — Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam
+- **Local Store Directory** — Geek Out Guam, The Grid GU, Fokai Guam, Inventory Guam (listed as community resources — no formal partnerships)
 - **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI
 - **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
 - **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout
+- **Legal Pages** — Privacy Policy, Terms of Service, Cookie Notice
 - **PWA Support** — Installable as a mobile app
 
 ## Tech Stack
@@ -74,6 +83,9 @@ investmtg/
 │   ├── Header.js           # Navigation header
 │   ├── Footer.js           # Site footer
 │   ├── Chatbot.js          # AI chatbot assistant
+│   ├── PrivacyPolicyView.js # Privacy policy page
+│   ├── TermsView.js        # Terms of service page
+│   ├── CookieNotice.js     # Cookie consent banner
 │   └── shared/
 │       ├── CardGrid.js     # Reusable card grid component
 │       ├── Icons.js        # SVG icon components
@@ -88,7 +100,7 @@ investmtg/
 │   ├── edhtop16-api.js     # EDH Top 16 GraphQL API wrapper
 │   ├── topdeck-api.js      # TopDeck.gg REST API wrapper
 │   ├── moxfield-api.js     # Moxfield decklist API wrapper
-│   └── marketplace-data.js # Marketplace data management
+│   └── marketplace-data.js # Marketplace data management (empty — no mock data per SOUL.md)
 │
 └── .well-known/
     └── apple-developer-merchantid-domain-association  # Apple Pay verification
@@ -104,22 +116,30 @@ investmtg/
 - Mobile-first responsive design with dark/light theme support
 - USD only — no EUR, GBP, tix, or other currencies displayed
 
-## Data Integrity (SOUL.md)
+## The Fair Play Economy (SOUL.md)
 
-This project follows **The Fair Play Economy** principles:
+This project operates under **The Fair Play Economy** — five pillars that guide every decision:
+
+1. **Transparency** — All prices, sources, and methods are visible
+2. **Equity of Access** — Every player gets the same tools, free forever
+3. **Honesty Rewarded** — Accurate grading, fair pricing, good-faith trading
+4. **Sportsmanship Over Greed** — Anti-hoarding, anti-gouging systems
+5. **Diversity & Inclusion** — Every player welcome regardless of budget or background
+
+Key rules:
 - All price data is real — Scryfall for market prices, JustTCG for condition prices
 - All metagame data is real — EDH Top 16 and TopDeck.gg tournament results
 - No fabricated statistics, fake trends, or mock data shown as real
 - Physical printed cards only — no digital/MTGO cards
-- All listed stores are verified Guam businesses
-- See [SOUL.md](SOUL.md) for the full ethical framework
+- Store listings are community resources — no formal partnerships claimed
+- See [SOUL.md](SOUL.md) for the full ethical framework, brand voice, and changelog
 
 ## External Services
 
 | Service | Purpose | Auth |
 |---------|---------|------|
 | [Scryfall API](https://scryfall.com/docs/api) | Card data, images, and prices | No key required |
-| [JustTCG API](https://justtcg.com) | Condition-specific pricing | API key (free tier) |
+| [JustTCG API](https://justtcg.com) | Condition-specific pricing | API key (paid tier) |
 | [EDH Top 16 API](https://edhtop16.com) | cEDH commander meta data | No key required |
 | [TopDeck.gg API](https://topdeck.gg) | cEDH tournament data | API key (free tier) |
 | [Moxfield API](https://moxfield.com) | Decklist imports | No key required |
@@ -137,6 +157,18 @@ This is a no-build project. To work on it locally:
 2. Serve the files with any static server (e.g., `npx serve .`)
 3. Open `http://localhost:3000` in your browser
 4. Edit files directly — no compilation step needed
+
+## Connected Services
+
+| Platform | Status |
+|----------|--------|
+| YouTube (Data + Analytics) | Connected |
+| Facebook Pages | Pending |
+| LinkedIn | Pending |
+| X (Twitter) | Pending (no connector) |
+| Instagram | Pending (no connector) |
+
+**Email domain:** investmtg.com (Google Workspace)
 
 ## License
 
