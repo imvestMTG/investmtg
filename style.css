@@ -4005,11 +4005,31 @@ a.cart-item-image:hover {
 .cart-cond-chip {
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-elevated, rgba(255,255,255,0.05));
   color: var(--color-text-muted);
   white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  line-height: 1.2;
+}
+.cart-cond-chip:hover {
+  background: var(--color-surface-hover, rgba(255,255,255,0.1));
+  color: var(--color-text-secondary, #ccc);
+  border-color: var(--color-border, rgba(255,255,255,0.15));
+}
+.cart-cond-chip--active {
+  background: var(--color-accent, #00C9A7);
+  color: #fff;
+  border-color: var(--color-accent, #00C9A7);
+}
+.cart-cond-chip--active:hover {
+  background: var(--color-accent, #00C9A7);
+  color: #fff;
+  opacity: 0.9;
 }
 
 .cart-jtcg-note {
