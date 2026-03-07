@@ -25,6 +25,8 @@ The local stores listed on investMTG are real, verified businesses on Guam:
 
 We do not list fictional stores or fabricate store data.
 
+**Important:** These stores are listed as community resources for Guam MTG players. investMTG does **not** have formal partnership agreements with any of these stores. Their inclusion does not imply endorsement, affiliation, or inventory integration. Store information is publicly available and manually verified.
+
 ### 3. Real Sellers Only
 The marketplace listings must come from real people. Seller identities on the platform are either:
 - Registered users who created accounts via the Seller Dashboard
@@ -39,7 +41,7 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 - **Seller prices** are set by individual sellers and may differ from market price
 - We clearly label where every price comes from
 - Price data refreshes on every page visit (with 5-minute caching to respect API limits)
-- JustTCG condition data is only fetched in cart view to minimize API usage (free tier: 1,000 requests/month)
+- JustTCG condition data is only fetched in cart view to minimize API usage (paid tier)
 
 ### 5. Physical Cards Only
 - investMTG is a marketplace for real, printed Magic cards — not digital versions
@@ -118,8 +120,52 @@ If you're contributing to investMTG, follow these rules:
 3. If a feature requires data we don't have, say so honestly — don't fake it
 4. Test with real API responses, not mocked data
 5. Keep the site static — no backend dependencies beyond the CORS proxy
-6. All API keys in client-side code are free-tier keys — never embed private or paid-tier keys
-7. Respect API rate limits: Scryfall (100ms between calls), JustTCG (10/min), TopDeck (200/min)
+6. Respect API rate limits: Scryfall (100ms between calls), JustTCG (paid tier limits), TopDeck (200/min)
+7. Never embed sensitive API keys in client-side code — use CORS proxy for key-protected APIs where possible
+
+---
+
+## Brand Voice & Messaging
+
+investMTG's public-facing copy follows these principles:
+
+### Hero / Homepage
+- **Headline:** "Know What Your Cards Are Worth"
+- **Subtitle:** "Guam's MTG marketplace with live market pricing, portfolio tracking, and zero markup. Real cards. Real data. Fair play."
+- **Stats bar:** Real Prices / No Guesswork | Guam Built / For The Island | Live Data / Every Visit | 100% Free / Always
+
+### Tone Guidelines
+- Speak directly to the user — value propositions, not feature labels
+- Lead with transparency and honesty
+- Use "Guam" and island-local language to reinforce community identity
+- Never claim partnerships, endorsements, or affiliations that don't exist
+- Never use "only" or "#1" without verifiable proof
+- The tagline "Real cards. Real data. Fair play." is the brand's core promise
+
+---
+
+## Social Media & Connected Services
+
+| Platform | Status | Handle / URL |
+|----------|--------|--------------|
+| YouTube | Connected (Data + Analytics) | Channel pending creation |
+| Facebook Pages | Pending connection | Page pending creation |
+| LinkedIn | Pending connection | Profile pending creation |
+| X (Twitter) | No connector available | Account pending creation |
+| Instagram | No connector available | Account pending creation |
+
+**Email domain:** investmtg.com (Google Workspace — MX records active, SPF configured for Google + iCloud)
+
+Social handles should use **@investMTG** or **investMTG** consistently across all platforms.
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-03-07 | Clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
+| 2026-03-06 | Audit fixes: legal pages, cookie notice, accessibility, fake data removal, SOUL.md EUR fix |
 
 ---
 
