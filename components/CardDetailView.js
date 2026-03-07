@@ -1,9 +1,7 @@
-/* CardDetailView.js — Card detail with Scryfall + JustTCG pricing */
+/* CardDetailView.js — Card detail with Scryfall pricing + other printings */
 import React from 'react';
-import { getCard } from '../utils/api.js';
-import { getJustTCGPricing } from '../utils/justtcg-api.js';
+import { getCard, getCardPrintings } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
-import { PriceHistoryChart } from './PriceHistoryChart.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
 var h = React.createElement;
@@ -15,42 +13,39 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var loading = ref2[0], setLoading = ref2[1];
   var ref3 = React.useState(null);
   var error = ref3[0], setError = ref3[1];
-  var ref4 = React.useState(null);
-  var jtcgData = ref4[0], setJtcgData = ref4[1];
-  var ref5 = React.useState('30d');
-  var chartPeriod = ref5[0], setChartPeriod = ref5[1];
+  var ref4 = React.useState([]);
+  var printings = ref4[0], setPrintings = ref4[1];
+  var ref5 = React.useState(false);
+  var showAllPrintings = ref5[0], setShowAllPrintings = ref5[1];
 
   React.useEffect(function() {
     if (!cardId) return;
     setLoading(true);
     setError(null);
     setCard(null);
-    setJtcgData(null);
+    setPrintings([]);
+    setShowAllPrintings(false);
     getCard(cardId).then(function(data) {
       setCard(data);
       setLoading(false);
 
-      // Fetch JustTCG data if we have a tcgplayer_id
-      if (data && data.tcgplayer_id) {
-        getJustTCGPricing(data.tcgplayer_id, { historyDuration: '30d' })
-          .then(function(jtcg) {
-            if (jtcg) setJtcgData(jtcg);
-          });
+      // Fetch other printings via oracle_id
+      if (data && data.oracle_id) {
+        getCardPrintings(data.oracle_id).then(function(result) {
+          if (result && result.data) {
+            // Filter out the current card and digital-only
+            var others = result.data.filter(function(c) {
+              return !c.digital;
+            });
+            setPrintings(others);
+          }
+        }).catch(function() {});
       }
     }).catch(function() {
       setError('Card not found.');
       setLoading(false);
     });
   }, [cardId]);
-
-  // Re-fetch JustTCG when chart period changes
-  React.useEffect(function() {
-    if (!card || !card.tcgplayer_id) return;
-    getJustTCGPricing(card.tcgplayer_id, { historyDuration: chartPeriod })
-      .then(function(jtcg) {
-        if (jtcg) setJtcgData(jtcg);
-      });
-  }, [chartPeriod]);
 
   function addToCart() {
     if (!card) return;
@@ -61,7 +56,16 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
         return item.id === card.id ? Object.assign({}, item, { qty: (item.qty || 1) + 1 }) : item;
       }));
     } else {
-      updateCart(state.cart.concat([{ id: card.id, name: card.name, set: card.set_name, price: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+      updateCart(state.cart.concat([{
+        id: card.id,
+        name: card.name,
+        set: card.set_name,
+        setCode: card.set,
+        price: price,
+        qty: 1,
+        image: getScryfallImageUrl(card, 'small'),
+        tcgplayerId: card.tcgplayer_id || null
+      }]));
     }
   }
 
@@ -103,16 +107,11 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var price = getCardPrice(card);
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
 
-  // Build price boxes from Scryfall
   var priceBoxes = [
     { label: 'Market (USD)', value: formatUSD(price) },
     { label: 'Foil (USD)', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
     { label: 'EUR', value: card.prices && card.prices.eur ? '\u20AC' + parseFloat(card.prices.eur).toFixed(2) : 'N/A' },
   ];
-
-  // Add JustTCG condition-specific prices if available
-  var conditionPrices = jtcgData ? jtcgData.conditionPrices : null;
-  var jtcgChange = jtcgData ? (chartPeriod === '7d' ? jtcgData.change7d : chartPeriod === '30d' ? jtcgData.change30d : jtcgData.change90d) : null;
 
   var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
     return ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].indexOf(entry[0]) !== -1;
@@ -120,6 +119,10 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
 
   var scryfallUrl = card.scryfall_uri || ('https://scryfall.com/card/' + card.set + '/' + card.collector_number);
   var purchaseLinks = card.purchase_uris || {};
+
+  // Other printings (excluding current)
+  var otherPrintings = printings.filter(function(p) { return p.id !== card.id; });
+  var visiblePrintings = showAllPrintings ? otherPrintings : otherPrintings.slice(0, 6);
 
   return h('div', { className: 'container card-detail' },
     h('a', {
@@ -137,7 +140,23 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
       ),
       h('div', { className: 'card-detail-info' },
         h('h1', null, card.name),
-        h('p', { className: 'card-detail-set' }, card.set_name, ' \u00B7 ', card.rarity, ' \u00B7 #', card.collector_number),
+
+        /* ── Set name as clickable link ── */
+        h('p', { className: 'card-detail-set' },
+          h('a', {
+            href: '#search',
+            className: 'set-link',
+            onClick: function(e) {
+              e.preventDefault();
+              window.location.hash = 'search';
+              setTimeout(function() {
+                var ev = new CustomEvent('investmtg-search', { detail: 'e:' + card.set });
+                window.dispatchEvent(ev);
+              }, 50);
+            }
+          }, card.set_name),
+          ' \u00B7 ', card.rarity, ' \u00B7 #', card.collector_number
+        ),
 
         /* ── Scryfall Price Boxes ── */
         h('div', { className: 'price-breakdown' },
@@ -149,57 +168,12 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
           })
         ),
 
-        /* ── JustTCG Condition Prices ── */
-        conditionPrices && Object.keys(conditionPrices).length > 0
-          ? h('div', { className: 'condition-prices' },
-              h('h3', { className: 'condition-prices-title' }, 'Price by Condition'),
-              h('div', { className: 'condition-grid' },
-                Object.entries(conditionPrices).map(function(entry) {
-                  var condLabel = entry[0];
-                  var condPrice = entry[1];
-                  var abbr = condLabel === 'Near Mint' ? 'NM' :
-                             condLabel === 'Lightly Played' ? 'LP' :
-                             condLabel === 'Moderately Played' ? 'MP' :
-                             condLabel === 'Heavily Played' ? 'HP' :
-                             condLabel === 'Damaged' ? 'DMG' : condLabel;
-                  return h('div', { key: condLabel, className: 'condition-item' },
-                    h('span', { className: 'condition-label' }, abbr),
-                    h('span', { className: 'condition-value' }, formatUSD(condPrice))
-                  );
-                })
-              ),
-              h('p', { className: 'condition-source' },
-                'Condition prices from ',
-                h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG')
-              )
-            )
-          : null,
-
-        /* ── Price History Chart ── */
-        jtcgData
-          ? h('div', { className: 'price-chart-section' },
-              h('h3', null, 'Price History'),
-              h(PriceHistoryChart, {
-                priceHistory: jtcgData.priceHistory,
-                activePeriod: chartPeriod,
-                onPeriodChange: setChartPeriod,
-                change: jtcgChange
-              })
-            )
-          : card.tcgplayer_id
-            ? h('div', { className: 'price-chart-section' },
-                h('h3', null, 'Price History'),
-                h('div', { className: 'skeleton skeleton-text', style: { height: '200px' } })
-              )
-            : null,
-
         h('p', { className: 'price-source' },
           'Prices from ',
           h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
-          jtcgData ? ' & ' : '',
-          jtcgData ? h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG') : null,
-          ' \u00B7 Updated regularly'
+          ' \u00B7 Updated daily'
         ),
+
         h('div', { className: 'card-actions' },
           h('button', { className: 'btn btn-primary', onClick: addToCart },
             h(CartIcon, null), ' Add to Cart'
@@ -220,7 +194,7 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
           }, 'List on Market')
         ),
 
-        /* Purchase Links */
+        /* ── Purchase Links ── */
         (purchaseLinks.tcgplayer || purchaseLinks.cardmarket)
           ? h('div', { className: 'purchase-links' },
               h('h3', null, 'Buy This Card'),
@@ -241,6 +215,7 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
             )
           : null,
 
+        /* ── Format Legality ── */
         h('div', { className: 'legality-grid' },
           legalities.map(function(entry) {
             return h('span', {
@@ -249,9 +224,50 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
             }, entry[0]);
           })
         ),
+
         card.oracle_text && h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: '1.6', marginBottom: 'var(--space-4)' } },
           card.oracle_text
-        )
+        ),
+
+        /* ── Other Printings ── */
+        otherPrintings.length > 0
+          ? h('div', { className: 'other-printings' },
+              h('h3', { className: 'other-printings-title' },
+                'Other Printings',
+                h('span', { className: 'other-printings-count' }, otherPrintings.length + ' versions')
+              ),
+              h('div', { className: 'printings-grid' },
+                visiblePrintings.map(function(p) {
+                  var pPrice = (p.prices && (parseFloat(p.prices.usd) || parseFloat(p.prices.usd_foil))) || 0;
+                  var isCurrent = p.id === card.id;
+                  return h('a', {
+                    key: p.id,
+                    href: '#card/' + p.id,
+                    className: 'printing-card' + (isCurrent ? ' printing-current' : '')
+                  },
+                    h('div', { className: 'printing-img-wrap' },
+                      h('img', {
+                        src: getScryfallImageUrl(p, 'small'),
+                        alt: p.set_name,
+                        loading: 'lazy'
+                      })
+                    ),
+                    h('div', { className: 'printing-info' },
+                      h('div', { className: 'printing-set' }, p.set_name),
+                      h('div', { className: 'printing-number' }, '#' + p.collector_number),
+                      h('div', { className: 'printing-price' }, pPrice > 0 ? formatUSD(pPrice) : 'N/A')
+                    )
+                  );
+                })
+              ),
+              otherPrintings.length > 6 && !showAllPrintings
+                ? h('button', {
+                    className: 'btn btn-ghost btn-sm printings-show-all',
+                    onClick: function() { setShowAllPrintings(true); }
+                  }, 'Show All ' + otherPrintings.length + ' Printings')
+                : null
+            )
+          : null
       )
     )
   );
