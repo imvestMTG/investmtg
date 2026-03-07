@@ -1,19 +1,12 @@
 /* topdeck-api.js — TopDeck.gg REST API v2 wrapper
  * API docs: https://topdeck.gg/docs/tournaments-v2
- * REST endpoint: https://topdeck.gg/api
- * Requires API key in Authorization header (free to obtain)
- * Rate limit: 200 requests/minute
- *
- * IMPORTANT: This wrapper requires a TopDeck.gg API key.
- * Get one free at: https://topdeck.gg/account
- * Set via: setTopDeckApiKey('your-key-here')
+ * API key is stored server-side in the CORS proxy worker.
+ * All requests route through the proxy — no secrets in browser JS.
  *
  * Attribution required: "Data provided by TopDeck.gg"
  */
 
 var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
-var API_BASE = 'https://topdeck.gg/api';
-var _apiKey = null;
 
 /* Simple cache — 10 min TTL */
 var _cache = {};
@@ -30,38 +23,14 @@ function cached(key, fn) {
   });
 }
 
-/**
- * Set the TopDeck.gg API key.
- * @param {string} key
- */
-export function setTopDeckApiKey(key) {
-  _apiKey = key;
-}
-
-/**
- * Check if API key is configured.
- * @returns {boolean}
- */
-export function hasApiKey() {
-  return !!_apiKey;
-}
-
-/* Internal fetch helper */
+/* Internal fetch helper — routes through /topdeck proxy path */
 function tdFetch(method, path, body) {
-  if (!_apiKey) {
-    console.warn('[TopDeck] No API key set. Call setTopDeckApiKey() first.');
-    return Promise.resolve(null);
-  }
-
-  /* Route through CORS proxy */
-  var targetUrl = API_BASE + path;
-  var proxyUrl = PROXY_URL + '/?target=' + encodeURIComponent(targetUrl);
+  var proxyUrl = PROXY_URL + '/topdeck' + path;
 
   var opts = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-TD-Auth': _apiKey,
       'X-Original-Method': method
     }
   };

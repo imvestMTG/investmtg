@@ -1,7 +1,8 @@
-/* justtcg-api.js — JustTCG pricing API integration */
+/* justtcg-api.js — JustTCG pricing API integration
+ * API key is stored server-side in the CORS proxy worker.
+ * All requests route through the proxy — no secrets in browser JS. */
 
-var JUSTTCG_KEY = 'tcg_1f6c8c6d907f42a0aacba9ff6005300c';
-var JUSTTCG_BASE = 'https://api.justtcg.com/v1';
+var PROXY_BASE = 'https://investmtg-proxy.bloodshutdawn.workers.dev/justtcg';
 
 /* ── In-memory cache with TTL ── */
 var jtcgCache = {};
@@ -17,24 +18,23 @@ function setCache(key, data) {
   jtcgCache[key] = { ts: Date.now(), data: data };
 }
 
-/* ── Core fetch with error handling ── */
-function jtcgFetch(url) {
-  return fetch(url, {
-    headers: { 'x-api-key': JUSTTCG_KEY }
-  }).then(function(res) {
+/* ── Core fetch via proxy ── */
+function jtcgFetch(queryParams) {
+  var url = PROXY_BASE + '?path=/v1/cards';
+  Object.keys(queryParams).forEach(function(key) {
+    url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(queryParams[key]);
+  });
+  return fetch(url).then(function(res) {
     if (res.status === 429) throw new Error('JustTCG rate limit reached');
     if (!res.ok) throw new Error('JustTCG API error: ' + res.status);
     return res.json();
   });
 }
 
-function jtcgPost(url, body) {
-  return fetch(url, {
+function jtcgPost(body) {
+  return fetch(PROXY_BASE + '?path=/v1/cards', {
     method: 'POST',
-    headers: {
-      'x-api-key': JUSTTCG_KEY,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(function(res) {
     if (res.status === 429) throw new Error('JustTCG rate limit reached');
@@ -51,11 +51,12 @@ export function getJustTCGPricing(tcgplayerId, opts) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  var url = JUSTTCG_BASE + '/cards?tcgplayerId=' + encodeURIComponent(tcgplayerId) +
-    '&include_price_history=true&priceHistoryDuration=' + historyDuration +
-    '&include_statistics=7d,30d,90d';
-
-  return jtcgFetch(url).then(function(result) {
+  return jtcgFetch({
+    tcgplayerId: tcgplayerId,
+    include_price_history: 'true',
+    priceHistoryDuration: historyDuration,
+    include_statistics: '7d,30d,90d'
+  }).then(function(result) {
     if (result && result.data && result.data.length > 0) {
       var card = result.data[0];
       var processed = processJustTCGCard(card);
@@ -69,7 +70,7 @@ export function getJustTCGPricing(tcgplayerId, opts) {
   });
 }
 
-/* ── Batch lookup by TCGplayer IDs (up to 20 on free tier) ── */
+/* ── Batch lookup by TCGplayer IDs (up to 20 per request) ── */
 export function batchJustTCGPricing(tcgplayerIds) {
   if (!tcgplayerIds || tcgplayerIds.length === 0) return Promise.resolve([]);
 
@@ -99,7 +100,7 @@ export function batchJustTCGPricing(tcgplayerIds) {
     var body = batch.map(function(id) {
       return { tcgplayerId: String(id) };
     });
-    return jtcgPost(JUSTTCG_BASE + '/cards', body).then(function(result) {
+    return jtcgPost(body).then(function(result) {
       if (result && result.data) {
         result.data.forEach(function(card) {
           var processed = processJustTCGCard(card);
@@ -125,10 +126,14 @@ export function getTrendingCards(period) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  var url = JUSTTCG_BASE + '/cards?game=magic-the-gathering&orderBy=' + orderBy +
-    '&limit=10&min_price=1&include_price_history=false&include_statistics=7d,30d';
-
-  return jtcgFetch(url).then(function(result) {
+  return jtcgFetch({
+    game: 'magic-the-gathering',
+    orderBy: orderBy,
+    limit: '10',
+    min_price: '1',
+    include_price_history: 'false',
+    include_statistics: '7d,30d'
+  }).then(function(result) {
     if (result && result.data) {
       var processed = result.data.map(processJustTCGCard);
       setCache(cacheKey, processed);
@@ -148,10 +153,15 @@ export function getBiggestDrops(period) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  var url = JUSTTCG_BASE + '/cards?game=magic-the-gathering&orderBy=' + orderBy +
-    '&order=asc&limit=10&min_price=1&include_price_history=false&include_statistics=7d,30d';
-
-  return jtcgFetch(url).then(function(result) {
+  return jtcgFetch({
+    game: 'magic-the-gathering',
+    orderBy: orderBy,
+    order: 'asc',
+    limit: '10',
+    min_price: '1',
+    include_price_history: 'false',
+    include_statistics: '7d,30d'
+  }).then(function(result) {
     if (result && result.data) {
       var processed = result.data.map(processJustTCGCard);
       setCache(cacheKey, processed);

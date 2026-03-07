@@ -4,15 +4,13 @@
  */
 import React from 'react';
 import { getTopCommanders, getCommanderDetail, getRecentTournaments, getStaples } from '../utils/edhtop16-api.js';
-import { setTopDeckApiKey, getRecentCEDHTournaments } from '../utils/topdeck-api.js';
+import { getRecentCEDHTournaments } from '../utils/topdeck-api.js';
 /* Scryfall named card image URL — returns art_crop via redirect */
 function scryfallArtUrl(cardName) {
   return 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(cardName) + '&format=image&version=art_crop';
 }
 import { SkeletonCard } from './shared/SkeletonCard.js';
 
-/* Initialize TopDeck API key */
-setTopDeckApiKey('d9ee7b1e-8732-4f73-984a-8c7c8fa2c769');
 var h = React.createElement;
 
 /* ---- Color identity helpers ---- */
