@@ -31,7 +31,7 @@ export function searchCards(query) {
 }
 
 export function searchCardsCheapest(query) {
-  return apiFetch(BASE + '/cards/search?q=' + encodeURIComponent(query) + '+has%3Ausd&order=usd&dir=asc');
+  return apiFetch(BASE + '/cards/search?q=' + encodeURIComponent(query) + '+usd%3E0.01+has%3Ausd+-is%3Adigital&order=usd&dir=asc');
 }
 
 export function getNamedCard(name) {
