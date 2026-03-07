@@ -8,47 +8,69 @@ var h = React.createElement;
 var GUAM_STORES = [
   {
     id: 's1',
-    name: 'Geek Out Guam',
-    badge: 'Featured Store',
-    address: 'Tamuning, GU 96913',
-    phone: '(671) 477-4335',
-    website: 'https://geekoutguam.com',
-    hours: 'Mon–Sat 10am–7pm, Sun 12–5pm',
-    tags: ['Single Cards', 'Sealed Packs', 'Tournaments', 'Commander Night'],
-    description: 'Guam\'s premier hobby store. Full selection of MTG singles, sealed product, and weekly FNM events. Knowledgeable staff and competitive pricing.'
+    name: 'The Inventory',
+    badge: 'Game Store',
+    address: 'Hag\u00e5t\u00f1a, GU 96910',
+    phone: null,
+    website: 'https://www.instagram.com/theinventoryguam/',
+    hours: 'Check Instagram for hours',
+    tags: ['MTG', 'Commander Night', 'Board Games', 'Community Hub'],
+    description: 'Hag\u00e5t\u00f1a game store and community gathering spot. Hosts weekly Commander nights every Thursday. A staple in the Guam MTG community.'
   },
   {
     id: 's2',
-    name: 'The Grid GU',
-    badge: 'Local Store',
-    address: 'Dededo, GU 96929',
-    phone: null,
-    website: null,
-    hours: null,
-    tags: ['Singles', 'Casual Play', 'Trades Welcome'],
-    description: 'Local game store in Dededo. Trades welcome. Relaxed atmosphere for casual and competitive players alike.'
+    name: 'Geek Out Next Level',
+    badge: 'WPN Store',
+    address: 'Micronesia Mall, Dededo, GU 96929',
+    phone: '(671) 477-4335',
+    website: 'https://www.instagram.com/geekoutnextlevel/',
+    hours: 'Mall hours \u2014 check store for event times',
+    tags: ['MTG', 'WPN Authorized', 'Commander', 'Draft', 'Sealed Product'],
+    description: 'WPN-authorized game store in Micronesia Mall. Hosts Saturday Commander and Sunday Limited/Draft events. Full selection of MTG singles and sealed product.'
   },
   {
     id: 's3',
-    name: 'Fokai Guam',
+    name: 'My Wife Told Me To Sell It',
     badge: 'Collectibles',
+    address: 'Dededo, GU 96929',
+    phone: null,
+    website: null,
+    hours: 'Check Google Maps for hours',
+    tags: ['TCG', 'Collectibles', 'Trades Welcome', '5.0\u2605 Rating'],
+    description: 'Popular collectibles shop in Dededo with a perfect 5.0-star Google rating from 71+ reviews. Carries trading cards including MTG alongside other collectibles.'
+  },
+  {
+    id: 's4',
+    name: "Fraim's Collectibles",
+    badge: 'Collectibles',
+    address: 'Mangilao, GU 96913',
+    phone: null,
+    website: null,
+    hours: null,
+    tags: ['TCG', 'Collectibles', 'Singles'],
+    description: 'Mangilao-based collectibles dealer carrying TCG products including Magic: The Gathering singles and sealed product.'
+  },
+  {
+    id: 's5',
+    name: 'Poke Violet 671',
+    badge: 'TCG Shop',
     address: 'Hag\u00e5t\u00f1a, GU 96910',
     phone: null,
     website: null,
     hours: null,
-    tags: ['Collectibles', 'Singles', 'Local Culture'],
-    description: 'Guam-rooted collectibles shop in Hag\u00e5t\u00f1a. Carries MTG singles alongside other island collectibles.'
+    tags: ['TCG', 'Pokemon', 'MTG', 'One Piece'],
+    description: 'Hag\u00e5t\u00f1a TCG shop carrying Pokemon, Magic: The Gathering, One Piece, and other trading card games.'
   },
   {
-    id: 's4',
-    name: 'Inventory Guam',
-    badge: 'Game Store',
-    address: 'Tamuning, GU 96913',
+    id: 's6',
+    name: 'Expensive Dreams',
+    badge: 'Collectibles',
+    address: 'Tumon, GU 96913',
     phone: null,
     website: null,
     hours: null,
-    tags: ['MTG', 'Board Games', 'Sealed Product'],
-    description: 'Tamuning game store carrying Magic, sealed product, and board games. Community events and beginner-friendly.'
+    tags: ['TCG', 'Collectibles', 'Premium Cards'],
+    description: 'Tumon-based collectibles shop. Carries premium trading cards and collectibles.'
   }
 ];
 
@@ -316,11 +338,11 @@ function StoreCard({ store }) {
         h(MapPinIcon, { className: 'store-icon' }),
         h('span', null, store.address)
       ),
-      h('div', { className: 'store-detail' },
+      store.phone && h('div', { className: 'store-detail' },
         h(PhoneIcon, { className: 'store-icon' }),
         h('a', { href: 'tel:' + store.phone }, store.phone)
       ),
-      h('div', { className: 'store-detail' },
+      store.hours && h('div', { className: 'store-detail' },
         h(ClockIcon, { className: 'store-icon' }),
         h('span', null, store.hours)
       ),

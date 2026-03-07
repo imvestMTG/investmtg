@@ -14,25 +14,29 @@ var COMMUNITY_EVENTS = [
     title: 'TCG Con 2026',
     date: '2026-03-21',
     dateLabel: 'Sat, March 21',
-    time: '11:00 AM — 7:00 PM',
+    time: '11:00 AM \u2014 7:00 PM',
     location: 'Don Don Donki, Guam',
     host: 'Littleroot Collectables',
-    description: 'The ultimate trading card showdown — vendors, community vibes, and exciting finds. Pokemon, MTG, One Piece, and more.',
+    description: 'The ultimate trading card showdown \u2014 vendors, community vibes, and exciting finds. Pokemon, MTG, One Piece, and more.',
     admission: 'Pre-sold $10 / Door $15 / Kids 12 & under FREE',
     link: 'https://theguamguide.com/tcg-con-2026',
-    tags: ['TCG', 'Convention', 'All Ages']
+    tags: ['TCG', 'Convention', 'All Ages'],
+    image: './images/event-tcgcon.jpg',
+    featured: true
   },
   {
     title: 'MTG Commander Night',
     date: 'recurring',
     dateLabel: 'Every Thursday',
     time: 'Evening',
-    location: 'The Inventory, Hagåtña',
+    location: 'The Inventory, Hag\u00e5t\u00f1a',
     host: 'The Inventory',
     description: 'Weekly Commander night. Bring your deck and play with the local community.',
     admission: 'Free',
     link: 'https://www.instagram.com/theinventoryguam/',
-    tags: ['MTG', 'Commander', 'Weekly']
+    tags: ['MTG', 'Commander', 'Weekly'],
+    image: './images/event-commander.jpg',
+    featured: false
   },
   {
     title: 'MTG Weekend Events',
@@ -44,7 +48,9 @@ var COMMUNITY_EVENTS = [
     description: 'Saturdays: Commander. Sundays: Limited/Draft. WPN-authorized Magic events.',
     admission: 'Varies by event',
     link: 'https://www.instagram.com/geekoutnextlevel/',
-    tags: ['MTG', 'WPN', 'Tournament']
+    tags: ['MTG', 'WPN', 'Tournament'],
+    image: './images/event-weekend.jpg',
+    featured: false
   }
 ];
 
@@ -200,40 +206,58 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
       )
     ),
     h('div', { className: 'container' },
-      getUpcomingEvents().length > 0 && h('section', { className: 'events-section' },
-        h('h2', null, '\uD83D\uDCC5 Community Events'),
-        h('div', { className: 'events-grid' },
-          getUpcomingEvents().map(function(evt) {
-            var isSpecial = evt.date !== 'recurring';
-            return h('a', {
-              key: evt.title,
-              className: 'event-card' + (isSpecial ? ' event-card--featured' : ''),
-              href: evt.link,
-              target: '_blank',
-              rel: 'noopener'
-            },
-              isSpecial && h('div', { className: 'event-badge' }, 'Upcoming'),
-              h('div', { className: 'event-date' }, evt.dateLabel),
-              h('h3', { className: 'event-title' }, evt.title),
-              h('p', { className: 'event-desc' }, evt.description),
-              h('div', { className: 'event-meta' },
-                h('span', { className: 'event-meta-item' }, h(MapPinIcon, { className: 'event-icon' }), ' ', evt.location),
-                h('span', { className: 'event-meta-item' }, h(ClockIcon, { className: 'event-icon' }), ' ', evt.time)
-              ),
-              h('div', { className: 'event-footer' },
-                h('span', { className: 'event-host' }, 'Hosted by ', evt.host),
-                h('span', { className: 'event-admission' }, evt.admission)
-              ),
-              h('div', { className: 'event-tags' },
-                evt.tags.map(function(tag) {
-                  return h('span', { key: tag, className: 'event-tag' }, tag);
-                })
-              )
-            );
-          })
-        )
-      ),
-      h('section', { className: 'watchlist-section' },
+      getUpcomingEvents().length > 0 && (function() {
+        var events = getUpcomingEvents();
+        var featuredEvt = events.filter(function(e) { return e.featured; })[0] || events[0];
+        var otherEvts = events.filter(function(e) { return e !== featuredEvt; });
+
+        function renderEventCard(evt, isFeatured) {
+          var isSpecial = evt.date !== 'recurring';
+          return h('a', {
+            key: evt.title,
+            className: 'event-card scroll-reveal' + (isFeatured ? ' event-card--featured' : ' event-card--small'),
+            href: evt.link,
+            target: '_blank',
+            rel: 'noopener'
+          },
+            h('div', { className: 'event-card-bg', style: { backgroundImage: 'url(' + evt.image + ')' } }),
+            h('div', { className: 'event-card-overlay' }),
+            h('div', { className: 'event-date-chip' }, evt.dateLabel),
+            isSpecial && h('div', { className: 'event-badge' }, 'Upcoming'),
+            h('h3', { className: 'event-title' }, evt.title),
+            h('p', { className: 'event-desc' }, evt.description),
+            h('div', { className: 'event-meta' },
+              h('span', { className: 'event-meta-item' }, h(MapPinIcon, { className: 'event-icon' }), ' ', evt.location),
+              h('span', { className: 'event-meta-item' }, h(ClockIcon, { className: 'event-icon' }), ' ', evt.time)
+            ),
+            h('div', { className: 'event-footer' },
+              h('span', { className: 'event-host' }, 'Hosted by ', evt.host),
+              h('span', { className: 'event-admission' }, evt.admission)
+            ),
+            h('div', { className: 'event-tags' },
+              evt.tags.map(function(tag) {
+                return h('span', { key: tag, className: 'event-tag' }, tag);
+              })
+            )
+          );
+        }
+
+        return h('section', { className: 'events-section' },
+          h('div', { className: 'events-section-header' },
+            h('h2', null, 'Community Events'),
+            h('p', { className: 'events-section-subtitle' }, "What's Happening on Guam")
+          ),
+          h('div', { className: 'events-grid' },
+            renderEventCard(featuredEvt, true),
+            otherEvts.length > 0 && h('div', { className: 'events-grid-sub' },
+              otherEvts.map(function(evt) {
+                return renderEventCard(evt, false);
+              })
+            )
+          )
+        );
+      })(),
+      h('section', { className: 'watchlist-section scroll-reveal' },
         h('h2', null, h(SparkleIcon, null), ' Featured Cards'),
         loading
           ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
@@ -246,7 +270,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
               onOpenListing: onOpenListing
             })
       ),
-      h('section', { className: 'watchlist-section' },
+      h('section', { className: 'watchlist-section scroll-reveal' },
         h('h2', null, h(TrendingIcon, null), ' Trending Now'),
         loading
           ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
@@ -259,7 +283,7 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
               onOpenListing: onOpenListing
             })
       ),
-      h('section', { className: 'watchlist-section' },
+      h('section', { className: 'watchlist-section scroll-reveal' },
         h('h2', null, h(StarIcon, null), ' Budget Staples'),
         loading
           ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
