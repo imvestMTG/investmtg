@@ -121,21 +121,21 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
   }
 
   var stats = [
-    { value: 'Thousands', label: 'Printed Cards' },
-    { value: '4', label: 'Local Guam Stores' },
-    { value: 'Live', label: 'Price Updates' },
-    { value: 'Free', label: 'Forever' },
+    { value: 'Real Prices', label: 'No Guesswork' },
+    { value: '4 Stores', label: 'On-Island' },
+    { value: 'Live Data', label: 'Every Visit' },
+    { value: '100% Free', label: 'Always' },
   ];
 
   return h('div', null,
     h('section', { className: 'hero' },
-      h('h1', { className: 'hero-tagline' }, 'MTG Price Intelligence'),
-      h('p', { className: 'hero-sub' }, 'Track prices, manage your portfolio, and find cards from Guam\'s local MTG stores.'),
+      h('h1', { className: 'hero-tagline' }, 'Know What Your Cards Are Worth'),
+      h('p', { className: 'hero-sub' }, 'Guam\'s only MTG marketplace with live market pricing, local store inventory, and zero markup. Real cards. Real data. Fair play.'),
       h('form', { className: 'hero-search', onSubmit: handleHeroSearch },
         h('div', { className: 'search-icon' }, h(SearchIcon, null)),
         h('input', {
           type: 'search',
-          placeholder: 'Search printed Magic cards...',
+          placeholder: 'Search any printed Magic card...',
           value: heroSearch,
           onChange: function(e) { setHeroSearch(e.target.value); },
           'aria-label': 'Search cards'
