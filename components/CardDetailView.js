@@ -108,9 +108,8 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
 
   var priceBoxes = [
-    { label: 'Market (USD)', value: formatUSD(price) },
-    { label: 'Foil (USD)', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
-    { label: 'EUR', value: card.prices && card.prices.eur ? '\u20AC' + parseFloat(card.prices.eur).toFixed(2) : 'N/A' },
+    { label: 'Market', value: formatUSD(price) },
+    { label: 'Foil', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
   ];
 
   var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
