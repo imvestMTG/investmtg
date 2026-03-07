@@ -1,5 +1,68 @@
 # investMTG — Changelog
 
+## 2026-03-08: Cloudflare Backend Infrastructure — D1 + KV + Worker v2
+
+### What Changed
+Migrated from a client-only localStorage architecture to a real server-side backend using Cloudflare's free tier services. The existing CORS proxy Worker (`investmtg-proxy`) has been upgraded to a full API backend while preserving all existing proxy routes.
+
+### New Infrastructure
+- **Cloudflare D1 Database** (`investmtg-db`) — SQLite-compatible database with 7 tables: `prices`, `portfolios`, `listings`, `sellers`, `events`, `stores`, `cart_items`
+- **Cloudflare KV Namespace** (`INVESTMTG_CACHE`) — Edge key-value cache for ticker, featured, trending, budget, and movers data with configurable TTLs
+- **Worker v2** — 790+ line unified Worker with 16 new API routes plus all existing proxy routes preserved
+
+### New API Routes
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/health` | GET | Health check (DB connectivity + version) |
+| `/api/ticker` | GET | Live prices for 16 tracked cards (KV-cached, 5min TTL) |
+| `/api/featured` | GET | Featured high-value cards (KV-cached, 1hr TTL) |
+| `/api/trending` | GET | Trending cards (KV-cached, 30min TTL) |
+| `/api/budget` | GET | Budget staples (KV-cached, 1hr TTL) |
+| `/api/search` | GET | Card search proxied to Scryfall with unique prints |
+| `/api/card/:id` | GET | Card detail with D1-cached pricing |
+| `/api/movers/:cat` | GET | Market movers by category (valuable/modern/commander/budget) |
+| `/api/portfolio` | GET/POST/DELETE | Portfolio CRUD with anonymous session cookies |
+| `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings with search, filter, sort, pagination |
+| `/api/sellers` | GET/POST | Seller registration and profile management |
+| `/api/stores` | GET | Verified Guam stores from D1 |
+| `/api/events` | GET | Community events from D1 |
+| `/api/cart` | GET/POST/DELETE | Shopping cart linked to listings |
+
+### Preserved Existing Routes
+- `/justtcg` — JustTCG API proxy (API key injected server-side)
+- `/topdeck` — TopDeck.gg API proxy (API key injected server-side)
+- `/chatbot` — AI chatbot proxy (rate-limited: 12 req/min per IP)
+- `/?target=` — Generic CORS proxy (allowlisted hosts only)
+
+### Database Schema
+- **prices** — Scryfall card price cache with images, set info, rarity, oracle text
+- **portfolios** — User portfolio entries linked to session cookies
+- **listings** — Marketplace listings with seller info, condition, pricing
+- **sellers** — Registered seller profiles
+- **events** — Community events (3 seeded: TCG Con, Commander Night, MTG Weekend)
+- **stores** — Verified local stores (5 seeded: The Inventory, Geek Out, My Wife TCG, Fraim's, Poke Violet)
+- **cart_items** — Shopping cart items linked to listings
+
+### Architecture Improvements
+- **Session management** via `investmtg_session` cookie (UUID v4, HttpOnly, Secure, 1-year expiry)
+- **Rate limiting** per IP (120 req/min general, 12 req/min chatbot)
+- **Scryfall rate limiting** (100ms between calls, proper User-Agent header)
+- **Smart caching** — KV cache skips empty results to prevent caching API failures
+- **CORS** — Same origin allowlist as v1 (investmtg.com, GitHub Pages, localhost dev)
+
+### New Files in `worker/`
+- `schema.sql` — D1 database schema (7 tables)
+- `seed.sql` — Seed data for stores and events
+- `wrangler.toml` — Updated with D1 and KV binding IDs
+- `worker.js` — v2 Worker (790+ lines)
+
+### Deployment
+- Worker deployed to: `https://investmtg-proxy.bloodshutdawn.workers.dev`
+- All endpoints tested and verified live
+- Existing secrets preserved: `JUSTTCG_API_KEY`, `TOPDECK_API_KEY`
+
+---
+
 ## 2026-03-08: Marketplace Onboarding & Listing Workflow Fix
 
 ### Critical Bugs Fixed

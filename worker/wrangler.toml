@@ -6,6 +6,17 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
-# API keys are stored as encrypted secrets (wrangler secret put)
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "investmtg-db"
+database_id = "82b5e51e-5d80-4396-8fb2-d345fe54ed0f"
+
+# KV Namespace binding
+[[kv_namespaces]]
+binding = "CACHE"
+id = "624ae32ee8ab4f0db4075108f350f8e1"
+
+# API keys stored as encrypted secrets (wrangler secret put)
 # JUSTTCG_API_KEY — set via: wrangler secret put JUSTTCG_API_KEY
 # TOPDECK_API_KEY — set via: wrangler secret put TOPDECK_API_KEY

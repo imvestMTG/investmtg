@@ -1,0 +1,16 @@
+-- investMTG D1 Seed Data
+-- Run with: wrangler d1 execute investmtg-db --file=seed.sql
+
+-- Seed stores (from current stores.js)
+INSERT OR REPLACE INTO stores (id, name, badge, address, phone, website, hours, tags, description, verified, active, created_at) VALUES
+('s1', 'The Inventory', 'Game Store', 'Hagåtña, GU 96910', NULL, 'https://www.instagram.com/theinventoryguam/', 'Check Instagram for hours', '["MTG","Commander Night","Board Games","Community Hub"]', 'Hagåtña game store and community gathering spot. Hosts weekly Commander nights every Thursday. A staple in the Guam MTG community.', 1, 1, 1741305600),
+('s2', 'Geek Out Next Level', 'WPN Store', 'Micronesia Mall, Dededo, GU 96929', '(671) 477-4335', 'https://www.instagram.com/geekoutnextlevel/', 'Mall hours — check store for event times', '["MTG","WPN Authorized","Commander","Draft","Sealed Product"]', 'WPN-authorized game store in Micronesia Mall. Hosts Saturday Commander and Sunday Limited/Draft events. Full selection of MTG singles and sealed product.', 1, 1, 1741305600),
+('s3', 'My Wife Told Me To Sell It', 'TCG & Collectibles', 'Compadres Mall – Grand Bazaar Unit K9, 562 Harmon Loop Rd, Dededo, GU 96929', '(671) 637-4335', 'https://www.mywifetcg.com', 'Mon/Wed/Thu 12–7 PM • Tue/Fri 12–6 PM • Sat 1–7 PM • Sun Closed', '["TCG","Pokémon","MTG","One Piece","Buy/Sell/Trade","5.0★ Rating"]', 'Family-run TCG and collectibles shop in Dededo with a perfect 5.0-star Google rating. Carries Pokémon, MTG, One Piece, blind boxes, and more. Shop online with in-store pickup. Buy, sell, and trade welcome.', 1, 1, 1741305600),
+('s4', 'Fraim''s Collectibles', 'Collectibles', 'Building across Mangilao Mobil, 2nd Floor (above Selfpix), Mangilao, GU 96913', NULL, 'https://www.instagram.com/fraimscollectibles/', 'Mon–Sat 10 AM–6 PM', '["TCG","Pokémon","Diecast","Funko Pop","Buy/Sell/Trade"]', 'Mangilao collectibles shop carrying Pokémon TCG, sports cards, diecast, Funko Pops, and Pop Mart. Hosts community events including the Guam Collectors Convention. Buy, sell, and trade welcome.', 1, 1, 1741305600),
+('s5', 'Poke Violet 671', 'TCG Shop', '238 Archbishop Flores St, Unit 303 (DNA Building), Hagåtña, GU 96910', NULL, 'https://www.pokeviolet671.com', 'Evenings — check Instagram for daily hours', '["TCG","Pokémon","One Piece","Union Arena"]', 'Hagåtña TCG shop specializing in Pokémon and One Piece trading cards. Located in the DNA Building. Active in the local convention scene including TCG Con and Guam Poké Con.', 1, 1, 1741305600);
+
+-- Seed events (from current events-config.js)
+INSERT OR REPLACE INTO events (id, title, subtitle, host, location, event_date, cost, tags, image_key, recurring, active, created_at) VALUES
+(1, 'TCG Con 2026', 'Las Vegas Convention Center', 'TCG Con', 'Las Vegas, NV', 'July 2026', NULL, '["TCG","Convention","All Ages"]', 'images/event-tcgcon.jpg', 0, 1, 1741305600),
+(2, 'Commander Night', 'Weekly at Geek Out Guam', 'Geek Out Next Level', 'Micronesia Mall, Dededo', 'Every Thursday', 'Free', '["MTG","Commander","Weekly"]', 'images/event-commander.jpg', 1, 1, 1741305600),
+(3, 'MTG Weekend', 'Modern & Standard', 'Geek Out Next Level', 'Micronesia Mall, Dededo', 'Monthly', 'Varies by event', '["MTG","WPN Tournament","Monthly"]', 'images/event-weekend.jpg', 1, 1, 1741305600);

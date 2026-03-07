@@ -9,7 +9,8 @@ It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded 
 - Use `var h = React.createElement;` pattern — NO JSX
 - Use `var ref = React.useState()` with `ref[0]`/`ref[1]` — no destructuring
 - All imports from `'react'` via esm.sh import maps
-- Static site, no backend server — use localStorage for data persistence
+- Frontend is static (GitHub Pages), backend is Cloudflare Worker v2 with D1 + KV
+- User data (portfolios, listings, cart) persists in D1 database via anonymous session cookies
 - All CSS goes into the existing `style.css` file (minified, ~105KB)
 - Keep the existing design system (CSS variables from `:root` and `[data-theme]`)
 - File naming: PascalCase for components, lowercase for utils
@@ -128,10 +129,36 @@ All data must be real and verifiable:
 - **Deferred Ticker**: API fetch delayed 2s; cached data shows instantly
 - **Lighthouse**: Desktop 96, Mobile 68 → targeting 85+
 
-## Cloudflare Worker (`investmtg-proxy`)
+## Cloudflare Worker (`investmtg-proxy` v2)
 
-The Worker handles API key injection and CORS proxying. Source is in `worker/`.
+The Worker is the unified backend for investmtg.com — combining API gateway, CORS proxy, D1 database, and KV edge caching. Source is in `worker/`.
 
+### Backend Services (Cloudflare Free Tier)
+| Service | Resource | Purpose |
+|---------|----------|---------|
+| D1 Database | `investmtg-db` | 7-table SQLite database |
+| KV Namespace | `INVESTMTG_CACHE` | Edge cache with configurable TTLs |
+| Worker | `investmtg-proxy` | 790+ line unified backend |
+
+### API Routes
+| Route | Method | Cache | Purpose |
+|-------|--------|-------|---------|
+| `/api/health` | GET | — | Health check |
+| `/api/ticker` | GET | KV 5min | 16 tracked card prices |
+| `/api/featured` | GET | KV 1hr | High-value featured cards |
+| `/api/trending` | GET | KV 30min | Trending cards |
+| `/api/budget` | GET | KV 1hr | Budget staples |
+| `/api/search?q=` | GET | — | Card search (Scryfall proxy) |
+| `/api/card/:id` | GET | D1 10min | Card detail |
+| `/api/movers/:cat` | GET | KV 30min | Market movers by category |
+| `/api/portfolio` | GET/POST/DELETE | — | Portfolio CRUD (session) |
+| `/api/listings` | GET/POST/PUT/DELETE | — | Marketplace listings |
+| `/api/sellers` | GET/POST | — | Seller profiles |
+| `/api/stores` | GET | — | Verified Guam stores |
+| `/api/events` | GET | — | Community events |
+| `/api/cart` | GET/POST/DELETE | — | Shopping cart |
+
+### Proxy Routes (preserved from v1)
 | Route | Target | Auth |
 |-------|--------|------|
 | `/justtcg` | api.justtcg.com | `X-Api-Key` header (encrypted secret) |
@@ -139,9 +166,18 @@ The Worker handles API key injection and CORS proxying. Source is in `worker/`.
 | `/chatbot` | text.pollinations.ai | None (rate-limited: 12 req/min per IP) |
 | `/?target=` | Allowlisted hosts | None |
 
+### Database Schema (`schema.sql`)
+- `prices` — Scryfall card price cache
+- `portfolios` — User portfolio entries (session-keyed)
+- `listings` — Marketplace listings
+- `sellers` — Registered seller profiles
+- `events` — Community events
+- `stores` — Verified local stores
+- `cart_items` — Shopping cart items
+
 **API keys are stored as encrypted Cloudflare Worker secrets, not in source code.**
 
-Deploy: `cd worker/ && wrangler deploy` (requires Cloudflare API token with Workers permissions)
+Deploy: `cd worker/ && npx wrangler deploy` (requires Cloudflare API token with Workers + D1 + KV permissions)
 
 ## Deployment
 - GitHub repo: `imvestMTG/investmtg` (branch: `main`)

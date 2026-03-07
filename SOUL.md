@@ -113,15 +113,46 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 | cEDH tournament data | [TopDeck.gg API](https://topdeck.gg) | On meta page visit (10-min cache) |
 | Decklist imports | [Moxfield API](https://moxfield.com) | On demand |
 | AI chatbot | [Pollinations AI](https://pollinations.ai) via Worker proxy | Real-time (free, rate-limited) |
-| Local store info | Manually verified | Updated as needed |
-| Marketplace listings | User-submitted | Real-time (localStorage) |
+| Local store info | D1 database (manually verified) | Updated as needed |
+| Marketplace listings | User-submitted (D1 database) | Real-time (server-side) |
+| Portfolio data | D1 database (session cookies) | Real-time (server-side) |
 | Payment processing | [SumUp](https://sumup.com) | Real-time |
 
 ---
 
 ## API Architecture
 
-investMTG uses a **CORS proxy worker** (`investmtg-proxy`) deployed on Cloudflare Workers. The proxy handles:
+investMTG uses a **unified Cloudflare Worker** (`investmtg-proxy` v2) as its backend, combining API gateway, CORS proxy, D1 database, and KV edge caching.
+
+### Backend Services (Cloudflare Free Tier)
+| Service | Resource | Purpose |
+|---------|----------|---------|
+| D1 Database | `investmtg-db` | 7-table SQLite database for prices, portfolios, listings, sellers, stores, events, cart |
+| KV Namespace | `INVESTMTG_CACHE` | Edge cache for ticker, featured, trending, budget, movers data |
+| Worker | `investmtg-proxy` | Unified API backend + CORS proxy (790+ lines) |
+
+### API Routes
+
+**Data endpoints** (D1 + KV backed):
+
+| Route | Method | Cache | Purpose |
+|-------|--------|-------|---------|
+| `/api/health` | GET | — | Health check |
+| `/api/ticker` | GET | KV 5min | 16 tracked card prices |
+| `/api/featured` | GET | KV 1hr | High-value featured cards |
+| `/api/trending` | GET | KV 30min | Trending cards |
+| `/api/budget` | GET | KV 1hr | Budget staples |
+| `/api/search?q=` | GET | — | Card search (Scryfall proxy) |
+| `/api/card/:id` | GET | D1 10min | Card detail |
+| `/api/movers/:cat` | GET | KV 30min | Market movers by category |
+| `/api/portfolio` | GET/POST/DELETE | — | Portfolio CRUD (session) |
+| `/api/listings` | GET/POST/PUT/DELETE | — | Marketplace listings |
+| `/api/sellers` | GET/POST | — | Seller profiles |
+| `/api/stores` | GET | — | Verified Guam stores |
+| `/api/events` | GET | — | Community events |
+| `/api/cart` | GET/POST/DELETE | — | Shopping cart |
+
+**Proxy routes** (preserved from v1):
 
 | Route | Target | Purpose |
 |-------|--------|---------|
@@ -133,10 +164,12 @@ investMTG uses a **CORS proxy worker** (`investmtg-proxy`) deployed on Cloudflar
 Security measures:
 - Only allows requests from whitelisted origins (investmtg.com, localhost dev)
 - API keys are stored as **encrypted Cloudflare secrets** — never in source code or environment variables
-- Rate limiting on chatbot to prevent abuse
+- Rate limiting: 120 req/min general, 12 req/min chatbot (per IP)
+- Session cookies: HttpOnly, Secure, SameSite=Lax, 1-year expiry
+- Scryfall rate limiting: 100ms between calls with proper User-Agent
 - Input sanitization on all user-facing endpoints
 - Worker source code is version-controlled in the repo under `worker/`
-- Does not store, modify, or log any data passing through
+- Smart KV caching: empty results are not cached to prevent stale failures
 
 ---
 
@@ -150,18 +183,21 @@ Security measures:
 
 ## Technology
 
-investMTG is a React 18 single-page application hosted on GitHub Pages with no backend server. All user data persists in the browser via localStorage. This means:
-- No user data is sent to any server (except API calls for card/price/meta data)
+investMTG is a React 18 single-page application hosted on GitHub Pages with a Cloudflare Worker backend (v2) providing D1 database storage and KV edge caching. This means:
+- User data (portfolios, listings, cart) is stored server-side in D1, keyed by anonymous session cookies
+- No user accounts, no passwords, no PII collected
 - No analytics tracking
-- No cookies (except Cloudflare security cookies on API proxy)
-- Complete privacy
+- Session cookies are HttpOnly, Secure, and used only for data association
+- Complete privacy — no tracking, no fingerprinting
 - Payments are processed directly by SumUp — card details never touch our servers
 
 ### Tech Stack
 - **Frontend:** React 18 via esm.sh import maps (no build tools, no JSX)
 - **Hosting:** GitHub Pages (www.investmtg.com)
+- **Backend:** Cloudflare Worker v2 (D1 database + KV cache + API proxy)
+- **Database:** Cloudflare D1 (`investmtg-db`) — 7 tables
+- **Cache:** Cloudflare KV (`INVESTMTG_CACHE`) — edge-cached market data
 - **APIs:** Scryfall, JustTCG, EDH Top 16, TopDeck.gg, Moxfield, Pollinations AI
-- **CORS Proxy:** Cloudflare Worker (investmtg-proxy.bloodshutdawn.workers.dev)
 - **Payments:** SumUp Swift Checkout
 - **Fonts:** Clash Display + Satoshi (FontShare)
 
@@ -174,7 +210,7 @@ If you're contributing to investMTG, follow these rules:
 2. Always cite data sources
 3. If a feature requires data we don't have, say so honestly — don't fake it
 4. Test with real API responses, not mocked data
-5. Keep the site static — no backend dependencies beyond the CORS proxy
+5. Backend changes go through the Worker (`worker/worker.js`) — frontend remains static on GitHub Pages
 6. Respect API rate limits: Scryfall (100ms between calls), JustTCG (paid tier limits), TopDeck (200/min)
 7. Never embed sensitive API keys in client-side code — use CORS proxy for key-protected APIs where possible
 8. **Post-Deployment Documentation Rule:** After every successful deployment, all project documentation must be securely updated before the work is considered complete. This includes:

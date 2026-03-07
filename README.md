@@ -43,10 +43,12 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **Pattern**: `React.createElement` via esm.sh import maps
 - **Hosting**: GitHub Pages at www.investmtg.com
 - **Domain**: Cloudflare DNS with HTTPS
-- **CORS Proxy**: Cloudflare Worker (investmtg-proxy.bloodshutdawn.workers.dev)
+- **Backend**: Cloudflare Worker v2 (investmtg-proxy.bloodshutdawn.workers.dev)
+- **Database**: Cloudflare D1 (`investmtg-db`) — 7 tables (prices, portfolios, listings, sellers, stores, events, cart)
+- **Cache**: Cloudflare KV (`INVESTMTG_CACHE`) — edge-cached market data with configurable TTLs
 - **Payments**: SumUp (card) + Swift Checkout SDK (Apple Pay / Google Pay)
 - **APIs**: Scryfall, JustTCG, EDH Top 16, TopDeck.gg, Moxfield, Pollinations AI
-- **Storage**: Browser localStorage (no backend server)
+- **Storage**: Cloudflare D1 database (server-side) with anonymous session cookies
 - **Fonts**: Clash Display + Satoshi (FontShare)
 
 ## Project Structure
@@ -119,9 +121,11 @@ investmtg/
 │   └── marketplace-data.js # Marketplace data aggregation (loads seller listings from localStorage, persists standalone listings)
 │
 ├── worker/
-│   ├── worker.js           # Cloudflare Worker source (CORS proxy + chatbot + API routing)
-│   ├── wrangler.toml       # Worker deployment config (secrets stored encrypted)
-│   └── README.md           # Worker deployment instructions
+│   ├── worker.js           # Cloudflare Worker v2 (D1 + KV backend + CORS proxy, 790+ lines)
+│   ├── wrangler.toml       # Worker deployment config with D1 and KV binding IDs
+│   ├── schema.sql          # D1 database schema (7 tables)
+│   ├── seed.sql            # Seed data (5 Guam stores, 3 community events)
+│   └── README.md           # Worker deployment and database management instructions
 │
 └── .well-known/
     └── apple-developer-merchantid-domain-association  # Apple Pay verification
@@ -132,7 +136,7 @@ investmtg/
 - `var h = React.createElement;` — no JSX anywhere
 - `var ref = React.useState(x); var val = ref[0], setVal = ref[1];` — no destructuring
 - All imports use bare specifiers resolved by the import map in index.html
-- Static site with no backend — localStorage for all persistence
+- Frontend is static on GitHub Pages — backend data stored in Cloudflare D1 via Worker API
 - All CSS in `style.css` (minified) — no CSS-in-JS or modules
 - Mobile-first responsive design with dark/light theme support
 - USD only — no EUR, GBP, tix, or other currencies displayed
@@ -167,8 +171,10 @@ Key rules:
 | [Moxfield API](https://moxfield.com) | Decklist imports | No key required |
 | [Pollinations AI](https://pollinations.ai) | Chatbot responses | No key required |
 | [SumUp](https://developer.sumup.com) | Card payments | Merchant code + public key |
-| [Cloudflare Workers](https://workers.cloudflare.com) | CORS proxy, API key injection, chatbot relay, rate limiting | Encrypted secrets |
-| [GitHub Pages](https://pages.github.com) | Static hosting | Push to `main` branch |
+| [Cloudflare Workers](https://workers.cloudflare.com) | Unified backend: API gateway, CORS proxy, D1 database, KV cache | Encrypted secrets |
+| [Cloudflare D1](https://developers.cloudflare.com/d1/) | SQLite database (prices, portfolios, listings, sellers, stores, events, cart) | Worker binding |
+| [Cloudflare KV](https://developers.cloudflare.com/kv/) | Edge key-value cache (ticker, featured, trending, budget, movers) | Worker binding |
+| [GitHub Pages](https://pages.github.com) | Static frontend hosting | Push to `main` branch |
 | [Cloudflare](https://cloudflare.com) | DNS + CDN + Worker hosting | API tokens (not in repo) |
 
 ## Development
