@@ -1,5 +1,34 @@
 # investMTG — Changelog
 
+## 2026-03-07: Multi-Source API Integration — JustTCG + Moxfield
+
+### New Features
+- **Market Movers page** (`#movers`): Shows biggest gainers and drops in MTG card prices over 7/30/90-day periods. Data from JustTCG API.
+- **Deck Browser page** (`#decks`): Import and browse Moxfield decklists. Paste any public Moxfield deck URL to view the full card list, grouped by type. Click any card to see its price.
+- **Price History charts**: Card detail pages now show interactive SVG price history charts with 7D/30D/90D period toggles.
+- **Condition-specific pricing**: Card detail pages show NM, LP, MP, HP, and DMG prices from JustTCG alongside Scryfall market prices.
+
+### New Files
+- `utils/justtcg-api.js` — JustTCG API wrapper with caching, batch lookups, trending cards, and price processing.
+- `utils/moxfield-api.js` — Moxfield unofficial API wrapper for fetching public decklists.
+- `components/PriceHistoryChart.js` — SVG-based price chart with period selection.
+- `components/DecklistView.js` — Moxfield deck browser with URL import and type-grouped card lists.
+- `components/MarketMoversView.js` — Biggest gainers/drops view with period tabs.
+
+### Modified Files
+- `components/CardDetailView.js` — Now fetches JustTCG data alongside Scryfall. Shows condition prices, price history chart, and multi-source attribution.
+- `components/Header.js` — Added "Movers" and "Decks" nav links.
+- `app.js` — Added routes for `#decks` and `#movers`, imported new components.
+- `index.html` — Updated CSP to allow JustTCG and Moxfield API connections. Added DNS prefetch.
+- `style.css` — Added styles for price chart, condition grid, market movers, and decklist views.
+
+### Data Sources
+- **JustTCG** (api.justtcg.com): Free tier — 1,000 calls/month, condition-specific TCGplayer pricing, 7d/30d/90d price history.
+- **Moxfield** (api2.moxfield.com): Unofficial public API for decklist data. Supports any public deck by URL/ID.
+- **Scryfall** (existing): Continues to serve as primary card data and imagery source.
+
+---
+
 ## 2026-03-07: Physical Cards Only — Remove Digital/MTGO Content
 
 ### Changes
