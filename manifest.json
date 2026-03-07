@@ -1,7 +1,7 @@
 {
   "name": "investMTG",
   "short_name": "investMTG",
-  "description": "Guam's MTG Marketplace — Track prices, manage your portfolio, and find cards from local stores.",
+  "description": "Know what your cards are worth. Guam's MTG marketplace with live market pricing, portfolio tracking, and zero markup. Real cards. Real data. Fair play.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D0F12",
