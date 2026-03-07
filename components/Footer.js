@@ -18,7 +18,11 @@ export function Footer() {
         h('a', { href: 'https://github.com/imvestMTG/investmtg/blob/main/SOUL.md', target: '_blank', rel: 'noopener' }, 'Data Integrity Policy')
       ),
       h('p', { className: 'footer-credit' },
-        'Price data via ', h('a', { href: 'https://scryfall.com', target: '_blank', rel: 'noopener' }, 'Scryfall'), '.',
+        'Prices via ', h('a', { href: 'https://scryfall.com', target: '_blank', rel: 'noopener' }, 'Scryfall'),
+        ' & ', h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener' }, 'JustTCG'),
+        '. Meta data from ', h('a', { href: 'https://edhtop16.com', target: '_blank', rel: 'noopener' }, 'EDH Top 16'),
+        ' & ', h('a', { href: 'https://topdeck.gg', target: '_blank', rel: 'noopener' }, 'TopDeck.gg'),
+        '. Decklists via ', h('a', { href: 'https://www.moxfield.com', target: '_blank', rel: 'noopener' }, 'Moxfield'), '.',
         h('br', null),
         'Built with ', h('a', { href: 'https://www.perplexity.ai/computer', target: '_blank', rel: 'noopener' }, 'Perplexity Computer'), '.'
       ),

@@ -224,7 +224,12 @@ export function SearchView({ state, updateCart, updatePortfolio, updateWatchlist
           updatePortfolio: updatePortfolio,
           updateWatchlist: updateWatchlist,
           onOpenListing: onOpenListing
-        })
+        }),
+        !loading && !error && filteredResults.length > 0 && h('p', { className: 'price-source', style: { marginTop: 'var(--space-4)' } },
+          'Card data and prices from ',
+          h('a', { href: 'https://scryfall.com', target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
+          '. Physical cards only \u2014 no digital items.'
+        )
       )
     )
   );
