@@ -1,5 +1,38 @@
 # investMTG — Changelog
 
+## 2026-03-08: Security — API Keys Moved Server-Side
+
+### API Key Migration
+- **JustTCG API key**: Removed from client-side `justtcg-api.js`. Now stored in Cloudflare Worker.
+- **TopDeck API key**: Removed from client-side `MetaView.js`. Now stored in Cloudflare Worker.
+- **SumUp public key**: Remains client-side (expected for payment SDK public keys).
+- All API requests now route through the CORS proxy at `investmtg-proxy.bloodshutdawn.workers.dev`.
+
+### CORS Proxy Worker v2
+- Added `/justtcg` route — proxies GET/POST to api.justtcg.com with key injected server-side
+- Added `/topdeck/*` route — proxies to topdeck.gg/api with key injected server-side
+- Legacy `?target=` route preserved for edhtop16 and backwards compatibility
+- Origin validation restricts requests to investmtg.com only
+
+### Code Cleanup
+- Removed `setTopDeckApiKey()` and `hasApiKey()` exports from topdeck-api.js (no longer needed)
+- Removed `JUSTTCG_KEY` constant from justtcg-api.js
+- Removed `setTopDeckApiKey('...')` call from MetaView.js
+
+### Store Data Centralized
+- Created `utils/stores.js` — single source of truth for all 5 Guam store records
+- BuyLocalModal, StoreView, CheckoutView, SellerDashboard now import from stores.js
+- Previously duplicated across 4 separate files
+
+### Dead Code Removed
+- 3 unused imports removed from app.js (`getCardPrice`, `getCardImageSmall`, `getScryfallImageUrl`)
+- 3 dead helper exports removed from helpers.js (`getSetName`, `getRarity`, `getColors`)
+
+### Image Compression
+- All event/hero images compressed: 876KB → 268KB total (70% reduction)
+
+---
+
 ## 2026-03-07: Audit Fixes — Store Lists & Data Attribution
 
 ### Store Lists Fixed
@@ -143,7 +176,7 @@
 - **SOUL.md**: Fixed EUR reference in data table
 
 ### JustTCG Upgrade
-- **justtcg-api.js**: Updated API key to paid tier (`tcg_1f6c8c6d907f42a0aacba9ff6005300c`)
+- **justtcg-api.js**: Updated API key to paid tier (key now stored server-side in CORS proxy)
 
 ### Accessibility & SEO
 - **index.html**: Added skip-to-content link, ARIA landmarks
