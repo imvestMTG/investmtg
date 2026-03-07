@@ -1,6 +1,6 @@
 /* HomeView.js — Daily-rotating homepage with live Scryfall prices */
 import React from 'react';
-import { searchCards, searchCardsCheapest, getNamedCard } from '../utils/api.js';
+import { searchCards, searchCardsCheapest } from '../utils/api.js';
 import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -77,11 +77,11 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
 
     var results = {};
 
-    // Featured & Trending use named card lookup (popular printing)
+    // Featured & Trending: search for the most expensive physical printing
     var namedSearches = featuredPicks.concat(trendingPicks).map(function(q) {
-      return getNamedCard(q).then(function(card) {
-        if (!cancelled && card && card.id) {
-          results[q] = card;
+      return searchCards(q + ' -is:digital').then(function(data) {
+        if (!cancelled && data && data.data && data.data.length > 0) {
+          results[q] = data.data[0];
         }
       }).catch(function() {});
     });
