@@ -1,6 +1,6 @@
 /* HomeView.js — Daily-rotating homepage with live Scryfall prices */
 import React from 'react';
-import { searchCards, randomCard } from '../utils/api.js';
+import { searchCards, searchCardsCheapest, getNamedCard } from '../utils/api.js';
 import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -75,16 +75,27 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
     var trendingPicks = getDailyPicks(TRENDING_POOL, 3);
     var budgetPicks = getDailyPicks(BUDGET_POOL, 3);
 
-    var searches = featuredPicks.concat(trendingPicks).concat(budgetPicks);
     var results = {};
 
-    Promise.all(searches.map(function(q) {
-      return searchCards(q).then(function(data) {
+    // Featured & Trending use named card lookup (popular printing)
+    var namedSearches = featuredPicks.concat(trendingPicks).map(function(q) {
+      return getNamedCard(q).then(function(card) {
+        if (!cancelled && card && card.id) {
+          results[q] = card;
+        }
+      }).catch(function() {});
+    });
+
+    // Budget uses cheapest printing search
+    var budgetSearches = budgetPicks.map(function(q) {
+      return searchCardsCheapest(q).then(function(data) {
         if (!cancelled && data && data.data && data.data.length > 0) {
           results[q] = data.data[0];
         }
       }).catch(function() {});
-    })).then(function() {
+    });
+
+    Promise.all(namedSearches.concat(budgetSearches)).then(function() {
       if (!cancelled) {
         setFeatured(featuredPicks.map(function(q) { return results[q]; }).filter(Boolean));
         setTrending(trendingPicks.map(function(q) { return results[q]; }).filter(Boolean));
