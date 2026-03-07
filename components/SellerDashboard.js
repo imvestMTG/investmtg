@@ -1,19 +1,12 @@
 /* SellerDashboard.js — Seller management portal */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
+import { STORE_OPTIONS } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
 var LISTING_TYPES = ['sale', 'trade'];
-var STORE_OPTIONS = [
-  { id: '', name: 'No affiliation' },
-  { id: 's1', name: 'The Inventory' },
-  { id: 's2', name: 'Geek Out Next Level' },
-  { id: 's3', name: 'My Wife Told Me To Sell It' },
-  { id: 's4', name: "Fraim's Collectibles" },
-  { id: 's5', name: 'Poke Violet 671' }
-];
 
 
 

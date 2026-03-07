@@ -29,19 +29,6 @@ export function getScryfallImageUrl(card, size) {
   return '';
 }
 
-export function getSetName(card) {
-  return card ? (card.set_name || card.set || '') : '';
-}
-
-export function getRarity(card) {
-  return card ? (card.rarity || '') : '';
-}
-
-export function getColors(card) {
-  if (!card) return [];
-  return card.colors || (card.card_faces && card.card_faces[0] ? card.card_faces[0].colors : []) || [];
-}
-
 export function debounce(fn, ms) {
   var timer;
   return function() {

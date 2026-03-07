@@ -2,15 +2,8 @@
 import React from 'react';
 import { XIcon, MapPinIcon } from './shared/Icons.js';
 import { formatUSD } from '../utils/helpers.js';
+import { GUAM_STORES_SIMPLE } from '../utils/stores.js';
 var h = React.createElement;
-
-var GUAM_STORES_SIMPLE = [
-  { id: 's1', name: 'The Inventory', address: 'Hag\u00e5t\u00f1a, GU 96910', hours: 'WPN Store' },
-  { id: 's2', name: 'Geek Out Next Level', address: 'Micronesia Mall, Dededo, GU 96929', hours: 'WPN Store' },
-  { id: 's3', name: 'My Wife Told Me To Sell It', address: 'Compadres Mall, Dededo, GU 96929', hours: 'Mon/Wed/Thu 12-7, Tue/Fri 12-6, Sat 1-7' },
-  { id: 's4', name: "Fraim's Collectibles", address: 'Mangilao, GU 96913', hours: 'Mon-Sat 10AM-6PM' },
-  { id: 's5', name: 'Poke Violet 671', address: 'DNA Building, Hag\u00e5t\u00f1a, GU 96910', hours: 'Evenings \u2022 Pok\u00e9mon/One Piece/Union Arena' },
-];
 
 export function BuyLocalModal({ card, listings, updateCart, onClose }) {
   var ref1 = React.useState(null);

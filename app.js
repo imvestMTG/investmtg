@@ -1,7 +1,6 @@
 /* investMTG — React SPA */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { getCardPrice, getCardImageSmall, getScryfallImageUrl } from './utils/helpers.js';
 import { getInitialMarketplaceData } from './utils/marketplace-data.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
