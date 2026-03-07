@@ -49,3 +49,11 @@ export function randomCard() {
 export function autocomplete(query) {
   return apiFetch(BASE + '/cards/autocomplete?q=' + encodeURIComponent(query));
 }
+
+export function getCardPrintings(oracleId) {
+  return apiFetch(BASE + '/cards/search?order=released&dir=desc&unique=prints&q=oracleid%3A' + encodeURIComponent(oracleId) + '+-is%3Adigital');
+}
+
+export function searchSet(setCode) {
+  return apiFetch(BASE + '/cards/search?order=collector_number&dir=asc&q=e%3A' + encodeURIComponent(setCode) + '+-is%3Adigital+has%3Ausd');
+}
