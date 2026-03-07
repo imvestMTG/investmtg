@@ -1,4 +1,4 @@
-/* HomeView.js */
+/* HomeView.js — Daily-rotating homepage with live Scryfall prices */
 import React from 'react';
 import { searchCards, randomCard } from '../utils/api.js';
 import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
@@ -7,9 +7,54 @@ import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-var FEATURED_QUERIES = ['black lotus', 'mox pearl', 'ancestral recall'];
-var TRENDING_QUERIES = ['ragavan nimble pilferer', 'the one ring', 'wrenn and six'];
-var BUDGET_QUERIES = ['lightning bolt', 'counterspell', 'path to exile'];
+/* ── Card pools for daily rotation ── */
+var FEATURED_POOL = [
+  'black lotus', 'mox pearl', 'ancestral recall', 'mox sapphire',
+  'mox jet', 'mox ruby', 'mox emerald', 'time walk', 'timetwister',
+  'underground sea', 'volcanic island', 'tropical island', 'bayou',
+  'tundra', 'savannah', 'scrubland', 'badlands', 'taiga', 'plateau'
+];
+
+var TRENDING_POOL = [
+  'ragavan nimble pilferer', 'the one ring', 'wrenn and six',
+  'orcish bowmasters', 'sheoldred the apocalypse', 'atraxa grand unifier',
+  'fury', 'grief', 'solitude', 'endurance', 'subtlety',
+  'bowmasters', 'up the beanstalk', 'not dead after all',
+  'preordain', 'fatal push', 'thoughtseize', 'collected company'
+];
+
+var BUDGET_POOL = [
+  'lightning bolt', 'counterspell', 'path to exile', 'swords to plowshares',
+  'cultivate', 'sol ring', 'arcane signet', 'command tower',
+  'chaos warp', 'beast within', 'nature claim', 'rampant growth',
+  'farseek', 'brainstorm', 'ponder', 'opt', 'consider',
+  'go for the throat', 'doom blade', 'terminate'
+];
+
+/* Simple seeded shuffle so the same day shows the same cards everywhere */
+function seededShuffle(arr, seed) {
+  var shuffled = arr.slice();
+  var s = seed;
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    s = (s * 16807 + 0) % 2147483647;
+    var j = s % (i + 1);
+    var tmp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = tmp;
+  }
+  return shuffled;
+}
+
+function getDaySeed() {
+  var d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+function getDailyPicks(pool, count) {
+  var seed = getDaySeed();
+  var shuffled = seededShuffle(pool, seed);
+  return shuffled.slice(0, count);
+}
 
 export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
   var ref1 = React.useState([]);
@@ -25,7 +70,12 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
 
   React.useEffect(function() {
     var cancelled = false;
-    var searches = FEATURED_QUERIES.concat(TRENDING_QUERIES).concat(BUDGET_QUERIES);
+
+    var featuredPicks = getDailyPicks(FEATURED_POOL, 3);
+    var trendingPicks = getDailyPicks(TRENDING_POOL, 3);
+    var budgetPicks = getDailyPicks(BUDGET_POOL, 3);
+
+    var searches = featuredPicks.concat(trendingPicks).concat(budgetPicks);
     var results = {};
 
     Promise.all(searches.map(function(q) {
@@ -36,9 +86,9 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
       }).catch(function() {});
     })).then(function() {
       if (!cancelled) {
-        setFeatured(FEATURED_QUERIES.map(function(q) { return results[q]; }).filter(Boolean));
-        setTrending(TRENDING_QUERIES.map(function(q) { return results[q]; }).filter(Boolean));
-        setBudget(BUDGET_QUERIES.map(function(q) { return results[q]; }).filter(Boolean));
+        setFeatured(featuredPicks.map(function(q) { return results[q]; }).filter(Boolean));
+        setTrending(trendingPicks.map(function(q) { return results[q]; }).filter(Boolean));
+        setBudget(budgetPicks.map(function(q) { return results[q]; }).filter(Boolean));
         setLoading(false);
       }
     });
