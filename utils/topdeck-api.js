@@ -11,6 +11,7 @@
  * Attribution required: "Data provided by TopDeck.gg"
  */
 
+var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
 var API_BASE = 'https://topdeck.gg/api';
 var _apiKey = null;
 
@@ -52,16 +53,21 @@ function tdFetch(method, path, body) {
     return Promise.resolve(null);
   }
 
+  /* Route through CORS proxy */
+  var targetUrl = API_BASE + path;
+  var proxyUrl = PROXY_URL + '/?target=' + encodeURIComponent(targetUrl);
+
   var opts = {
-    method: method,
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': _apiKey
+      'X-TD-Auth': _apiKey,
+      'X-Original-Method': method
     }
   };
   if (body) opts.body = JSON.stringify(body);
 
-  return fetch(API_BASE + path, opts)
+  return fetch(proxyUrl, opts)
     .then(function(r) {
       if (!r.ok) {
         return r.json().then(function(err) {
