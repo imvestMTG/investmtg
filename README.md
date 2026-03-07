@@ -29,7 +29,7 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **Portfolio Tracker** — Track your collection's value against live market prices
 - **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
 - **Seller Dashboard** — Register as a seller, manage listings, track sales
-- **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671, Expensive Dreams (6 verified Guam stores — listed as community resources, no formal partnerships)
+- **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671 (5 verified Guam stores — listed as community resources, no formal partnerships)
 - **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI
 - **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
 - **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout

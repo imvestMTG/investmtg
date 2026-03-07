@@ -66,9 +66,8 @@ The local stores listed on investMTG are real, verified businesses on Guam:
 - **My Wife Told Me To Sell It** — Dededo (verified, 5.0★ 71 reviews)
 - **Fraim's Collectibles** — Mangilao (verified)
 - **Poke Violet 671** — Hagåtña (verified)
-- **Expensive Dreams** — Tumon (verified)
 
-We do not list fictional stores or fabricate store data. Stores are periodically re-verified — unverifiable listings are removed (e.g., Fokai Guam and The Grid GU were removed after failing verification).
+We do not list fictional stores or fabricate store data. Stores are periodically re-verified — unverifiable listings are removed (e.g., Fokai Guam, The Grid GU, and Expensive Dreams were removed after failing verification).
 
 **Important:** These stores are listed as community resources for Guam MTG players. investMTG does **not** have formal partnership agreements with any of these stores. Their inclusion does not imply endorsement, affiliation, or inventory integration. Store information is publicly available and manually verified.
 
@@ -208,7 +207,7 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 | Date | Change |
 |------|--------|
 | 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
-| 2026-03-07 | Store directory updated: removed Fokai Guam and The Grid GU (failed verification), added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671, Expensive Dreams. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 6 verified stores |
+| 2026-03-07 | Store directory updated: removed Fokai Guam, The Grid GU, and Expensive Dreams (not a TCG store). Added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 5 verified stores |
 | 2026-03-07 | Added About, Vision, Mission, and Brand sections; clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
 | 2026-03-06 | Audit fixes: legal pages, cookie notice, accessibility, fake data removal, SOUL.md EUR fix |
 

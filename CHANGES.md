@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-07: Store Correction — Expensive Dreams Removed
+
+- **Removed**: Expensive Dreams (Tumon) — not a TCG store, incorrectly added during store verification
+- **Total stores**: 5 verified (down from 6)
+- Updated SOUL.md, README.md, BUILD_SPEC.md to reflect correction
+
+---
+
 ## 2026-03-07: Major Visual Redesign
 
 ### Hero Section
@@ -34,8 +42,7 @@
 - **Added**: My Wife Told Me To Sell It (Dededo, 5.0★ 71 reviews)
 - **Added**: Fraim's Collectibles (Mangilao)
 - **Added**: Poke Violet 671 (Hagåtña)
-- **Added**: Expensive Dreams (Tumon)
-- **Total stores**: 6 verified (up from 4, with 2 removed and 4 added)
+- **Total stores**: 5 verified (up from 4, with 2 removed and 3 added)
 - Conditional rendering for null phone/hours fields
 
 ---

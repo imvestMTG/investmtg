@@ -34,7 +34,7 @@ All data must be real and verifiable:
 | PortfolioView | `#portfolio` | Portfolio tracker with live Scryfall price updates |
 | CartView | `#cart` | Shopping cart with seller grouping |
 | CheckoutView | `#checkout` | 3 payment methods: Reserve & Pay at Pickup, SumUp Card, Apple/Google Pay |
-| StoreView | `#store` | 6 verified Guam stores + community marketplace |
+| StoreView | `#store` | 5 verified Guam stores + community marketplace |
 | SellerDashboard | `#seller` | Seller registration, listing CRUD, sales history |
 | OrderConfirmation | `#order/{id}` | Post-payment confirmation |
 | MarketMoversView | `#movers` | Most valuable cards by category with real pricing |

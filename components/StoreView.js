@@ -60,17 +60,6 @@ var GUAM_STORES = [
     hours: null,
     tags: ['TCG', 'Pokemon', 'MTG', 'One Piece'],
     description: 'Hag\u00e5t\u00f1a TCG shop carrying Pokemon, Magic: The Gathering, One Piece, and other trading card games.'
-  },
-  {
-    id: 's6',
-    name: 'Expensive Dreams',
-    badge: 'Collectibles',
-    address: 'Tumon, GU 96913',
-    phone: null,
-    website: null,
-    hours: null,
-    tags: ['TCG', 'Collectibles', 'Premium Cards'],
-    description: 'Tumon-based collectibles shop. Carries premium trading cards and collectibles.'
   }
 ];
 
