@@ -30,7 +30,7 @@ export function Header({ route, cartCount }) {
     return route.page === page ? 'active' : '';
   }
 
-  return h('header', { className: 'site-header' },
+  return h('header', { className: 'site-header', role: 'banner' },
     h('div', { className: 'header-inner' },
       h('div', { className: 'header-left' },
         h('a', {
