@@ -5,6 +5,69 @@ import { getJustTCGPricing } from '../utils/justtcg-api.js';
 import { TrashIcon, MapPinIcon, TruckIcon, ChevronRightIcon } from './shared/Icons.js';
 var h = React.createElement;
 
+/* ConditionChip — interactive React component with hover pop effect */
+function ConditionChip(_ref) {
+  var abbr = _ref.abbr;
+  var fullLabel = _ref.fullLabel;
+  var price = _ref.price;
+  var isSelected = _ref.isSelected;
+  var onSelect = _ref.onSelect;
+
+  var ref = React.useState(false);
+  var hovered = ref[0], setHovered = ref[1];
+  var ref2 = React.useState(false);
+  var pressed = ref2[0], setPressed = ref2[1];
+
+  /* Condition-specific accent colors */
+  var condColor = abbr === 'NM'  ? '#22c55e' :
+                  abbr === 'LP'  ? '#3b82f6' :
+                  abbr === 'MP'  ? '#f59e0b' :
+                  abbr === 'HP'  ? '#f97316' :
+                  abbr === 'DMG' ? '#ef4444' : '#888';
+
+  /* Build inline style for hover/press micro-interactions */
+  var chipStyle = {};
+  if (isSelected) {
+    chipStyle.background = condColor;
+    chipStyle.borderColor = condColor;
+    chipStyle.color = '#fff';
+    chipStyle.boxShadow = '0 0 0 2px ' + condColor + '40';
+    if (hovered) {
+      chipStyle.transform = 'scale(1.08)';
+      chipStyle.boxShadow = '0 4px 12px ' + condColor + '50, 0 0 0 2px ' + condColor + '40';
+    }
+    if (pressed) {
+      chipStyle.transform = 'scale(0.97)';
+    }
+  } else if (hovered) {
+    chipStyle.transform = 'translateY(-2px) scale(1.06)';
+    chipStyle.borderColor = condColor + '80';
+    chipStyle.color = condColor;
+    chipStyle.boxShadow = '0 4px 12px rgba(0,0,0,0.25)';
+    chipStyle.background = condColor + '15';
+    if (pressed) {
+      chipStyle.transform = 'scale(0.97)';
+      chipStyle.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+    }
+  }
+
+  return h('button', {
+    className: 'cart-cond-chip' + (isSelected ? ' cart-cond-chip--active' : ''),
+    style: chipStyle,
+    onClick: onSelect,
+    onMouseEnter: function() { setHovered(true); },
+    onMouseLeave: function() { setHovered(false); setPressed(false); },
+    onMouseDown: function() { setPressed(true); },
+    onMouseUp: function() { setPressed(false); },
+    'aria-label': 'Select ' + fullLabel + ' condition at ' + formatUSD(price),
+    'aria-pressed': isSelected ? 'true' : 'false',
+    title: fullLabel + ' — ' + formatUSD(price)
+  },
+    h('span', { className: 'cond-chip-abbr' }, abbr),
+    h('span', { className: 'cond-chip-price' }, formatUSD(price))
+  );
+}
+
 function groupBySeller(cart) {
   var groups = {};
   cart.forEach(function(item) {
@@ -145,9 +208,10 @@ export function CartView({ state, updateCart }) {
 
                   h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each'),
 
-                  /* JustTCG condition breakdown — clickable to select condition & price */
+                  /* JustTCG condition breakdown — interactive ConditionChip components */
                   jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0
                     ? h('div', { className: 'cart-condition-row' },
+                        h('span', { className: 'cart-condition-label' }, 'Condition:'),
                         Object.entries(jtcg.conditionPrices).slice(0, 5).map(function(entry) {
                           var condLabel = entry[0];
                           var condPrice = entry[1];
@@ -158,10 +222,13 @@ export function CartView({ state, updateCart }) {
                                      condLabel === 'Damaged' ? 'DMG' : condLabel;
                           var isSelected = (item.condition || '').toUpperCase() === abbr ||
                                            (item.condition || '') === condLabel;
-                          return h('button', {
+                          return h(ConditionChip, {
                             key: condLabel,
-                            className: 'cart-cond-chip' + (isSelected ? ' cart-cond-chip--active' : ''),
-                            onClick: function() {
+                            abbr: abbr,
+                            fullLabel: condLabel,
+                            price: condPrice,
+                            isSelected: isSelected,
+                            onSelect: function() {
                               updateCart(cart.map(function(ci) {
                                 if (ci.id !== item.id) return ci;
                                 return Object.assign({}, ci, {
@@ -169,10 +236,8 @@ export function CartView({ state, updateCart }) {
                                   price: condPrice
                                 });
                               }));
-                            },
-                            'aria-label': 'Select ' + condLabel + ' condition at ' + formatUSD(condPrice),
-                            title: condLabel
-                          }, abbr + ' ' + formatUSD(condPrice));
+                            }
+                          });
                         })
                       )
                     : null
