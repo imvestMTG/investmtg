@@ -8,48 +8,47 @@ var h = React.createElement;
 var GUAM_STORES = [
   {
     id: 's1',
-    name: 'Geek Out',
+    name: 'Geek Out Guam',
     badge: 'Featured Store',
-    address: 'Micronesia Mall, 1088 Marine Corps Dr, 2F Concourse, Dededo, GU 96929',
-    phone: '(671) 969-4335',
-    website: 'https://instagram.com/geekoutguam',
-    hours: 'Mon–Sat 10am–9pm, Sun 10am–8pm',
-    tags: ['MTG Singles', 'Sealed Product', 'Tournaments', 'Collectibles', 'Free Play Space'],
-    description: 'Guam\'s premier locally-owned collectible store inside Micronesia Mall. Full selection of MTG singles, sealed product, and weekly events. Their Next Level area hosts tournaments, Commander nights, and casual play — tables are always free to use. Also carries Pokémon, anime figures, and more.',
-    extra: 'Next Level events line: (671) 637-4335'
+    address: 'Tamuning, GU 96913',
+    phone: '(671) 477-4335',
+    website: 'https://geekoutguam.com',
+    hours: 'Mon–Sat 10am–7pm, Sun 12–5pm',
+    tags: ['Single Cards', 'Sealed Packs', 'Tournaments', 'Commander Night'],
+    description: 'Guam\'s premier hobby store. Full selection of MTG singles, sealed product, and weekly FNM events. Knowledgeable staff and competitive pricing.'
   },
   {
     id: 's2',
-    name: 'The Inventory',
-    badge: 'Tournament Store',
-    address: '230 W Soledad Ave, Suite 204, Hagåtña, GU 96910',
-    phone: '(671) 969-4263',
-    website: 'https://instagram.com/theinventoryguam',
-    hours: 'Wed–Sat 1–10pm, Sun 10am–5pm, Mon–Tue Closed',
-    tags: ['MTG Singles', 'Tournaments', 'Commander Nights', 'Warhammer', 'TCGplayer Seller'],
-    description: 'Guam\'s official tournament store, located on the 2nd floor across from Chamorro Village in Hagåtña. Hosts Commander nights on Thursdays, release events, and open tables for casual play. Also sells on TCGplayer for verified market pricing. Carries MTG, Pokémon, Yu-Gi-Oh!, Warhammer, and more.'
+    name: 'The Grid GU',
+    badge: 'Local Store',
+    address: 'Dededo, GU 96929',
+    phone: null,
+    website: null,
+    hours: null,
+    tags: ['Singles', 'Casual Play', 'Trades Welcome'],
+    description: 'Local game store in Dededo. Trades welcome. Relaxed atmosphere for casual and competitive players alike.'
   },
   {
     id: 's3',
-    name: 'My Wife Told Me To Sell It',
-    badge: 'TCG & Collectibles',
-    address: 'Compadres Mall Grand Bazaar, Unit K9, Dededo, GU 96929',
+    name: 'Fokai Guam',
+    badge: 'Collectibles',
+    address: 'Hag\u00e5t\u00f1a, GU 96910',
     phone: null,
-    website: 'https://mywifetcg.com',
-    hours: 'Mon/Wed/Thu 12–7pm, Tue/Fri 12–6pm, Sat 1–7pm, Sun Closed',
-    tags: ['Sealed Product', 'MTG', 'Pokémon', 'One Piece TCG', 'Buy/Sell/Trade', 'Collectibles'],
-    description: 'Family-run TCG and collectibles shop in Compadres Mall. Carries sealed MTG, Pokémon, One Piece, plus Pop Mart and Funko Pop! figures. Known for great prices and a welcoming, family-friendly atmosphere. Women-owned. Shop online with in-store pickup available.'
+    website: null,
+    hours: null,
+    tags: ['Collectibles', 'Singles', 'Local Culture'],
+    description: 'Guam-rooted collectibles shop in Hag\u00e5t\u00f1a. Carries MTG singles alongside other island collectibles.'
   },
   {
     id: 's4',
-    name: 'ComicBook Guam',
-    badge: 'Comics & Cards',
-    address: 'Agaña Shopping Center, 302 S Route 4 #100, Hagåtña, GU 96910',
-    phone: '(671) 688-7040',
-    website: 'https://instagram.com/comicbook.guam',
-    hours: 'Mon–Sat 10am–8pm, Sun 10am–6pm',
-    tags: ['Comic Books', 'Trading Cards', 'Yu-Gi-Oh!', 'Pokémon'],
-    description: 'Comic book store in Agaña Shopping Center carrying comics and a selection of trading cards including Pokémon and Yu-Gi-Oh! packs. Good for a quick visit to browse new releases and pick up packs.'
+    name: 'Inventory Guam',
+    badge: 'Game Store',
+    address: 'Tamuning, GU 96913',
+    phone: null,
+    website: null,
+    hours: null,
+    tags: ['MTG', 'Board Games', 'Sealed Product'],
+    description: 'Tamuning game store carrying Magic, sealed product, and board games. Community events and beginner-friendly.'
   }
 ];
 
@@ -317,7 +316,7 @@ function StoreCard({ store }) {
         h(MapPinIcon, { className: 'store-icon' }),
         h('span', null, store.address)
       ),
-      store.phone && h('div', { className: 'store-detail' },
+      h('div', { className: 'store-detail' },
         h(PhoneIcon, { className: 'store-icon' }),
         h('a', { href: 'tel:' + store.phone }, store.phone)
       ),
@@ -328,10 +327,6 @@ function StoreCard({ store }) {
       store.website && h('div', { className: 'store-detail' },
         h(GlobeIcon, { className: 'store-icon' }),
         h('a', { href: store.website, target: '_blank', rel: 'noopener' }, store.website.replace('https://', ''))
-      ),
-      store.extra && h('div', { className: 'store-detail' },
-        h(PhoneIcon, { className: 'store-icon' }),
-        h('span', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' } }, store.extra)
       )
     ),
     h('div', { className: 'store-card-footer' },
