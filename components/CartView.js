@@ -212,7 +212,17 @@ export function CartView({ state, updateCart }) {
                   jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0
                     ? h('div', { className: 'cart-condition-row' },
                         h('span', { className: 'cart-condition-label' }, 'Condition:'),
-                        Object.entries(jtcg.conditionPrices).slice(0, 5).map(function(entry) {
+                        /* Order: HP, MP, LP, NM, DMG (damaged last) */
+                        (function() {
+                          var condOrder = ['Heavily Played', 'Moderately Played', 'Lightly Played', 'Near Mint', 'Damaged'];
+                          var entries = Object.entries(jtcg.conditionPrices);
+                          entries.sort(function(a, b) {
+                            var ai = condOrder.indexOf(a[0]); if (ai < 0) ai = 99;
+                            var bi = condOrder.indexOf(b[0]); if (bi < 0) bi = 99;
+                            return ai - bi;
+                          });
+                          return entries;
+                        })().slice(0, 5).map(function(entry) {
                           var condLabel = entry[0];
                           var condPrice = entry[1];
                           var abbr = condLabel === 'Near Mint' ? 'NM' :
