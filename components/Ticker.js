@@ -1,9 +1,9 @@
-/* Ticker.js — Live price ticker using real Scryfall data */
+/* Ticker.js — Live price ticker using Scryfall API */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 var h = React.createElement;
 
-var TICKER_CARD_NAMES = [
+var TICKER_CARDS = [
   'Black Lotus', 'Mox Pearl', 'Ancestral Recall', 'Time Walk',
   'Jace, the Mind Sculptor', 'Force of Will', 'Liliana of the Veil',
   'Snapcaster Mage', 'Dark Confidant', 'Tarmogoyf',
@@ -11,60 +11,96 @@ var TICKER_CARD_NAMES = [
   'Mana Crypt', 'Wrenn and Six'
 ];
 
+var CACHE_KEY = 'investmtg-ticker-cache';
+var CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function loadCache() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    var cached = JSON.parse(raw);
+    if (Date.now() - cached.ts > CACHE_TTL) return null;
+    return cached.data;
+  } catch (e) { return null; }
+}
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
+  } catch (e) { /* ignore */ }
+}
+
 function fetchTickerPrices() {
-  var cards = TICKER_CARD_NAMES.map(function(name) {
-    var url = 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(name);
-    return fetch(url).then(function(r) {
-      if (!r.ok) return null;
-      return r.json();
-    }).then(function(card) {
-      if (!card) return null;
-      var price = card.prices && (card.prices.usd || card.prices.usd_foil);
+  var identifiers = TICKER_CARDS.map(function(name) { return { name: name }; });
+  return fetch('https://api.scryfall.com/cards/collection', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifiers: identifiers })
+  }).then(function(res) {
+    if (!res.ok) throw new Error('Scryfall error: ' + res.status);
+    return res.json();
+  }).then(function(json) {
+    if (!json.data) return [];
+    return json.data.map(function(card) {
+      var price = parseFloat(card.prices && card.prices.usd) || parseFloat(card.prices && card.prices.usd_foil) || 0;
       return {
         name: card.name,
-        price: price ? '$' + price : null
+        price: price
       };
-    }).catch(function() { return null; });
-  });
-  return Promise.all(cards).then(function(results) {
-    return results.filter(function(r) { return r && r.price; });
+    }).filter(function(item) { return item.price > 0; });
   });
 }
 
 export function Ticker() {
-  var ref = React.useState([]);
-  var items = ref[0], setItems = ref[1];
-  var ref2 = React.useState(true);
-  var loading = ref2[0], setLoading = ref2[1];
+  var ref1 = React.useState([]);
+  var items = ref1[0], setItems = ref1[1];
 
   React.useEffect(function() {
     var cancelled = false;
+
+    // Try cache first for instant display
+    var cached = loadCache();
+    if (cached && cached.length > 0) {
+      setItems(cached);
+    }
+
+    // Always fetch fresh data
     fetchTickerPrices().then(function(data) {
       if (!cancelled && data.length > 0) {
         setItems(data);
+        saveCache(data);
       }
-      setLoading(false);
+    }).catch(function() {
+      // Keep cached data on error
     });
+
     // Refresh every 5 minutes
     var interval = setInterval(function() {
       fetchTickerPrices().then(function(data) {
         if (!cancelled && data.length > 0) {
           setItems(data);
+          saveCache(data);
         }
-      });
-    }, 300000);
-    return function() { cancelled = true; clearInterval(interval); };
+      }).catch(function() {});
+    }, CACHE_TTL);
+
+    return function() {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
-  if (loading || items.length === 0) return null;
+  if (items.length === 0) return null;
 
+  // Duplicate for seamless scroll animation
   var doubled = items.concat(items);
+
   return h('div', { className: 'ticker-strip', 'aria-hidden': 'true' },
     h('div', { className: 'ticker-track' },
       doubled.map(function(item, i) {
         return h('span', { key: i, className: 'ticker-item' },
           h('span', { className: 'ticker-name' }, item.name),
-          h('span', { className: 'ticker-price' }, item.price)
+          h('span', { className: 'ticker-price' }, formatUSD(item.price))
         );
       })
     )
