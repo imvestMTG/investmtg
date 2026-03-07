@@ -27,8 +27,8 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **cEDH Metagame** — Competitive EDH commander rankings, tournament results, and staple cards from [EDH Top 16](https://edhtop16.com) and [TopDeck.gg](https://topdeck.gg)
 - **Deck Browser** — Import and price decklists from [Moxfield](https://moxfield.com) with popular deck presets
 - **Portfolio Tracker** — Track your collection's value against live market prices
-- **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
-- **Seller Dashboard** — Register as a seller, manage listings, track sales
+- **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community. Listings are real — submitted by registered sellers and persisted in localStorage. No mock data.
+- **Seller Dashboard** — Register as a seller, manage listings with Scryfall autocomplete, track sales. Listings sync to the marketplace in real time.
 - **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671 (5 verified Guam stores — listed as community resources, no formal partnerships)
 - **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI (routed through secure Worker proxy with rate limiting)
 - **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
@@ -116,7 +116,7 @@ investmtg/
 │   ├── edhtop16-api.js     # EDH Top 16 GraphQL API wrapper (via Worker proxy)
 │   ├── topdeck-api.js      # TopDeck.gg REST API wrapper (via Worker proxy)
 │   ├── moxfield-api.js     # Moxfield decklist API wrapper
-│   └── marketplace-data.js # Marketplace data management (empty — no mock data per SOUL.md)
+│   └── marketplace-data.js # Marketplace data aggregation (loads seller listings from localStorage, persists standalone listings)
 │
 ├── worker/
 │   ├── worker.js           # Cloudflare Worker source (CORS proxy + chatbot + API routing)

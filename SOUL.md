@@ -177,6 +177,15 @@ If you're contributing to investMTG, follow these rules:
 5. Keep the site static — no backend dependencies beyond the CORS proxy
 6. Respect API rate limits: Scryfall (100ms between calls), JustTCG (paid tier limits), TopDeck (200/min)
 7. Never embed sensitive API keys in client-side code — use CORS proxy for key-protected APIs where possible
+8. **Post-Deployment Documentation Rule:** After every successful deployment, all project documentation must be securely updated before the work is considered complete. This includes:
+   - **CHANGES.md** — Add a dated entry describing what changed, what was fixed, and what was added
+   - **SOUL.md** — Update the changelog table and any sections affected by the deployment (e.g., new data sources, new stores, new API routes, architecture changes)
+   - **README.md** — Update the project tree, feature list, or external services table if the deployment added or removed files, features, or integrations
+   - **BUILD_SPEC.md** — Update component descriptions, utility references, or architecture diagrams if the deployment changed the codebase structure
+   - **worker/README.md** — Update if any Worker routes, secrets, or proxy behavior changed
+   - **Security check** — Verify no API keys, tokens, or secrets were exposed in any committed file. All sensitive values must remain in encrypted Cloudflare Worker secrets or environment-appropriate secure storage — never in source code, documentation, or commit history
+   - Documentation updates must be committed and pushed in the same session as the deployment — not deferred to a later date
+   - No deployment is "done" until the docs are updated. Ship code + ship docs = one unit of work
 
 ---
 
@@ -217,6 +226,7 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Marketplace workflow fix: seller listings now appear in marketplace (data aggregation from all sellers' localStorage), SellerDashboard connected to global state, "List a Card" button fixed, ListingModal props corrected, marketplace data persisted, empty state CTA added, post-listing marketplace link added. Post-Deployment Documentation Rule added to SOUL.md |
 | 2026-03-08 | Comprehensive code review: all 39 findings resolved (security, accessibility, config centralization, error boundaries, input sanitization, Worker chatbot proxy). API keys migrated to encrypted Cloudflare secrets. Worker source added to repo under `worker/` |
 | 2026-03-07 | Performance optimization: lazy-loaded components (262KB → 47KB initial JS), minified CSS (127KB → 105KB), deleted unused 5MB og-image.png, hero preload, Scryfall preconnect, deferred Ticker fetch, removed unused font weights |
 | 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
