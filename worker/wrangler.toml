@@ -1,0 +1,10 @@
+name = "investmtg-proxy"
+main = "worker.js"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+JUSTTCG_API_KEY = "tcg_1f6c8c6d907f42a0aacba9ff6005300c"
