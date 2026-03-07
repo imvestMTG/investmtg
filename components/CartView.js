@@ -145,10 +145,10 @@ export function CartView({ state, updateCart }) {
 
                   h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each'),
 
-                  /* JustTCG condition breakdown (only shows if data loaded) */
+                  /* JustTCG condition breakdown — clickable to select condition & price */
                   jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0
                     ? h('div', { className: 'cart-condition-row' },
-                        Object.entries(jtcg.conditionPrices).slice(0, 4).map(function(entry) {
+                        Object.entries(jtcg.conditionPrices).slice(0, 5).map(function(entry) {
                           var condLabel = entry[0];
                           var condPrice = entry[1];
                           var abbr = condLabel === 'Near Mint' ? 'NM' :
@@ -156,9 +156,22 @@ export function CartView({ state, updateCart }) {
                                      condLabel === 'Moderately Played' ? 'MP' :
                                      condLabel === 'Heavily Played' ? 'HP' :
                                      condLabel === 'Damaged' ? 'DMG' : condLabel;
-                          return h('span', {
+                          var isSelected = (item.condition || '').toUpperCase() === abbr ||
+                                           (item.condition || '') === condLabel;
+                          return h('button', {
                             key: condLabel,
-                            className: 'cart-cond-chip'
+                            className: 'cart-cond-chip' + (isSelected ? ' cart-cond-chip--active' : ''),
+                            onClick: function() {
+                              updateCart(cart.map(function(ci) {
+                                if (ci.id !== item.id) return ci;
+                                return Object.assign({}, ci, {
+                                  condition: abbr,
+                                  price: condPrice
+                                });
+                              }));
+                            },
+                            'aria-label': 'Select ' + condLabel + ' condition at ' + formatUSD(condPrice),
+                            title: condLabel
                           }, abbr + ' ' + formatUSD(condPrice));
                         })
                       )
