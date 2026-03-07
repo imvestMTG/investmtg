@@ -8,47 +8,48 @@ var h = React.createElement;
 var GUAM_STORES = [
   {
     id: 's1',
-    name: 'Geek Out Guam',
+    name: 'Geek Out',
     badge: 'Featured Store',
-    address: '404 W. O\'Brien Dr., Suite 101, Hagatna, GU 96910',
-    phone: '(671) 477-4335',
-    website: 'https://geekoutguam.com',
-    hours: 'Mon–Sat 10am–7pm, Sun 12–5pm',
-    tags: ['Single Cards', 'Sealed Packs', 'Tournaments', 'Commander Night'],
-    description: 'Guam\'s premier hobby store. Full selection of MTG singles, sealed product, and weekly FNM events. Knowledgeable staff and competitive pricing.'
+    address: 'Micronesia Mall, 1088 Marine Corps Dr, 2F Concourse, Dededo, GU 96929',
+    phone: '(671) 969-4335',
+    website: 'https://instagram.com/geekoutguam',
+    hours: 'Mon–Sat 10am–9pm, Sun 10am–8pm',
+    tags: ['MTG Singles', 'Sealed Product', 'Tournaments', 'Collectibles', 'Free Play Space'],
+    description: 'Guam\'s premier locally-owned collectible store inside Micronesia Mall. Full selection of MTG singles, sealed product, and weekly events. Their Next Level area hosts tournaments, Commander nights, and casual play — tables are always free to use. Also carries Pokémon, anime figures, and more.',
+    extra: 'Next Level events line: (671) 637-4335'
   },
   {
     id: 's2',
-    name: 'Inventory Game Store',
-    badge: 'Local Store',
-    address: 'Tamuning, GU 96913',
-    phone: '(671) 649-4263',
-    website: null,
-    hours: 'Mon–Fri 12–8pm, Sat–Sun 11am–7pm',
-    tags: ['Singles', 'Casual Play', 'Trades Welcome'],
-    description: 'Community-focused game store with a great selection of Magic singles. Trades welcome. Relaxed atmosphere for casual and competitive players alike.'
+    name: 'The Inventory',
+    badge: 'Tournament Store',
+    address: '230 W Soledad Ave, Suite 204, Hagåtña, GU 96910',
+    phone: '(671) 969-4263',
+    website: 'https://instagram.com/theinventoryguam',
+    hours: 'Wed–Sat 1–10pm, Sun 10am–5pm, Mon–Tue Closed',
+    tags: ['MTG Singles', 'Tournaments', 'Commander Nights', 'Warhammer', 'TCGplayer Seller'],
+    description: 'Guam\'s official tournament store, located on the 2nd floor across from Chamorro Village in Hagåtña. Hosts Commander nights on Thursdays, release events, and open tables for casual play. Also sells on TCGplayer for verified market pricing. Carries MTG, Pokémon, Yu-Gi-Oh!, Warhammer, and more.'
   },
   {
     id: 's3',
-    name: 'Pacific Card Exchange',
-    badge: 'Marketplace',
-    address: 'Tumon, GU 96913',
-    phone: '(671) 555-0198',
-    website: null,
-    hours: 'By appointment',
-    tags: ['High-End Singles', 'Reserved List', 'By Appointment'],
-    description: 'Specializing in high-value and reserved list cards. Competitive buylist prices. Ideal for collectors looking for Alpha/Beta/Unlimited power cards.'
+    name: 'My Wife Told Me To Sell It',
+    badge: 'TCG & Collectibles',
+    address: 'Compadres Mall Grand Bazaar, Unit K9, Dededo, GU 96929',
+    phone: null,
+    website: 'https://mywifetcg.com',
+    hours: 'Mon/Wed/Thu 12–7pm, Tue/Fri 12–6pm, Sat 1–7pm, Sun Closed',
+    tags: ['Sealed Product', 'MTG', 'Pokémon', 'One Piece TCG', 'Buy/Sell/Trade', 'Collectibles'],
+    description: 'Family-run TCG and collectibles shop in Compadres Mall. Carries sealed MTG, Pokémon, One Piece, plus Pop Mart and Funko Pop! figures. Known for great prices and a welcoming, family-friendly atmosphere. Women-owned. Shop online with in-store pickup available.'
   },
   {
     id: 's4',
-    name: 'Island Hobby Center',
-    badge: 'Multi-Game',
-    address: 'Dededo, GU 96929',
-    phone: '(671) 632-0044',
-    website: null,
-    hours: 'Tue–Sun 11am–6pm',
-    tags: ['MTG', 'Pokemon', 'Yu-Gi-Oh!', 'Board Games'],
-    description: 'Multi-game hobby center carrying Magic, Pokemon, Yu-Gi-Oh!, and board games. Regular MTG draft nights on Saturdays. Beginner-friendly environment.'
+    name: 'ComicBook Guam',
+    badge: 'Comics & Cards',
+    address: 'Agaña Shopping Center, 302 S Route 4 #100, Hagåtña, GU 96910',
+    phone: '(671) 688-7040',
+    website: 'https://instagram.com/comicbook.guam',
+    hours: 'Mon–Sat 10am–8pm, Sun 10am–6pm',
+    tags: ['Comic Books', 'Trading Cards', 'Yu-Gi-Oh!', 'Pokémon'],
+    description: 'Comic book store in Agaña Shopping Center carrying comics and a selection of trading cards including Pokémon and Yu-Gi-Oh! packs. Good for a quick visit to browse new releases and pick up packs.'
   }
 ];
 
@@ -316,7 +317,7 @@ function StoreCard({ store }) {
         h(MapPinIcon, { className: 'store-icon' }),
         h('span', null, store.address)
       ),
-      h('div', { className: 'store-detail' },
+      store.phone && h('div', { className: 'store-detail' },
         h(PhoneIcon, { className: 'store-icon' }),
         h('a', { href: 'tel:' + store.phone }, store.phone)
       ),
@@ -327,6 +328,10 @@ function StoreCard({ store }) {
       store.website && h('div', { className: 'store-detail' },
         h(GlobeIcon, { className: 'store-icon' }),
         h('a', { href: store.website, target: '_blank', rel: 'noopener' }, store.website.replace('https://', ''))
+      ),
+      store.extra && h('div', { className: 'store-detail' },
+        h(PhoneIcon, { className: 'store-icon' }),
+        h('span', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' } }, store.extra)
       )
     ),
     h('div', { className: 'store-card-footer' },
