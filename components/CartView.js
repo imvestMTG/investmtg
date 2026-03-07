@@ -214,7 +214,7 @@ export function CartView({ state, updateCart }) {
                         h('span', { className: 'cart-condition-label' }, 'Condition:'),
                         /* Order: HP, MP, LP, NM, DMG (damaged last) */
                         (function() {
-                          var condOrder = ['Heavily Played', 'Moderately Played', 'Lightly Played', 'Near Mint', 'Damaged'];
+                          var condOrder = ['Damaged', 'Heavily Played', 'Moderately Played', 'Lightly Played', 'Near Mint'];
                           var entries = Object.entries(jtcg.conditionPrices);
                           entries.sort(function(a, b) {
                             var ai = condOrder.indexOf(a[0]); if (ai < 0) ai = 99;
