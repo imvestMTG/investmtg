@@ -1,7 +1,7 @@
-/* CardDetailView.js */
+/* CardDetailView.js — Card detail with real Scryfall pricing */
 import React from 'react';
 import { getCard } from '../utils/api.js';
-import { formatUSD, getCardPrice, generateMockPriceHistory, generateMockChange, getScryfallImageUrl } from '../utils/helpers.js';
+import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
 var h = React.createElement;
@@ -13,10 +13,6 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   var loading = ref2[0], setLoading = ref2[1];
   var ref3 = React.useState(null);
   var error = ref3[0], setError = ref3[1];
-  var ref4 = React.useState('1m');
-  var timeframe = ref4[0], setTimeframe = ref4[1];
-  var chartRef = React.useRef(null);
-  var chartInstance = React.useRef(null);
 
   React.useEffect(function() {
     if (!cardId) return;
@@ -31,75 +27,6 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
       setLoading(false);
     });
   }, [cardId]);
-
-  React.useEffect(function() {
-    if (!card || !chartRef.current) return;
-
-    // Dynamically load Chart.js if not already present
-    if (typeof Chart === 'undefined') {
-      var script = document.querySelector('script[src*="chart.js"]');
-      if (!script) {
-        script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.crossOrigin = 'anonymous';
-        script.onload = function() { setTimeframe(function(prev) { return prev; }); };
-        document.head.appendChild(script);
-      } else {
-        script.addEventListener('load', function() { setTimeframe(function(prev) { return prev; }); });
-      }
-      return;
-    }
-
-    var price = getCardPrice(card);
-    var days = timeframe === '1w' ? 7 : timeframe === '1m' ? 30 : timeframe === '3m' ? 90 : 365;
-    var history = generateMockPriceHistory(price, days);
-    var labels = history.map(function(_, i) {
-      var d = new Date();
-      d.setDate(d.getDate() - (history.length - 1 - i));
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-    var ctx = chartRef.current.getContext('2d');
-    var gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, 'rgba(212, 168, 67, 0.25)');
-    gradient.addColorStop(1, 'rgba(212, 168, 67, 0.0)');
-
-    chartInstance.current = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: history,
-          borderColor: '#D4A843',
-          backgroundColor: gradient,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-        scales: {
-          x: { display: false },
-          y: {
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { callback: function(v) { return '$' + v.toFixed(2); }, color: '#8B8D94', font: { size: 11 } }
-          }
-        }
-      }
-    });
-
-    return function() {
-      if (chartInstance.current) { chartInstance.current.destroy(); chartInstance.current = null; }
-    };
-  }, [card, timeframe]);
 
   function addToCart() {
     if (!card) return;
@@ -150,19 +77,21 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
   if (!card) return null;
 
   var price = getCardPrice(card);
-  var change = generateMockChange();
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
 
-  var prices = [
-    { label: 'Market', value: formatUSD(price) },
-    { label: 'Foil',   value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
-    { label: 'MTGO',   value: card.prices && card.prices.tix ? formatUSD(parseFloat(card.prices.tix)) + ' tix' : 'N/A' },
-    { label: '30d Δ', value: (change > 0 ? '+' : '') + change + '%' },
+  var priceBoxes = [
+    { label: 'Market (USD)', value: formatUSD(price) },
+    { label: 'Foil (USD)', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
+    { label: 'MTGO (tix)', value: card.prices && card.prices.tix ? parseFloat(card.prices.tix).toFixed(2) + ' tix' : 'N/A' },
+    { label: 'EUR', value: card.prices && card.prices.eur ? '€' + parseFloat(card.prices.eur).toFixed(2) : 'N/A' },
   ];
 
   var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
     return ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].indexOf(entry[0]) !== -1;
   });
+
+  var scryfallUrl = card.scryfall_uri || ('https://scryfall.com/card/' + card.set + '/' + card.collector_number);
+  var purchaseLinks = card.purchase_uris || {};
 
   return h('div', { className: 'container card-detail' },
     h('a', {
@@ -180,14 +109,19 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
       ),
       h('div', { className: 'card-detail-info' },
         h('h1', null, card.name),
-        h('p', { className: 'card-detail-set' }, card.set_name, ' • ', card.rarity),
+        h('p', { className: 'card-detail-set' }, card.set_name, ' · ', card.rarity, ' · #', card.collector_number),
         h('div', { className: 'price-breakdown' },
-          prices.map(function(p) {
+          priceBoxes.map(function(p) {
             return h('div', { key: p.label, className: 'price-box' },
               h('div', { className: 'price-box-label' }, p.label),
               h('div', { className: 'price-box-value' }, p.value)
             );
           })
+        ),
+        h('p', { className: 'price-source' },
+          'Prices from ',
+          h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
+          ' · Updated daily'
         ),
         h('div', { className: 'card-actions' },
           h('button', { className: 'btn btn-primary', onClick: addToCart },
@@ -208,19 +142,34 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
             onClick: function() { onOpenListing(card); }
           }, 'List on Market')
         ),
-        h('div', { className: 'chart-container' },
-          h('h3', null, 'Price History'),
-          h('div', { style: { display: 'flex', gap: '8px', marginBottom: '12px' } },
-            ['1w','1m','3m','1y'].map(function(tf) {
-              return h('button', {
-                key: tf,
-                className: 'btn btn-sm ' + (timeframe === tf ? 'btn-primary' : 'btn-ghost'),
-                onClick: function() { setTimeframe(tf); }
-              }, tf);
-            })
-          ),
-          h('canvas', { ref: chartRef })
-        ),
+
+        /* Purchase Links */
+        (purchaseLinks.tcgplayer || purchaseLinks.cardmarket || purchaseLinks.cardhoarder)
+          ? h('div', { className: 'purchase-links' },
+              h('h3', null, 'Buy This Card'),
+              h('div', { className: 'purchase-links-row' },
+                purchaseLinks.tcgplayer && h('a', {
+                  href: purchaseLinks.tcgplayer,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  className: 'btn btn-sm btn-ghost'
+                }, 'TCGplayer'),
+                purchaseLinks.cardmarket && h('a', {
+                  href: purchaseLinks.cardmarket,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  className: 'btn btn-sm btn-ghost'
+                }, 'Cardmarket'),
+                purchaseLinks.cardhoarder && h('a', {
+                  href: purchaseLinks.cardhoarder,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  className: 'btn btn-sm btn-ghost'
+                }, 'Cardhoarder')
+              )
+            )
+          : null,
+
         h('div', { className: 'legality-grid' },
           legalities.map(function(entry) {
             return h('span', {
