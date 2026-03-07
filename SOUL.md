@@ -63,9 +63,9 @@ investMTG operates under a governing philosophy called The Fair Play Economy —
 The local stores listed on investMTG are real, verified businesses on Guam:
 - **The Inventory** — Hagåtña (verified, WPN-authorized)
 - **Geek Out Next Level** — Tamuning (verified, WPN-authorized)
-- **My Wife Told Me To Sell It** — Dededo (verified, 5.0★ 71 reviews)
-- **Fraim's Collectibles** — Mangilao (verified)
-- **Poke Violet 671** — Hagåtña (verified)
+- **My Wife Told Me To Sell It** — Compadres Mall, Dededo (verified, 5.0★, mywifetcg.com, @mywifetoldmetosellit)
+- **Fraim's Collectibles** — Mangilao, across Mobil (verified, @fraimscollectibles)
+- **Poke Violet 671** — DNA Building, Hagåtña (verified, pokeviolet671.com, @pokeviolet671)
 
 We do not list fictional stores or fabricate store data. Stores are periodically re-verified — unverifiable listings are removed (e.g., Fokai Guam, The Grid GU, and Expensive Dreams were removed after failing verification).
 

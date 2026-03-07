@@ -31,35 +31,35 @@ var GUAM_STORES = [
   {
     id: 's3',
     name: 'My Wife Told Me To Sell It',
-    badge: 'Collectibles',
-    address: 'Dededo, GU 96929',
-    phone: null,
-    website: null,
-    hours: 'Check Google Maps for hours',
-    tags: ['TCG', 'Collectibles', 'Trades Welcome', '5.0\u2605 Rating'],
-    description: 'Popular collectibles shop in Dededo with a perfect 5.0-star Google rating from 71+ reviews. Carries trading cards including MTG alongside other collectibles.'
+    badge: 'TCG & Collectibles',
+    address: 'Compadres Mall \u2013 Grand Bazaar Unit K9, 562 Harmon Loop Rd, Dededo, GU 96929',
+    phone: '(671) 637-4335',
+    website: 'https://www.mywifetcg.com',
+    hours: 'Mon/Wed/Thu 12\u20137 PM \u2022 Tue/Fri 12\u20136 PM \u2022 Sat 1\u20137 PM \u2022 Sun Closed',
+    tags: ['TCG', 'Pok\u00e9mon', 'MTG', 'One Piece', 'Buy/Sell/Trade', '5.0\u2605 Rating'],
+    description: 'Family-run TCG and collectibles shop in Dededo with a perfect 5.0-star Google rating. Carries Pok\u00e9mon, MTG, One Piece, blind boxes, and more. Shop online with in-store pickup. Buy, sell, and trade welcome.'
   },
   {
     id: 's4',
     name: "Fraim's Collectibles",
     badge: 'Collectibles',
-    address: 'Mangilao, GU 96913',
+    address: 'Building across Mangilao Mobil, 2nd Floor (above Selfpix), Mangilao, GU 96913',
     phone: null,
-    website: null,
-    hours: null,
-    tags: ['TCG', 'Collectibles', 'Singles'],
-    description: 'Mangilao-based collectibles dealer carrying TCG products including Magic: The Gathering singles and sealed product.'
+    website: 'https://www.instagram.com/fraimscollectibles/',
+    hours: 'Mon\u2013Sat 10 AM\u20136 PM',
+    tags: ['TCG', 'Pok\u00e9mon', 'Diecast', 'Funko Pop', 'Buy/Sell/Trade'],
+    description: 'Mangilao collectibles shop carrying Pok\u00e9mon TCG, sports cards, diecast, Funko Pops, and Pop Mart. Hosts community events including the Guam Collectors Convention. Buy, sell, and trade welcome.'
   },
   {
     id: 's5',
     name: 'Poke Violet 671',
     badge: 'TCG Shop',
-    address: 'Hag\u00e5t\u00f1a, GU 96910',
+    address: '238 Archbishop Flores St, Unit 303 (DNA Building), Hag\u00e5t\u00f1a, GU 96910',
     phone: null,
-    website: null,
-    hours: null,
-    tags: ['TCG', 'Pokemon', 'MTG', 'One Piece'],
-    description: 'Hag\u00e5t\u00f1a TCG shop carrying Pokemon, Magic: The Gathering, One Piece, and other trading card games.'
+    website: 'https://www.pokeviolet671.com',
+    hours: 'Evenings \u2014 check Instagram for daily hours',
+    tags: ['TCG', 'Pok\u00e9mon', 'One Piece', 'Union Arena'],
+    description: 'Hag\u00e5t\u00f1a TCG shop specializing in Pok\u00e9mon and One Piece trading cards. Located in the DNA Building. Active in the local convention scene including TCG Con and Guam Pok\u00e9 Con.'
   }
 ];
 
