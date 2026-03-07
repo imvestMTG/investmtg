@@ -1,5 +1,21 @@
 # investMTG — Changelog
 
+## 2026-03-08: Documentation Collation & Security Hardening
+
+### Security
+- **API keys migrated to encrypted secrets**: JustTCG and TopDeck API keys moved from `wrangler.toml` `[vars]` (plaintext in public repo) to Cloudflare Worker encrypted secrets via `wrangler secret put`
+- **SumUp credentials redacted from BUILD_SPEC.md**: Merchant code and public key now referenced as "stored in config.js" instead of hardcoded in documentation
+- **wrangler.toml cleaned**: Removed all plaintext API keys; keys are now comments referencing `wrangler secret put` commands
+
+### Documentation
+- **SOUL.md**: Updated API Architecture section with full Worker route table, security measures, encrypted secrets policy. Added 2026-03-08 changelog entry
+- **README.md**: Updated project tree with 7 new files (config.js, sanitize.js, group-by-seller.js, events-config.js, ConfirmModal.js, ErrorBoundary.js, sw.js) and `worker/` directory. Updated external services table. Chatbot description updated to reflect Worker proxy
+- **BUILD_SPEC.md**: Added ConfirmModal, ErrorBoundary to shared components. Added config.js, sanitize.js, group-by-seller.js, events-config.js, stores.js to utils. Added Worker section with route table. Redacted SumUp credentials. Updated Pollinations AI to Worker proxy
+- **worker/README.md**: Added TopDeck route to table. Added encrypted secrets documentation. Updated environment variables section
+- **CHANGES.md**: Added this entry documenting all security and documentation changes
+
+---
+
 ## 2026-03-08: Comprehensive Code Review — All 39 Findings Resolved
 
 ### Critical Security Fixes

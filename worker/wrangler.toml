@@ -6,6 +6,6 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
-[vars]
-JUSTTCG_API_KEY = "tcg_1f6c8c6d907f42a0aacba9ff6005300c"
-TOPDECK_API_KEY = "d9ee7b1e-8732-4f73-984a-8c7c8fa2c769"
+# API keys are stored as encrypted secrets (wrangler secret put)
+# JUSTTCG_API_KEY — set via: wrangler secret put JUSTTCG_API_KEY
+# TOPDECK_API_KEY — set via: wrangler secret put TOPDECK_API_KEY

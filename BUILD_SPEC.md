@@ -48,30 +48,37 @@ All data must be real and verifiable:
 | Ticker | Live price ticker fetching from Scryfall collection API every 5 min (fetch deferred 2s, cached data instant) |
 | Header | Navigation with cart badge |
 | Footer | Site footer with attribution |
-| Chatbot | AI assistant via Pollinations API |
+| Chatbot | AI assistant via Worker proxy (`/chatbot` route) with client-side rate limiting |
 | CardGrid | Reusable card display grid |
-| Icons | SVG icon library |
+| ConfirmModal | Styled confirmation/alert modal (replaces `window.confirm` and `window.alert`) |
+| ErrorBoundary | React error boundary wrapping all route content with fallback UI |
+| Icons | SVG icon library with `className` forwarding |
 | SkeletonCard | Loading placeholder |
-| Toast | Notification system |
+| Toast | Notification system (memory-leak safe with `mountedRef` guard) |
 | BackToTop | Scroll-to-top button |
 | CookieNotice | Cookie consent banner |
 
 ### Utils
 | File | Description |
 |------|-------------|
-| api.js | Scryfall API wrapper with 100ms rate limiting |
+| api.js | Scryfall API wrapper with centralized rate limiting and `fetchCollection()` |
+| config.js | Centralized constants: tax rate, shipping, cart limits, API intervals, proxy URL |
+| sanitize.js | Input sanitization (`sanitizeInput`), email/phone validation |
+| group-by-seller.js | Shared cart grouping utility (used by CartView and CheckoutView) |
+| events-config.js | Community events data (editable without code changes) |
+| stores.js | Verified Guam store directory data |
 | helpers.js | formatUSD, getCardPrice, image URL helpers, debounce |
-| justtcg-api.js | JustTCG condition pricing API (paid tier) |
-| edhtop16-api.js | EDH Top 16 GraphQL API wrapper |
-| topdeck-api.js | TopDeck.gg REST API wrapper |
+| justtcg-api.js | JustTCG condition pricing API (paid tier, via Worker proxy) |
+| edhtop16-api.js | EDH Top 16 GraphQL API wrapper (via Worker proxy) |
+| topdeck-api.js | TopDeck.gg REST API wrapper (via Worker proxy) |
 | moxfield-api.js | Moxfield decklist API wrapper |
 | marketplace-data.js | Marketplace data management (empty — no mock data per SOUL.md) |
 
 ## Payment Integration (ACTIVE)
 
 ### SumUp Card Payments
-- **Merchant code**: M55T01IN
-- **Public key**: sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk
+- **Merchant code**: Stored in `utils/config.js`
+- **Public key**: Stored in `utils/config.js` (public key — safe for client-side)
 - **SDK**: Swift Checkout SDK loaded from `https://js.sumup.com/swift-checkout.js`
 - Payment flow: Create checkout → Mount widget → Process payment → Confirm
 
@@ -108,7 +115,7 @@ All data must be real and verifiable:
 | EDH Top 16 | `https://edhtop16.com` (via CORS proxy) | None |
 | TopDeck.gg | `https://topdeck.gg` (via CORS proxy) | API key |
 | Moxfield | `https://api2.moxfield.com` | None |
-| Pollinations AI | `https://text.pollinations.ai/openai/chat/completions` | None (free) |
+| Pollinations AI | Via Worker `/chatbot` proxy | None (free, rate-limited via Worker) |
 | SumUp | `https://js.sumup.com` / `https://api.sumup.com` | Public key |
 | Fontshare | `https://api.fontshare.com` | None |
 
@@ -121,9 +128,25 @@ All data must be real and verifiable:
 - **Deferred Ticker**: API fetch delayed 2s; cached data shows instantly
 - **Lighthouse**: Desktop 96, Mobile 68 → targeting 85+
 
+## Cloudflare Worker (`investmtg-proxy`)
+
+The Worker handles API key injection and CORS proxying. Source is in `worker/`.
+
+| Route | Target | Auth |
+|-------|--------|------|
+| `/justtcg` | api.justtcg.com | `X-Api-Key` header (encrypted secret) |
+| `/topdeck` | topdeck.gg API | `Authorization` header (encrypted secret) |
+| `/chatbot` | text.pollinations.ai | None (rate-limited: 12 req/min per IP) |
+| `/?target=` | Allowlisted hosts | None |
+
+**API keys are stored as encrypted Cloudflare Worker secrets, not in source code.**
+
+Deploy: `cd worker/ && wrangler deploy` (requires Cloudflare API token with Workers permissions)
+
 ## Deployment
 - GitHub repo: `imvestMTG/investmtg` (branch: `main`)
 - Hosted on GitHub Pages
 - Domain: www.investmtg.com via Cloudflare DNS
 - HTTPS certificate managed by GitHub Pages
-- Deploy via GitHub API with PAT (push individual files)
+- Push to `main` branch to deploy (GitHub Pages auto-builds)
+- Worker deployed separately via `wrangler deploy`

@@ -112,7 +112,7 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 | cEDH commanders, tournaments, staples | [EDH Top 16 API](https://edhtop16.com) | On meta page visit (15-min cache) |
 | cEDH tournament data | [TopDeck.gg API](https://topdeck.gg) | On meta page visit (10-min cache) |
 | Decklist imports | [Moxfield API](https://moxfield.com) | On demand |
-| AI chatbot | [Pollinations AI](https://pollinations.ai) | Real-time (free, no key) |
+| AI chatbot | [Pollinations AI](https://pollinations.ai) via Worker proxy | Real-time (free, rate-limited) |
 | Local store info | Manually verified | Updated as needed |
 | Marketplace listings | User-submitted | Real-time (localStorage) |
 | Payment processing | [SumUp](https://sumup.com) | Real-time |
@@ -121,11 +121,22 @@ We never populate the marketplace with fake sellers or fabricated listings to ma
 
 ## API Architecture
 
-investMTG uses a **CORS proxy worker** deployed on Cloudflare Workers to relay requests to APIs that don't support browser CORS (EDH Top 16, TopDeck.gg). The proxy:
-- Only allows requests to whitelisted domains (edhtop16.com, topdeck.gg)
-- Adds CORS headers so the browser can receive the data
+investMTG uses a **CORS proxy worker** (`investmtg-proxy`) deployed on Cloudflare Workers. The proxy handles:
+
+| Route | Target | Purpose |
+|-------|--------|---------|
+| `/justtcg` | api.justtcg.com | Card condition pricing (API key injected server-side) |
+| `/topdeck` | topdeck.gg API | Tournament data (API key injected server-side) |
+| `/chatbot` | text.pollinations.ai | AI chat advisor (rate-limited: 12 req/min per IP) |
+| `/?target=` | Allowlisted hosts | Generic CORS proxy (edhtop16.com, scryfall, moxfield) |
+
+Security measures:
+- Only allows requests from whitelisted origins (investmtg.com, localhost dev)
+- API keys are stored as **encrypted Cloudflare secrets** — never in source code or environment variables
+- Rate limiting on chatbot to prevent abuse
+- Input sanitization on all user-facing endpoints
+- Worker source code is version-controlled in the repo under `worker/`
 - Does not store, modify, or log any data passing through
-- Is open-source and transparent
 
 ---
 
@@ -206,6 +217,7 @@ Social handles should use **@investMTG** or **investMTG** consistently across al
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Comprehensive code review: all 39 findings resolved (security, accessibility, config centralization, error boundaries, input sanitization, Worker chatbot proxy). API keys migrated to encrypted Cloudflare secrets. Worker source added to repo under `worker/` |
 | 2026-03-07 | Performance optimization: lazy-loaded components (262KB → 47KB initial JS), minified CSS (127KB → 105KB), deleted unused 5MB og-image.png, hero preload, Scryfall preconnect, deferred Ticker fetch, removed unused font weights |
 | 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
 | 2026-03-07 | Store directory updated: removed Fokai Guam, The Grid GU, and Expensive Dreams (not a TCG store). Added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 5 verified stores |

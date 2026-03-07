@@ -30,7 +30,7 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 - **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community
 - **Seller Dashboard** — Register as a seller, manage listings, track sales
 - **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671 (5 verified Guam stores — listed as community resources, no formal partnerships)
-- **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI
+- **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI (routed through secure Worker proxy with rate limiting)
 - **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
 - **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout
 - **Legal Pages** — Privacy Policy, Terms of Service, Cookie Notice
@@ -54,31 +54,32 @@ To prove that a trading card marketplace can run on honesty. investMTG exists to
 ```
 investmtg/
 ├── index.html              # Entry point with import maps, CSP, structured data
-├── app.js                  # Root React app, router, global state
-├── base.css                # CSS custom properties and tokens
-├── style.css               # All component styles
+├── app.js                  # Root React app, router, ErrorBoundary, service worker registration
+├── base.css                # CSS custom properties, tokens, modal/error styles
+├── style.css               # All component styles (minified)
+├── sw.js                   # Service worker for PWA offline support
 ├── manifest.json           # PWA manifest
 ├── robots.txt              # Search engine crawl rules
 ├── sitemap.xml             # Sitemap for SEO
 ├── 404.html                # GitHub Pages SPA fallback
 ├── SOUL.md                 # Ethical guidelines — The Fair Play Economy
-├── BUILD_SPEC.md           # Original build specification
+├── BUILD_SPEC.md           # Build specification
 ├── CHANGES.md              # Build changelog
 │
 ├── images/
-│   ├── hero-bg.jpg          # AI-generated hero background (golden energy trails)
-│   ├── event-tcgcon.jpg     # AI artwork for TCG Con 2026 event card
-│   ├── event-commander.jpg  # AI artwork for Commander Night event card
-│   └── event-weekend.jpg    # AI artwork for Weekend Events card
+│   ├── hero-bg.jpg          # AI-generated hero background
+│   ├── event-tcgcon.jpg     # AI artwork for TCG Con 2026
+│   ├── event-commander.jpg  # AI artwork for Commander Night
+│   └── event-weekend.jpg    # AI artwork for Weekend Events
 │
 ├── components/
 │   ├── HomeView.js         # Homepage with daily-rotating card sections
 │   ├── SearchView.js       # Card search with filters
 │   ├── CardDetailView.js   # Card detail with live USD pricing + purchase links
 │   ├── PortfolioView.js    # Portfolio tracker with live price updates
-│   ├── CartView.js         # Shopping cart with JustTCG condition pricing chips
+│   ├── CartView.js         # Shopping cart with condition pricing + quantity limits
 │   ├── CheckoutView.js     # Full checkout with SumUp + Apple/Google Pay + GRT
-│   ├── StoreView.js        # Local stores + marketplace listings
+│   ├── StoreView.js        # Local stores + marketplace listings (keyboard accessible)
 │   ├── SellerDashboard.js  # Seller registration and listing management
 │   ├── OrderConfirmation.js# Post-payment confirmation
 │   ├── MarketMoversView.js # Top valued cards by category
@@ -90,25 +91,37 @@ investmtg/
 │   ├── Ticker.js           # Live price ticker strip
 │   ├── Header.js           # Navigation header
 │   ├── Footer.js           # Site footer
-│   ├── Chatbot.js          # AI chatbot assistant
+│   ├── Chatbot.js          # AI chatbot (proxied through Worker)
 │   ├── PrivacyPolicyView.js # Privacy policy page
 │   ├── TermsView.js        # Terms of service page
 │   ├── CookieNotice.js     # Cookie consent banner
 │   └── shared/
 │       ├── CardGrid.js     # Reusable card grid component
-│       ├── Icons.js        # SVG icon components
+│       ├── ConfirmModal.js # Styled confirmation/alert modal (replaces window.confirm)
+│       ├── ErrorBoundary.js# React error boundary with fallback UI
+│       ├── Icons.js        # SVG icon components (className forwarding)
 │       ├── SkeletonCard.js # Loading skeleton
-│       ├── Toast.js        # Toast notifications
+│       ├── Toast.js        # Toast notifications (memory-leak safe)
 │       └── BackToTop.js    # Scroll-to-top button
 │
 ├── utils/
-│   ├── api.js              # Scryfall API wrapper with rate limiting
+│   ├── api.js              # Scryfall API wrapper with centralized rate limiting
+│   ├── config.js           # Centralized constants (tax, shipping, limits, intervals)
+│   ├── sanitize.js         # Input sanitization and validation (email, phone, XSS)
+│   ├── group-by-seller.js  # Shared cart grouping utility
+│   ├── events-config.js    # Community events data (editable without code changes)
+│   ├── stores.js           # Verified Guam store directory data
 │   ├── helpers.js          # Formatting and utility functions
-│   ├── justtcg-api.js      # JustTCG condition pricing API
-│   ├── edhtop16-api.js     # EDH Top 16 GraphQL API wrapper
-│   ├── topdeck-api.js      # TopDeck.gg REST API wrapper
+│   ├── justtcg-api.js      # JustTCG condition pricing API (via Worker proxy)
+│   ├── edhtop16-api.js     # EDH Top 16 GraphQL API wrapper (via Worker proxy)
+│   ├── topdeck-api.js      # TopDeck.gg REST API wrapper (via Worker proxy)
 │   ├── moxfield-api.js     # Moxfield decklist API wrapper
 │   └── marketplace-data.js # Marketplace data management (empty — no mock data per SOUL.md)
+│
+├── worker/
+│   ├── worker.js           # Cloudflare Worker source (CORS proxy + chatbot + API routing)
+│   ├── wrangler.toml       # Worker deployment config (secrets stored encrypted)
+│   └── README.md           # Worker deployment instructions
 │
 └── .well-known/
     └── apple-developer-merchantid-domain-association  # Apple Pay verification
@@ -154,9 +167,9 @@ Key rules:
 | [Moxfield API](https://moxfield.com) | Decklist imports | No key required |
 | [Pollinations AI](https://pollinations.ai) | Chatbot responses | No key required |
 | [SumUp](https://developer.sumup.com) | Card payments | Merchant code + public key |
-| [Cloudflare Workers](https://workers.cloudflare.com) | CORS proxy for EDH Top 16 / TopDeck | API token |
-| [GitHub Pages](https://pages.github.com) | Static hosting | GitHub PAT for deployment |
-| [Cloudflare](https://cloudflare.com) | DNS + CDN | API tokens |
+| [Cloudflare Workers](https://workers.cloudflare.com) | CORS proxy, API key injection, chatbot relay, rate limiting | Encrypted secrets |
+| [GitHub Pages](https://pages.github.com) | Static hosting | Push to `main` branch |
+| [Cloudflare](https://cloudflare.com) | DNS + CDN + Worker hosting | API tokens (not in repo) |
 
 ## Development
 
