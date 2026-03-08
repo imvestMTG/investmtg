@@ -337,17 +337,22 @@ export function CartView(props) {
           )
         ),
 
-        /* Checkout button — disabled if conditions not selected */
-        !allConditionsChosen && !jtcgLoading && itemsMissingCondition.length > 0
-          ? h('div', { className: 'cart-checkout-blocked' },
-              h(WarningIcon, null),
-              h('span', null, itemsMissingCondition.length === 1
-                ? 'Select a condition for 1 item before checkout'
-                : 'Select conditions for ' + itemsMissingCondition.length + ' items before checkout'
-              )
+        /* Checkout gate message */
+        jtcgLoading
+          ? h('div', { className: 'cart-checkout-blocked cart-checkout-blocked--loading' },
+              h('span', null, 'Loading condition prices\u2026')
             )
-          : null,
+          : itemsMissingCondition.length > 0
+            ? h('div', { className: 'cart-checkout-blocked' },
+                h(WarningIcon, null),
+                h('span', null, itemsMissingCondition.length === 1
+                  ? 'Select a condition for 1 item before checkout'
+                  : 'Select conditions for ' + itemsMissingCondition.length + ' items before checkout'
+                )
+              )
+            : null,
 
+        /* Checkout button — disabled if conditions not selected or still loading */
         h('a', {
           href: allConditionsChosen ? '#checkout' : undefined,
           className: 'btn btn-primary btn-lg cart-checkout-btn' + (!allConditionsChosen ? ' cart-checkout-btn--disabled' : ''),

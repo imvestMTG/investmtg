@@ -222,3 +222,6 @@
 .cart-checkout-btn--disabled{opacity:0.5;cursor:not-allowed;pointer-events:auto}
 .cart-checkout-btn--disabled:hover{transform:none;box-shadow:none}
 @media(max-width:640px){.cart-item-top{flex-wrap:wrap;gap:var(--space-3)}.cart-condition-chips{gap:6px}.cart-cond-chip{padding:8px 12px;font-size:12px;min-height:36px}}
+.cart-checkout-btn--disabled{opacity:0.35!important;filter:grayscale(0.5);cursor:not-allowed!important;pointer-events:auto!important}
+.cart-checkout-btn--disabled:hover{transform:none!important;box-shadow:none!important;opacity:0.35!important}
+.cart-checkout-blocked--loading{border-color:var(--color-border);color:var(--color-text-muted);background:var(--color-surface-offset)}
