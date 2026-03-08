@@ -6,6 +6,7 @@ Cloudflare Worker that serves as the unified backend for investMTG — combining
 
 - the front end is the root-level SPA (vanilla JS, React 18.3.1 via self-hosted vendor bundles) deployed directly to GitHub Pages from the repository root — no build step
 - the Seller Dashboard now queries Scryfall's printings API directly (browser-side, not proxied) for set autocomplete, and submits bulk CSV listings via `/api/listings` sequentially
+- `POST /api/listings` validates `body.price == null` (not `!body.price`) to allow `price=0` for trade-only listings
 - the worker remains the secure layer for proxied API access, server-side data, and protected integrations
 - the domain can continue to sit behind Cloudflare while the front-end files are served from GitHub Pages
 - the frontend has a 6-second safety timeout on its `Promise.all` backend calls — if the worker does not respond in time, the loading gate is cleared and the app renders with localStorage fallbacks rather than showing a blank screen

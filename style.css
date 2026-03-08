@@ -101,3 +101,70 @@
 .bulk-progress-bar{width:100%;height:8px;background:var(--color-surface-offset);border-radius:var(--radius-full);overflow:hidden}
 .bulk-progress-fill{height:100%;background:linear-gradient(90deg,var(--color-primary),var(--color-success));border-radius:var(--radius-full);transition:width 0.3s ease}
 .bulk-progress-text{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-2);text-align:center}
+
+/* ===== 2-Column Listing Form Layout ===== */
+.listing-form-layout{padding:var(--space-2) 0}
+.listing-form-title{font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-4)}
+.listing-form-columns{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);align-items:start}
+@media(max-width:900px){.listing-form-columns{grid-template-columns:1fr}}
+
+/* Left column: form */
+.listing-form-left{display:flex;flex-direction:column;gap:0}
+
+/* Selected printing display (in form) */
+.selected-printing-display{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--color-primary-highlight);border:1px solid var(--color-primary);border-radius:var(--radius-md)}
+.selected-printing-thumb{width:40px;height:56px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0}
+.selected-printing-info{flex:1;min-width:0}
+.selected-printing-name{font-size:var(--text-sm);font-weight:600;color:var(--color-text)}
+.selected-printing-meta{display:flex;gap:var(--space-2);font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px}
+.selected-printing-placeholder{padding:var(--space-3);background:var(--color-surface-offset);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-text-faint);text-align:center}
+
+/* Right column: printings panel */
+.printings-panel{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);position:sticky;top:80px;max-height:calc(100vh - 120px);overflow-y:auto}
+.printings-panel-title{font-family:var(--font-display);font-size:var(--text-sm);font-weight:700;margin:0 0 var(--space-3);color:var(--color-text)}
+@media(max-width:900px){.printings-panel{position:static;max-height:400px}}
+
+/* Panel header: count + view toggle */
+.printings-panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);padding-bottom:var(--space-2);border-bottom:1px solid var(--color-divider)}
+.printings-panel-count{font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted)}
+.printings-view-toggle{display:flex;gap:var(--space-1)}
+.printings-view-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface-2);color:var(--color-text-muted);cursor:pointer;transition:all var(--transition-interactive)}
+.printings-view-btn:hover{border-color:var(--color-primary);color:var(--color-text)}
+.printings-view-btn.active{background:var(--color-primary);color:var(--color-text-inverse);border-color:var(--color-primary)}
+.printings-view-btn svg{width:14px;height:14px}
+
+/* Empty/loading/error states */
+.printings-panel-empty{text-align:center;padding:var(--space-8) var(--space-4);color:var(--color-text-muted)}
+.printings-panel-empty-icon{margin-bottom:var(--space-3)}
+.printings-panel-empty-icon svg{width:36px;height:36px;color:var(--color-text-faint)}
+.printings-panel-empty p{font-size:var(--text-sm);margin:0 0 var(--space-2);line-height:1.5}
+.printings-panel-hint{font-size:var(--text-xs);color:var(--color-text-faint)}
+.printings-panel-loading{padding:var(--space-4)}
+.printings-panel-error{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-4);color:var(--color-error)}
+.printings-panel-error svg{flex-shrink:0}
+
+/* ===== Grid View ===== */
+.printings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:var(--space-3)}
+.printings-grid-item{background:var(--color-surface-2);border:2px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden;cursor:pointer;transition:border-color var(--transition-interactive),box-shadow var(--transition-interactive),transform var(--transition-interactive);position:relative}
+.printings-grid-item:hover{border-color:var(--color-primary);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.printings-grid-item.selected{border-color:var(--color-primary);background:var(--color-primary-highlight);box-shadow:0 0 0 2px var(--color-primary)}
+.printings-grid-img{width:100%;aspect-ratio:745/1040;object-fit:cover;display:block}
+.printings-grid-img-placeholder{width:100%;aspect-ratio:745/1040;display:flex;align-items:center;justify-content:center;background:var(--color-surface-offset);font-size:var(--text-xs);font-weight:700;color:var(--color-text-faint)}
+.printings-grid-info{padding:var(--space-2)}
+.printings-grid-set{font-size:var(--text-xs);font-weight:600;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.printings-grid-meta{display:flex;gap:var(--space-1);font-size:10px;color:var(--color-text-muted);margin-top:2px;flex-wrap:wrap}
+.printings-grid-price{font-size:var(--text-xs);font-weight:700;color:var(--color-primary);margin-top:2px;font-variant-numeric:tabular-nums}
+.printings-selected-badge{position:absolute;top:var(--space-2);right:var(--space-2);background:var(--color-primary);color:var(--color-text-inverse);font-size:10px;font-weight:700;padding:2px var(--space-2);border-radius:var(--radius-full)}
+
+/* ===== List View ===== */
+.printings-list{display:flex;flex-direction:column;gap:0}
+.printings-list-item{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-3);cursor:pointer;transition:background var(--transition-interactive);border-bottom:1px solid var(--color-divider);position:relative}
+.printings-list-item:last-child{border-bottom:none}
+.printings-list-item:hover{background:var(--color-surface-offset)}
+.printings-list-item.selected{background:var(--color-primary-highlight)}
+.printings-list-thumb{width:32px;height:44px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0}
+.printings-list-info{flex:1;min-width:0}
+.printings-list-name{font-size:var(--text-sm);font-weight:600;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.printings-list-meta{display:flex;gap:var(--space-2);font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px}
+.printings-list-prices{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0;min-width:60px}
+.printings-list-check{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);color:var(--color-primary);font-weight:700;font-size:var(--text-sm)}

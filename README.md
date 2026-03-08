@@ -66,6 +66,8 @@ Key characteristics:
 - localStorage fallback for unauthenticated sessions
 
 ### Seller flow
+- 2-column listing form: form fields on left, printings browser panel on right
+- printings panel with grid/list view toggle shows all available sets, images, prices
 - guided Guam listing workflow with Scryfall-powered set autocomplete
 - CSV/Manabox bulk import for listing multiple cards at once
 - meetup zone and island delivery framing

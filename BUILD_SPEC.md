@@ -88,7 +88,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id` |
 | `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
-| `components/SellerDashboard.js` | `#seller` | Seller registration, listing management, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
+| `components/SellerDashboard.js` | `#seller` | Seller registration, listing management, 2-column listing form with printings browser panel (grid/list views), set autocomplete via Scryfall printings, CSV/Manabox bulk import |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart (not yet wired to backend) |
 | `components/CheckoutView.js` | `#checkout` | Checkout (not yet wired to backend) |

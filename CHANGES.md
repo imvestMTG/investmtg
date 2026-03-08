@@ -1,5 +1,27 @@
 # investMTG — Changelog
 
+## 2026-03-08: 2-column listing form, printings browser panel, listing creation bugfix — SW v13
+
+### Bug Fixes
+
+- **Backend: listing creation rejected trade listings** — `POST /api/listings` used `!body.price` validation which rejected `price=0` (valid for trade-only listings). Changed to `body.price == null` so only truly missing prices are rejected.
+- **Frontend: better error messages on listing creation failure** — `handleAddListing` now surfaces HTTP status codes (401 → "Not authenticated", 400 → "Missing required fields") instead of a generic failure message.
+
+### Features
+
+- **2-column listing form layout** — Add Listing tab now uses a side-by-side layout: form fields on the left, printings browser panel on the right.
+- **Printings browser panel** — After selecting a card name from autocomplete, all available printings appear in a scrollable panel on the right side. Each printing shows the card image, set name, set code, collector number, rarity, and market price. Clicking a printing selects it for the listing.
+- **Grid/list view toggle** — The printings panel has a toggle between grid view (card images in a grid) and list view (compact rows). Grid view is the default.
+- **Selected printing display** — The form's left column shows a summary of the currently selected printing with thumbnail and set details, replacing the old hidden dropdown.
+- **New icons** — Added GridIcon and ListIcon to shared/Icons.js.
+
+### Infrastructure
+
+- Service Worker bumped to v13.
+- Worker redeployed with price validation fix.
+
+---
+
 ## 2026-03-08: Seller listing improvements — set autocomplete, bulk CSV import, CX polish — SW v12
 
 ### Features Added

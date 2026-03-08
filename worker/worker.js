@@ -801,7 +801,7 @@ async function handleListings(request, env) {
 
   if (method === 'POST') {
     const body = await request.json().catch(() => null);
-    if (!body || !body.card_name || !body.price || !body.condition || !body.seller_name) {
+    if (!body || !body.card_name || body.price == null || !body.condition || !body.seller_name) {
       return json({ error: 'card_name, price, condition, and seller_name required' }, 400, request);
     }
 
