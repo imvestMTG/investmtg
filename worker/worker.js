@@ -571,6 +571,22 @@ async function handleAuthCallback(request, env) {
   ]);
 }
 
+/* Temporary debug endpoint — remove after OAuth is verified */
+async function handleAuthDebug(request, env) {
+  const adminAuth = request.headers.get('Authorization');
+  if (adminAuth !== `Bearer ${env.ADMIN_TOKEN}`) {
+    return json({ error: 'Admin only' }, 403, request);
+  }
+  return json({
+    frontend_url: env.FRONTEND_URL,
+    has_client_id: !!env.GOOGLE_CLIENT_ID,
+    has_client_secret: !!env.GOOGLE_CLIENT_SECRET,
+    has_auth_secret: !!env.AUTH_SECRET,
+    oauth_redirect_uri: OAUTH_REDIRECT_URI,
+    client_id_prefix: env.GOOGLE_CLIENT_ID ? env.GOOGLE_CLIENT_ID.substring(0, 20) + '...' : 'MISSING',
+  }, 200, request);
+}
+
 async function handleAuthMe(request, env) {
   const auth = await getAuthUser(request, env);
   if (!auth) return json({ authenticated: false }, 200, request);
@@ -1413,6 +1429,7 @@ export default {
       if (path === '/auth/google')                          return handleGoogleAuth(request, env);
       if (path === '/auth/callback')                        return handleAuthCallback(request, env);
       if (path === '/auth/me')                              return handleAuthMe(request, env);
+      if (path === '/auth/debug')                            return handleAuthDebug(request, env);
       if (path === '/auth/logout' && request.method === 'DELETE') return handleAuthLogout(request, env);
 
       // New API routes (D1 + KV backed)

@@ -47,7 +47,10 @@ function authFetch(path, options) {
     opts.headers['Authorization'] = 'Bearer ' + token;
   }
   opts.credentials = 'include';
-  return fetch(PROXY_BASE + path, opts).then(function(res) {
+  var url = PROXY_BASE + path;
+  console.log('[investMTG auth] authFetch:', url, 'hasToken:', !!token);
+  return fetch(url, opts).then(function(res) {
+    console.log('[investMTG auth] authFetch response:', res.status, res.ok);
     if (!res.ok) throw new Error('Auth error: ' + res.status);
     return res.json();
   });
@@ -59,13 +62,16 @@ function captureTokenFromURL() {
     var params = new URLSearchParams(window.location.search);
     var token = params.get('auth_token');
     if (token) {
+      console.log('[investMTG auth] Captured auth_token from URL, length:', token.length);
       setToken(token);
       // Clean the URL — remove auth_token param without reload
       var clean = window.location.pathname + window.location.hash;
       window.history.replaceState(null, '', clean);
       return token;
     }
-  } catch(e) { /* ignore */ }
+  } catch(e) {
+    console.error('[investMTG auth] captureTokenFromURL error:', e);
+  }
   return null;
 }
 
@@ -84,8 +90,8 @@ export function checkAuth() {
     return Promise.resolve(null);
   }
 
+  _checked = true; // Set early to prevent double-calls
   return authFetch('/auth/me').then(function(data) {
-    _checked = true;
     if (data && data.authenticated) {
       _user = data.user;
     } else {
@@ -94,8 +100,8 @@ export function checkAuth() {
     }
     notifyAuth();
     return _user;
-  }).catch(function() {
-    _checked = true;
+  }).catch(function(err) {
+    console.error('[investMTG auth] checkAuth failed:', err);
     _user = null;
     setToken(null);
     notifyAuth();
