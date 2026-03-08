@@ -35,7 +35,7 @@ Coding rules enforced across all root-level JS files:
 
 Key characteristics:
 - Cloudflare Worker API gateway and proxy
-- Cloudflare D1 database for server-side data (users, auth sessions, portfolios, listings, sellers, stores, events, cart)
+- Cloudflare D1 database for server-side data (users, auth sessions, portfolios, listings, sellers, stores, events, cart, orders, order counters)
 - Cloudflare KV cache for market and discovery responses (ticker, featured, trending, budget, movers)
 - Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1
 - Encrypted secrets for protected third-party APIs and auth credentials
@@ -72,6 +72,14 @@ Key characteristics:
 - CSV/Manabox bulk import for listing multiple cards at once
 - meetup zone and island delivery framing
 - full CRUD via `/api/sellers` and `/api/listings`
+
+### Order & Reserve flow
+- 4-step checkout wizard: Review → Fulfillment → Contact → Payment with confirmation modal
+- Reserve & Pay at Pickup — no online payment required; buyer pays seller directly at pickup
+- Server-generated sequential order IDs (`GUM-YYYYMM-XXXXX`) via D1 `order_counters` table
+- Orders persisted to D1 via `POST /api/orders` with localStorage fallback
+- My Orders page (`#orders`) lists all orders with status badges, totals, and fulfillment info
+- Order Confirmation page (`#order/:id`) loads server-first with localStorage fallback
 
 ### Home / Discovery
 - featured, trending, and budget card sections loaded from `/api/featured`, `/api/trending`, `/api/budget`

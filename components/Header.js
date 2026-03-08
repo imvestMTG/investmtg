@@ -128,6 +128,10 @@ export function Header(props) {
                   className: 'user-dropdown-item',
                   onClick: function() { nav('seller'); setUserMenuOpen(false); }
                 }, 'Seller Dashboard'),
+                h('button', {
+                  className: 'user-dropdown-item',
+                  onClick: function() { nav('orders'); setUserMenuOpen(false); }
+                }, 'My Orders'),
                 h('hr', { className: 'user-dropdown-divider' }),
                 h('button', {
                   className: 'user-dropdown-item user-dropdown-signout',

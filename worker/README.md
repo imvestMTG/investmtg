@@ -28,7 +28,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 | Binding | Type | Resource |
 |---------|------|----------|
-| `DB` | D1 Database | `investmtg-db` — SQLite database with 9 tables |
+| `DB` | D1 Database | `investmtg-db` — SQLite database with 11 tables |
 | `CACHE` | KV Namespace | `INVESTMTG_CACHE` — edge cache |
 | `JUSTTCG_API_KEY` | Secret | JustTCG API key (encrypted) |
 | `TOPDECK_API_KEY` | Secret | TopDeck.gg API key (encrypted) |
@@ -56,6 +56,9 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/stores` | GET | verified Guam stores |
 | `/api/events` | GET | community events |
 | `/api/cart` | GET/POST/DELETE | shopping cart |
+| `/api/orders` | POST | create order (auth required; returns `GUM-YYYYMM-XXXXX` ID) |
+| `/api/orders` | GET | list orders for authenticated user (newest first) |
+| `/api/orders/:id` | GET | get single order by ID (owner-only) |
 
 ### Auth routes
 | Route | Method | Purpose |
@@ -75,7 +78,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 ## Database schema
 
-9 tables in the D1 database:
+11 tables in the D1 database:
 - `users` — Google-authenticated user accounts (google_id, email, name, picture, role)
 - `auth_sessions` — HMAC-signed session tokens with 30-day expiry
 - `prices`
@@ -85,6 +88,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users
+- `orders` — order records with items (JSON), totals, contact info, fulfillment, status. Has `user_email` index. Auto-created by worker if missing.
+- `order_counters` — monthly sequential counter for `GUM-YYYYMM-XXXXX` order IDs. Atomic upsert via `ON CONFLICT DO UPDATE`.
 
 ## Security
 

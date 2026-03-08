@@ -91,7 +91,9 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/SellerDashboard.js` | `#seller` | Seller registration, listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart (not yet wired to backend) |
-| `components/CheckoutView.js` | `#checkout` | Checkout (not yet wired to backend) |
+| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal. Reserve & Pay at Pickup only. POSTs to `/api/orders`. |
+| `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. |
+| `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
 | `components/DecklistView.js` | `#decklist` | Decklist import |
 | `components/MetaView.js` | `#meta` | Meta/tournament data |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
@@ -161,6 +163,9 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/stores` | GET | Verified Guam stores |
 | `/api/events` | GET | Community events |
 | `/api/cart` | GET/POST/DELETE | Shopping cart |
+| `/api/orders` | POST | Create order (auth required). Returns server-generated `GUM-YYYYMM-XXXXX` ID. |
+| `/api/orders` | GET | List orders for authenticated user (sorted by `created_at DESC`) |
+| `/api/orders/:id` | GET | Get single order by ID (owner-only) |
 | `/justtcg` | proxy | Condition pricing |
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |
@@ -182,6 +187,8 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── CardDetailView.js
 │   ├── CartView.js
 │   ├── CheckoutView.js
+│   ├── OrderConfirmation.js
+│   ├── OrdersView.js
 │   ├── Chatbot.js
 │   ├── DecklistView.js
 │   ├── Footer.js

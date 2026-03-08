@@ -100,7 +100,7 @@ The Cloudflare Worker (v3) remains a separate gateway for protected or proxied A
 | Decklist imports | [Moxfield](https://moxfield.com) | Integrated as needed |
 | Proxy / gateway | Cloudflare Worker | Secret-backed API routing |
 | User accounts | Google OAuth 2.0 | Authentication via Google sign-in, accounts stored in D1 |
-| Server-side persistence | Cloudflare D1 | Users, auth sessions, listings, sellers, stores, events, cart, portfolio |
+| Server-side persistence | Cloudflare D1 | Users, auth sessions, listings, sellers, stores, events, cart, portfolio, orders, order counters |
 | Edge cache | Cloudflare KV | Cached market and discovery responses |
 
 ## What we do not do
@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Order workflow overhaul: 4-step checkout wizard with confirmation modal, reserve & pay at pickup, server-generated `GUM-YYYYMM-XXXXX` order IDs, D1 order persistence, My Orders page (`#orders`), Order Confirmation server-first loading, removed dead SumUp code; SW v15 |
 | 2026-03-08 | Step-based listing wizard (3-step flow: search → pick printing → details), auto-confirm on blur/Enter, new lf-* CSS system, removed broken 2-column layout; SW v14 |
 | 2026-03-08 | 2-column listing form with printings browser panel (grid/list views), fixed listing creation for trade listings (price=0 bug), better error messages; SW v13 |
 | 2026-03-08 | Seller listing improvements: set autocomplete via Scryfall printings API, CSV/Manabox bulk import tab, card preview thumbnails, CX polish; SW v12 |

@@ -28,6 +28,7 @@
  *   /api/stores           — Local stores from D1
  *   /api/events           — Community events from D1
  *   /api/cart             — Shopping cart CRUD (auth user or anonymous session)
+ *   /api/orders           — Order CRUD (auth required; POST creates, GET lists, GET/:id gets one)
  *   /auth/google          — Start Google OAuth flow
  *   /auth/callback        — Google OAuth callback
  *   /auth/me              — Current authenticated user
@@ -979,6 +980,216 @@ async function handleCart(request, env) {
 }
 
 /* ══════════════════════════════════════
+   ORDER ROUTES
+   ══════════════════════════════════════
+
+  D1 TABLE (run once via wrangler d1 execute):
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    items TEXT NOT NULL,
+    subtotal REAL NOT NULL,
+    tax REAL NOT NULL,
+    shipping REAL DEFAULT 0,
+    total REAL NOT NULL,
+    fulfillment TEXT DEFAULT 'pickup',
+    pickup_store TEXT,
+    contact_name TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    payment_method TEXT DEFAULT 'reserve',
+    status TEXT DEFAULT 'reserved',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+*/
+
+/**
+ * Generate a sequential order ID in the format GUM-YYYYMM-XXXXX.
+ * Uses a D1 counter table row keyed by month to get the next sequence number.
+ */
+async function generateOrderId(db) {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const monthKey = `${year}${month}`;
+
+  // Upsert a counter row for this month
+  await db.prepare(
+    `INSERT INTO order_counters (month_key, last_seq)
+     VALUES (?, 1)
+     ON CONFLICT(month_key) DO UPDATE SET last_seq = last_seq + 1`
+  ).bind(monthKey).run().catch(async () => {
+    // Table may not exist yet — create it and retry
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS order_counters (
+        month_key TEXT PRIMARY KEY,
+        last_seq INTEGER NOT NULL DEFAULT 1
+      )`
+    ).run();
+    await db.prepare(
+      `INSERT INTO order_counters (month_key, last_seq)
+       VALUES (?, 1)
+       ON CONFLICT(month_key) DO UPDATE SET last_seq = last_seq + 1`
+    ).bind(monthKey).run();
+  });
+
+  const row = await db.prepare(
+    'SELECT last_seq FROM order_counters WHERE month_key = ?'
+  ).bind(monthKey).first();
+
+  const seq = row ? row.last_seq : 1;
+  return `GUM-${monthKey}-${String(seq).padStart(5, '0')}`;
+}
+
+/**
+ * POST /api/orders  — create a new order (auth required)
+ * GET  /api/orders  — list orders for the authenticated user
+ * GET  /api/orders/:id — get a single order by ID
+ */
+async function handleOrders(request, env, orderId) {
+  const method = request.method;
+
+  // ── GET /api/orders/:id ──
+  if (method === 'GET' && orderId) {
+    const auth = await getAuthUser(request, env);
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+    const row = await env.DB.prepare(
+      'SELECT * FROM orders WHERE id = ? AND user_id = ?'
+    ).bind(orderId, auth.userId).first().catch(() => null);
+
+    if (!row) return json({ error: 'Order not found' }, 404, request);
+
+    // Parse items JSON
+    const order = Object.assign({}, row);
+    if (typeof order.items === 'string') {
+      try { order.items = JSON.parse(order.items); } catch (e) { order.items = []; }
+    }
+    if (typeof order.pickup_store === 'string' && order.pickup_store) {
+      try { order.pickup_store = JSON.parse(order.pickup_store); } catch (e) { /* keep as string */ }
+    }
+
+    return json({ order }, 200, request);
+  }
+
+  // ── GET /api/orders ──
+  if (method === 'GET') {
+    const auth = await getAuthUser(request, env);
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+    const rows = await env.DB.prepare(
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
+    ).bind(auth.userId).all().catch(() => ({ results: [] }));
+
+    const orders = (rows.results || []).map(function(row) {
+      const order = Object.assign({}, row);
+      if (typeof order.items === 'string') {
+        try { order.items = JSON.parse(order.items); } catch (e) { order.items = []; }
+      }
+      if (typeof order.pickup_store === 'string' && order.pickup_store) {
+        try { order.pickup_store = JSON.parse(order.pickup_store); } catch (e) { /* keep as string */ }
+      }
+      return order;
+    });
+
+    return json({ orders }, 200, request);
+  }
+
+  // ── POST /api/orders ──
+  if (method === 'POST') {
+    const auth = await getAuthUser(request, env);
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+    const body = await request.json().catch(() => null);
+    if (!body || !body.items || !Array.isArray(body.items)) {
+      return json({ error: 'items array required' }, 400, request);
+    }
+    if (body.total == null || body.subtotal == null) {
+      return json({ error: 'subtotal and total required' }, 400, request);
+    }
+
+    // Ensure orders table exists
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        items TEXT NOT NULL,
+        subtotal REAL NOT NULL,
+        tax REAL NOT NULL,
+        shipping REAL DEFAULT 0,
+        total REAL NOT NULL,
+        fulfillment TEXT DEFAULT 'pickup',
+        pickup_store TEXT,
+        contact_name TEXT,
+        contact_email TEXT,
+        contact_phone TEXT,
+        payment_method TEXT DEFAULT 'reserve',
+        status TEXT DEFAULT 'reserved',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`
+    ).run().catch(() => {});
+
+    const id = await generateOrderId(env.DB);
+    const nowStr = new Date().toISOString();
+    const itemsJson = JSON.stringify(body.items);
+    const pickupStoreJson = body.pickup_store
+      ? (typeof body.pickup_store === 'object' ? JSON.stringify(body.pickup_store) : body.pickup_store)
+      : null;
+
+    await env.DB.prepare(
+      `INSERT INTO orders
+       (id, user_id, items, subtotal, tax, shipping, total, fulfillment,
+        pickup_store, contact_name, contact_email, contact_phone,
+        payment_method, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      auth.userId,
+      itemsJson,
+      body.subtotal,
+      body.tax || 0,
+      body.shipping || 0,
+      body.total,
+      body.fulfillment || 'pickup',
+      pickupStoreJson,
+      body.contact_name || '',
+      body.contact_email || '',
+      body.contact_phone || '',
+      body.payment_method || 'reserve',
+      'reserved',
+      nowStr,
+      nowStr
+    ).run();
+
+    const order = {
+      id,
+      user_id: auth.userId,
+      items: body.items,
+      subtotal: body.subtotal,
+      tax: body.tax || 0,
+      shipping: body.shipping || 0,
+      total: body.total,
+      fulfillment: body.fulfillment || 'pickup',
+      pickup_store: body.pickup_store || null,
+      contact_name: body.contact_name || '',
+      contact_email: body.contact_email || '',
+      contact_phone: body.contact_phone || '',
+      payment_method: body.payment_method || 'reserve',
+      status: 'reserved',
+      created_at: nowStr,
+      updated_at: nowStr,
+    };
+
+    return json({ ok: true, order }, 201, request);
+  }
+
+  return json({ error: 'Method not allowed' }, 405, request);
+}
+
+/* ══════════════════════════════════════
    EXISTING PROXY ROUTES (unchanged)
    ══════════════════════════════════════ */
 
@@ -1124,6 +1335,10 @@ export default {
       if (path === '/api/stores')                           return handleStores(request, env);
       if (path === '/api/events')                           return handleEvents(request, env);
       if (path.startsWith('/api/cart'))                     return handleCart(request, env);
+      if (path.startsWith('/api/orders')) {
+        const orderId = path.replace(/^\/api\/orders\/?/, '') || null;
+        return handleOrders(request, env, orderId || undefined);
+      }
 
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);

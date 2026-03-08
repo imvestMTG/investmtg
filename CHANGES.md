@@ -1,5 +1,37 @@
 # investMTG — Changelog
 
+## 2026-03-08: Order workflow overhaul — reserve system, order persistence, My Orders page — SW v15
+
+### Critical Bug Fixes
+
+- **Reserve flow now requires confirmation** — Previously, clicking "Reserve" instantly completed the order with no confirmation screen and no payment/contact step. Now the checkout is a 4-step wizard (Review → Fulfillment → Contact → Payment) with a modal confirmation before the order is placed.
+- **Orders persisted to D1 database** — Orders are now POSTed to `/api/orders` on the Worker and stored in the `orders` D1 table. Falls back to localStorage with a `GUM-LOCAL-*` prefix if the API call fails.
+- **Sequential server-generated order IDs** — Format `GUM-YYYYMM-XXXXX` using an `order_counters` D1 table with atomic upserts. No more client-only random IDs.
+- **Order Confirmation page fixed** — Loads order data server-first via `backendFetch('/api/orders/:id')`, then falls back to localStorage. Fixed destructuring bug that crashed the page.
+- **Removed dead SumUp SDK code** — Stripped all card/wallet payment references from CheckoutView since SumUp was never integrated. Only "Reserve & Pay at Pickup" remains.
+
+### New Features
+
+- **My Orders page (`#orders`)** — New `OrdersView.js` component accessible from the user dropdown menu. Lists all orders sorted newest-first with order ID, date, item count, fulfillment method, total, and status badge. Each card links to `#order/<id>` for full details.
+- **Checkout confirmation modal** — Before completing a reservation, a modal overlay summarizes the order total and explains the reserve-and-pay-at-pickup flow. User must explicitly confirm.
+- **"View All Orders" link** on the Order Confirmation page links to the new My Orders page.
+
+### Worker (v3 update)
+
+- **`POST /api/orders`** — Creates a new order with auth token, stores in D1, returns server-generated `GUM-YYYYMM-XXXXX` ID.
+- **`GET /api/orders`** — Lists all orders for the authenticated user, sorted by `created_at DESC`.
+- **`GET /api/orders/:id`** — Returns a single order by ID (owner-only access).
+- **D1 tables**: `orders` (16 columns) and `order_counters` (month_key + last_seq) with index on `user_email`.
+- **`generateOrderId()`** — Atomic sequential ID generation using D1 upsert on `order_counters`.
+
+### Infrastructure
+
+- Service Worker bumped to v15.
+- Added CSS for OrdersView, order status badges, checkout confirmation modal, and reserve info box.
+- Header dropdown now includes "My Orders" link.
+
+---
+
 ## 2026-03-08: Step-based listing wizard, auto-confirm card search, design overhaul — SW v14
 
 ### Redesign

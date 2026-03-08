@@ -64,6 +64,7 @@ var TermsView = lazyComponent(function() { return import('./components/TermsView
 var Chatbot = lazyComponent(function() { return import('./components/Chatbot.js'); }, 'Chatbot');
 var ListingModal = lazyComponent(function() { return import('./components/ListingModal.js'); }, 'ListingModal');
 var BuyLocalModal = lazyComponent(function() { return import('./components/BuyLocalModal.js'); }, 'BuyLocalModal');
+var OrdersView = lazyComponent(function() { return import('./components/OrdersView.js'); }, 'OrdersView');
 
 // ===== ROUTER HOOK =====
 function useRouter() {
@@ -101,6 +102,7 @@ function parseHash() {
   if (hash === 'meta') return { page: 'meta' };
   if (hash === 'privacy') return { page: 'privacy' };
   if (hash === 'terms') return { page: 'terms' };
+  if (hash === 'orders') return { page: 'orders' };
   return { page: 'home' };
 }
 
@@ -369,7 +371,8 @@ function App() {
       route.page === 'movers' && h(MarketMoversView, null),
       route.page === 'meta' && h(MetaView, { viewCache: viewCacheRef.current }),
       route.page === 'privacy' && h(PrivacyPolicyView, null),
-      route.page === 'terms' && h(TermsView, null)
+      route.page === 'terms' && h(TermsView, null),
+      route.page === 'orders' && h(OrdersView, null)
       )
     ),
     h(Footer, null),

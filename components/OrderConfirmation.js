@@ -1,11 +1,14 @@
-/* OrderConfirmation.js — Shown after successful payment */
+/* OrderConfirmation.js — Shown after successful reservation */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
-import { CheckCircleIcon, StorePickupIcon, TruckIcon, MapPinIcon, PhoneIcon, OrderIcon } from './shared/Icons.js';
+import { CheckCircleIcon, StorePickupIcon, TruckIcon, MapPinIcon, OrderIcon } from './shared/Icons.js';
 import { storageGet } from '../utils/storage.js';
+import { backendFetch } from '../utils/api.js';
 var h = React.createElement;
 
-export function OrderConfirmation({ orderId }) {
+export function OrderConfirmation(props) {
+  var orderId = props.orderId;
+
   var ref1 = React.useState(null);
   var order = ref1[0], setOrder = ref1[1];
 
@@ -13,12 +16,52 @@ export function OrderConfirmation({ orderId }) {
   var loaded = ref2[0], setLoaded = ref2[1];
 
   React.useEffect(function() {
-    // Load the order from localStorage
-    var orders = storageGet('investmtg-orders', []);
-    if (!Array.isArray(orders)) orders = [];
-    var found = orders.find(function(o) { return o.id === orderId; });
-    setOrder(found || null);
-    setLoaded(true);
+    if (!orderId) {
+      setLoaded(true);
+      return;
+    }
+
+    // Try server first, fall back to localStorage
+    backendFetch('/api/orders/' + encodeURIComponent(orderId))
+      .then(function(data) {
+        if (data && data.order) {
+          // Normalize server order shape to match localStorage shape
+          var o = data.order;
+          var normalized = {
+            id: o.id,
+            items: o.items || [],
+            subtotal: o.subtotal,
+            tax: o.tax,
+            shipping: o.shipping || 0,
+            total: o.total,
+            fulfillment: o.fulfillment || 'pickup',
+            pickupStore: o.pickup_store || null,
+            contact: {
+              name: o.contact_name || '',
+              email: o.contact_email || '',
+              phone: o.contact_phone || ''
+            },
+            date: o.created_at || new Date().toISOString(),
+            paymentMethod: o.payment_method || 'reserve',
+            status: o.status || 'reserved'
+          };
+          setOrder(normalized);
+        } else {
+          loadFromLocal();
+        }
+        setLoaded(true);
+      })
+      .catch(function() {
+        loadFromLocal();
+        setLoaded(true);
+      });
+
+    function loadFromLocal() {
+      var orders = storageGet('investmtg-orders', []);
+      if (!Array.isArray(orders)) orders = [];
+      var found = orders.find(function(o) { return o.id === orderId; });
+      setOrder(found || null);
+    }
   }, [orderId]);
 
   if (!loaded) {
@@ -35,7 +78,8 @@ export function OrderConfirmation({ orderId }) {
       h('div', { className: 'empty-state' },
         h('h3', null, 'Order not found'),
         h('p', null, 'We couldn\'t find order ' + (orderId || '') + '. It may have been cleared.'),
-        h('a', { href: '#store', className: 'btn btn-primary' }, 'Browse Marketplace')
+        h('a', { href: '#orders', className: 'btn btn-primary' }, 'My Orders'),
+        h('a', { href: '#store', className: 'btn btn-secondary', style: { marginLeft: '8px' } }, 'Browse Marketplace')
       )
     );
   }
@@ -56,9 +100,9 @@ export function OrderConfirmation({ orderId }) {
         h(CheckCircleIcon, null)
       ),
       h('div', null,
-        h('h1', { className: 'order-success-title' }, 'Order Confirmed!'),
+        h('h1', { className: 'order-success-title' }, 'Order Reserved!'),
         h('p', { className: 'order-success-sub' },
-          'Thank you, ', h('strong', null, order.contact.name), '. Your order has been placed.'
+          'Thank you, ', h('strong', null, order.contact.name), '. Your order has been reserved.'
         )
       )
     ),
@@ -82,7 +126,7 @@ export function OrderConfirmation({ orderId }) {
           ),
           h('div', { className: 'order-info-row' },
             h('span', { className: 'order-info-label' }, 'Status'),
-            h('span', { className: 'order-status-badge' }, '✓ Confirmed')
+            h('span', { className: 'order-status-badge' }, '\uD83D\uDD12 Reserved')
           )
         )
       ),
@@ -130,7 +174,7 @@ export function OrderConfirmation({ orderId }) {
                 h('span', { className: 'order-info-label' }, 'Address'),
                 h('span', { className: 'order-info-value' }, order.pickupStore.address)
               ),
-              h('div', { className: 'order-info-row' },
+              order.pickupStore.phone && h('div', { className: 'order-info-row' },
                 h('span', { className: 'order-info-label' }, 'Phone'),
                 h('a', { href: 'tel:' + order.pickupStore.phone, className: 'order-info-value order-link' },
                   order.pickupStore.phone
@@ -145,7 +189,7 @@ export function OrderConfirmation({ orderId }) {
               h('p', { className: 'order-fulfillment-note' },
                 'Your order will be shipped to your address on Guam. The seller will contact you at ',
                 h('strong', null, order.contact.email), ' or ',
-                h('strong', null, order.contact.phone), ' within 1–2 business days to confirm shipping details.'
+                h('strong', null, order.contact.phone), ' within 1\u20132 business days to confirm shipping details.'
               )
             )
       ),
@@ -168,7 +212,7 @@ export function OrderConfirmation({ orderId }) {
               h('div', { className: 'order-item-img' },
                 item.image
                   ? h('img', { src: item.image, alt: item.name, loading: 'lazy' })
-                  : h('div', { className: 'order-item-img-placeholder' }, '🃏')
+                  : h('div', { className: 'order-item-img-placeholder' }, '\uD83C\uDCCF')
               ),
               h('div', { className: 'order-item-details' },
                 h('div', { className: 'order-item-name' }, item.name),
@@ -179,7 +223,7 @@ export function OrderConfirmation({ orderId }) {
                 )
               ),
               h('div', { className: 'order-item-right' },
-                h('div', { className: 'order-item-qty' }, '× ' + (item.qty || 1)),
+                h('div', { className: 'order-item-qty' }, '\u00D7 ' + (item.qty || 1)),
                 h('div', { className: 'order-item-price' }, formatUSD((item.price || 0) * (item.qty || 1)))
               )
             );
@@ -198,7 +242,7 @@ export function OrderConfirmation({ orderId }) {
             h('span', null, 'Shipping'), h('span', null, formatUSD(order.shipping))
           ),
           h('div', { className: 'order-total-row order-grand-total' },
-            h('span', null, 'Total Paid'), h('span', null, formatUSD(order.total))
+            h('span', null, 'Total Due at Pickup'), h('span', null, formatUSD(order.total))
           )
         )
       )
@@ -206,12 +250,12 @@ export function OrderConfirmation({ orderId }) {
 
     // Actions
     h('div', { className: 'order-confirmation-actions' },
-      h('a', { href: '#store', className: 'btn btn-primary' }, 'Continue Shopping'),
-      h('a', { href: '#portfolio', className: 'btn btn-secondary' }, 'View Portfolio')
+      h('a', { href: '#orders', className: 'btn btn-primary' }, 'View All Orders'),
+      h('a', { href: '#store', className: 'btn btn-secondary' }, 'Continue Shopping')
     ),
 
     h('p', { className: 'order-save-note' },
-      'Your order details are saved locally in your browser. Order ID: ',
+      'Your order details are saved. Order ID: ',
       h('strong', null, order.id)
     )
   );

@@ -1,52 +1,20 @@
-/* CheckoutView.js — Full checkout with SumUp Swift Checkout + Card Widget */
+/* CheckoutView.js — Checkout with Reserve & Pay at Pickup only */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
-import { CreditCardIcon, TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
-import { SUMUP_PUBLIC_KEY, GUAM_GRT_RATE, SHIPPING_FLAT_RATE, RESERVE_PROCESSING_DELAY } from '../utils/config.js';
+import { TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
+import { GUAM_GRT_RATE, SHIPPING_FLAT_RATE, PROXY_BASE } from '../utils/config.js';
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
-import { storageGet, storageSet } from '../utils/storage.js';
+import { storageGet, storageSet, storageGetRaw } from '../utils/storage.js';
 var h = React.createElement;
-
-// merchant code moved server-side to Cloudflare Worker
-
-function generateOrderId() {
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  var id = 'INV-';
-  for (var i = 0; i < 8; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return id;
-}
-
-// Load SumUp Swift Checkout SDK dynamically
-function loadSwiftCheckoutSDK() {
-  return new Promise(function(resolve) {
-    if (window.SumUp && window.SumUp.SwiftCheckout) {
-      resolve(window.SumUp);
-      return;
-    }
-    var existing = document.querySelector('script[src*="js.sumup.com/swift-checkout"]');
-    if (existing) {
-      existing.addEventListener('load', function() { resolve(window.SumUp); });
-      return;
-    }
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://js.sumup.com/swift-checkout/v1/sdk.js';
-    script.onload = function() { resolve(window.SumUp); };
-    script.onerror = function() { resolve(null); };
-    document.body.appendChild(script);
-  });
-}
 
 export function CheckoutView(props) {
   var state = props.state;
   var updateCart = props.updateCart;
   var cart = state.cart;
 
-  // Step: 1=review, 2=fulfillment, 3=contact, 4=payment
+  // Step: 1=review, 2=fulfillment, 3=contact, 4=payment, 5=confirm-modal
   var ref1 = React.useState(1);
   var step = ref1[0], setStep = ref1[1];
 
@@ -68,26 +36,9 @@ export function CheckoutView(props) {
   var ref7 = React.useState({});
   var fieldErrors = ref7[0], setFieldErrors = ref7[1];
 
-  // SumUp state
-  var ref8 = React.useState(null);
-  var paymentError = ref8[0], setPaymentError = ref8[1];
-
-  var ref9 = React.useState(false);
-  var walletAvailable = ref9[0], setWalletAvailable = ref9[1];
-
-  var ref10 = React.useState(false);
-  var sdkLoaded = ref10[0], setSdkLoaded = ref10[1];
-
-  var ref11 = React.useState('card');
-  var paymentMethod = ref11[0], setPaymentMethod = ref11[1];
-
-  var ref12 = React.useState(null);
-  var cardWidgetReady = ref12[0], setCardWidgetReady = ref12[1];
-
-  var ref13 = React.useState(false);
-  var cardMounted = ref13[0], setCardMounted = ref13[1];
-
-  var sdkInitRef = React.useRef(false);
+  // Confirmation modal visibility
+  var ref8 = React.useState(false);
+  var showConfirm = ref8[0], setShowConfirm = ref8[1];
 
   var subtotal = cart.reduce(function(sum, item) {
     return sum + (item.price || 0) * (item.qty || 1);
@@ -97,46 +48,6 @@ export function CheckoutView(props) {
   var total = subtotal + tax + shipping;
 
   var sellerGroups = groupBySeller(cart);
-
-  // Load Swift Checkout SDK when reaching payment step
-  React.useEffect(function() {
-    if (step !== 4 || sdkInitRef.current) return;
-    sdkInitRef.current = true;
-
-    loadSwiftCheckoutSDK().then(function(SumUp) {
-      if (SumUp && SumUp.SwiftCheckout) {
-        setSdkLoaded(true);
-        try {
-          var client = new SumUp.SwiftCheckout(SUMUP_PUBLIC_KEY);
-          var paymentRequest = client.paymentRequest({
-            countryCode: 'US',
-            locale: 'en-US',
-            total: {
-              label: 'investMTG Order',
-              amount: {
-                currency: 'USD',
-                value: total.toFixed(2)
-              }
-            }
-          });
-          paymentRequest.canMakePayment().then(function(result) {
-            if (result) {
-              setWalletAvailable(true);
-            }
-          }).catch(function() {
-            // Wallet not available in this browser
-          });
-        } catch(e) {
-          // Swift Checkout init failed — wallet payments unavailable
-        }
-      }
-    });
-
-    // Also try to mount card widget if SumUpCard is available
-    if (window.SumUpCard) {
-      setCardWidgetReady(true);
-    }
-  }, [step]);
 
   function updateContact(key, val) {
     setContact(function(prev) { return Object.assign({}, prev, { [key]: val }); });
@@ -153,10 +64,11 @@ export function CheckoutView(props) {
   }
 
   function completeOrder() {
-    var orderId = generateOrderId();
+    setPaymentProcessing(true);
+
     var store = PICKUP_STORES.find(function(s) { return s.id === pickupStore; });
     var order = {
-      id: orderId,
+      id: null, // will be set by server response, or fallback to local ID
       items: cart.slice(),
       subtotal: subtotal,
       tax: tax,
@@ -170,90 +82,64 @@ export function CheckoutView(props) {
         phone: sanitizeInput(contact.phone, 20)
       },
       date: new Date().toISOString(),
-      paymentMethod: paymentMethod
+      paymentMethod: 'reserve',
+      status: 'reserved'
     };
-    var orders = storageGet('investmtg-orders', []);
-    if (!Array.isArray(orders)) orders = [];
-    orders.unshift(order);
-    storageSet('investmtg-orders', orders);
-    updateCart([]);
-    setPaymentProcessing(false);
-    setCompletedOrder(order);
-    window.location.hash = 'order/' + orderId;
-  }
 
-  function handleWalletPayment() {
-    setPaymentProcessing(true);
-    setPaymentError(null);
+    // Save to localStorage first (guaranteed fallback)
+    function saveLocalAndFinish(finalId) {
+      var savedOrder = Object.assign({}, order, { id: finalId });
+      var orders = storageGet('investmtg-orders', []);
+      if (!Array.isArray(orders)) orders = [];
+      orders.unshift(savedOrder);
+      storageSet('investmtg-orders', orders);
+      updateCart([]);
+      setPaymentProcessing(false);
+      setCompletedOrder(savedOrder);
+      window.location.hash = 'order/' + finalId;
+    }
 
-    loadSwiftCheckoutSDK().then(function(SumUp) {
-      if (!SumUp || !SumUp.SwiftCheckout) {
-        setPaymentError('Payment SDK not available. Please try card payment.');
-        setPaymentProcessing(false);
-        return;
+    // POST to /api/orders — use server ID if available, else fallback to local
+    var authToken = storageGetRaw('investmtg_auth_token', null);
+    var headers = { 'Content-Type': 'application/json' };
+    if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+
+    var apiBody = {
+      items: order.items,
+      subtotal: order.subtotal,
+      tax: order.tax,
+      shipping: order.shipping,
+      total: order.total,
+      fulfillment: order.fulfillment,
+      pickup_store: order.pickupStore,
+      contact_name: order.contact.name,
+      contact_email: order.contact.email,
+      contact_phone: order.contact.phone,
+      payment_method: 'reserve'
+    };
+
+    fetch(PROXY_BASE + '/api/orders', {
+      method: 'POST',
+      credentials: 'include',
+      headers: headers,
+      body: JSON.stringify(apiBody)
+    }).then(function(res) {
+      return res.json();
+    }).then(function(data) {
+      var serverId = (data && data.order && data.order.id) ? data.order.id : null;
+      if (serverId) {
+        // Use server-assigned ID
+        saveLocalAndFinish(serverId);
+      } else {
+        // Server responded but no ID — fall back
+        var fallbackId = 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+        saveLocalAndFinish(fallbackId);
       }
-
-      try {
-        var client = new SumUp.SwiftCheckout(SUMUP_PUBLIC_KEY);
-        var paymentRequest = client.paymentRequest({
-          countryCode: 'US',
-          locale: 'en-US',
-          total: {
-            label: 'investMTG Order',
-            amount: {
-              currency: 'USD',
-              value: total.toFixed(2)
-            }
-          }
-        });
-
-        var buttons = client.elements();
-        var container = document.querySelector('#sumup-wallet-container');
-        if (container) {
-          container.innerHTML = '';
-          buttons
-            .onSubmit(function(paymentMethodEvent) {
-              paymentRequest
-                .show(paymentMethodEvent)
-                .then(function(paymentResponse) {
-                  // Payment authorized by wallet — complete the order
-                  completeOrder();
-                })
-                .catch(function(err) {
-                  setPaymentError('Payment was cancelled or failed. Please try again.');
-                  setPaymentProcessing(false);
-                });
-            })
-            .mount({
-              paymentMethods: [
-                { id: 'apple_pay' },
-                { id: 'google_pay' }
-              ],
-              container: container
-            });
-        }
-        setPaymentProcessing(false);
-      } catch(e) {
-        setPaymentError('Could not initialize wallet payment: ' + e.message);
-        setPaymentProcessing(false);
-      }
+    }).catch(function() {
+      // API failed — complete order locally
+      var fallbackId = 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+      saveLocalAndFinish(fallbackId);
     });
-  }
-
-  // Card payment via SumUp Card Widget
-  function handleCardPayment() {
-    setPaymentProcessing(true);
-    setPaymentError(null);
-
-    // The card widget needs a checkoutId from the SumUp API
-    // Since we don't have a backend, we create the checkout via the API directly
-    // This requires the secret API key — for now, show the manual payment flow
-    // Once a Cloudflare Worker is set up, this will create real checkouts
-
-    // Online card payment requires a backend to create SumUp checkouts.
-    // Coming soon — for now, redirect to reserve flow.
-    setPaymentError('Online card payment is coming soon. Please use Reserve & Pay at Pickup for now.');
-    setPaymentProcessing(false);
   }
 
   // Empty cart
@@ -269,6 +155,44 @@ export function CheckoutView(props) {
   }
 
   return h('div', { className: 'container checkout-page' },
+
+    // ===== CONFIRMATION MODAL =====
+    showConfirm && h('div', { className: 'checkout-confirm-overlay' },
+      h('div', { className: 'checkout-confirm-modal' },
+        h('div', { className: 'checkout-confirm-icon' }, '\uD83D\uDD12'),
+        h('h2', { className: 'checkout-confirm-title' }, 'Confirm Reservation'),
+        h('p', { className: 'checkout-confirm-message' },
+          'You are reserving these cards. The seller will be notified and you\u2019ll coordinate pickup.'
+        ),
+        h('p', { className: 'checkout-confirm-message' },
+          'No payment is taken now \u2014 you\u2019ll pay the seller directly at pickup.'
+        ),
+        h('div', { className: 'checkout-confirm-total' },
+          h('span', null, 'Order Total'),
+          h('strong', null, formatUSD(total))
+        ),
+        h('div', { className: 'checkout-confirm-actions' },
+          h('button', {
+            className: 'btn btn-secondary',
+            onClick: function() { setShowConfirm(false); },
+            disabled: paymentProcessing
+          }, 'Cancel'),
+          h('button', {
+            className: 'btn btn-primary' + (paymentProcessing ? ' loading' : ''),
+            onClick: function() {
+              setShowConfirm(false);
+              completeOrder();
+            },
+            disabled: paymentProcessing
+          },
+            paymentProcessing
+              ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
+              : 'Confirm Reservation'
+          )
+        )
+      )
+    ),
+
     h('div', { className: 'checkout-header' },
       h('h1', { className: 'page-heading' }, 'Checkout'),
       h('div', { className: 'checkout-steps' },
@@ -522,87 +446,18 @@ export function CheckoutView(props) {
           )
         ),
 
-        // Payment method selection
-        h('div', { className: 'payment-method-selector' },
-          h('h3', { className: 'payment-method-title' }, 'Choose Payment Method'),
-
-          h('div', { className: 'payment-method-options' },
-            // Reserve order option (primary for launch)
-            h('label', {
-              className: 'payment-method-option' + (paymentMethod === 'reserve' ? ' selected' : ''),
-              onClick: function() { setPaymentMethod('reserve'); }
-            },
-              h('input', { type: 'radio', name: 'payment-method', value: 'reserve',
-                checked: paymentMethod === 'reserve', onChange: function() { setPaymentMethod('reserve'); } }),
-              h('div', { className: 'payment-method-content' },
-                h('div', { className: 'payment-method-header' },
-                  h('div', { className: 'payment-method-icon' }, '\uD83D\uDD12'),
-                  h('div', null,
-                    h('div', { className: 'payment-method-label' }, 'Reserve & Pay at Pickup'),
-                    h('div', { className: 'payment-method-desc' }, 'Reserve your cards now. Pay the seller directly when you pick up \u2014 cash, card reader, or Venmo.')
-                  )
-                )
-              )
-            ),
-
-            // SumUp card payment
-            h('label', {
-              className: 'payment-method-option' + (paymentMethod === 'card' ? ' selected' : ''),
-              onClick: function() { setPaymentMethod('card'); }
-            },
-              h('input', { type: 'radio', name: 'payment-method', value: 'card',
-                checked: paymentMethod === 'card', onChange: function() { setPaymentMethod('card'); } }),
-              h('div', { className: 'payment-method-content' },
-                h('div', { className: 'payment-method-header' },
-                  h(CreditCardIcon, null),
-                  h('div', null,
-                    h('div', { className: 'payment-method-label' }, 'Pay with Card Online'),
-                    h('div', { className: 'payment-method-desc' }, 'Secure payment via SumUp. Visa, Mastercard, AMEX accepted.')
-                  )
-                ),
-                h('div', { className: 'payment-method-badge' },
-                  h('img', { src: 'https://static.sumup.com/badges/sumup-badge-dark.svg', alt: 'Powered by SumUp',
-                    style: { height: '20px' },
-                    onError: function(e) { e.target.style.display = 'none'; }
-                  }),
-                  h('span', { className: 'payment-method-badge-text' }, 'Powered by SumUp')
-                )
-              )
-            ),
-
-            // Wallet payments (Apple Pay / Google Pay) if available
-            walletAvailable && h('label', {
-              className: 'payment-method-option' + (paymentMethod === 'wallet' ? ' selected' : ''),
-              onClick: function() { setPaymentMethod('wallet'); }
-            },
-              h('input', { type: 'radio', name: 'payment-method', value: 'wallet',
-                checked: paymentMethod === 'wallet', onChange: function() { setPaymentMethod('wallet'); } }),
-              h('div', { className: 'payment-method-content' },
-                h('div', { className: 'payment-method-header' },
-                  h('div', { className: 'payment-method-icon' }, '\uD83D\uDCF1'),
-                  h('div', null,
-                    h('div', { className: 'payment-method-label' }, 'Apple Pay / Google Pay'),
-                    h('div', { className: 'payment-method-desc' }, 'Fast checkout with your digital wallet.')
-                  )
-                )
+        // Reserve info box (only payment method)
+        h('div', { className: 'checkout-reserve-info' },
+          h('div', { className: 'checkout-reserve-info-header' },
+            h('span', { className: 'checkout-reserve-icon' }, '\uD83D\uDD12'),
+            h('div', null,
+              h('div', { className: 'checkout-reserve-title' }, 'Reserve & Pay at Pickup'),
+              h('div', { className: 'checkout-reserve-desc' },
+                'Reserve your cards now. Pay the seller directly when you pick up \u2014 cash, card reader, or Venmo. No charge until you receive your cards.'
               )
             )
           )
         ),
-
-        // Payment error message
-        paymentError && h('div', { className: 'payment-error' },
-          h('span', null, '\u26A0\uFE0F '), paymentError
-        ),
-
-        // Wallet container for Apple/Google Pay buttons
-        paymentMethod === 'wallet' && h('div', {
-          id: 'sumup-wallet-container',
-          className: 'sumup-wallet-container'
-        }),
-
-        // SumUp card widget mount point
-        paymentMethod === 'card' && h('div', { id: 'sumup-card', className: 'sumup-card-container' }),
 
         // Order total
         h('div', { className: 'checkout-order-summary' },
@@ -627,55 +482,25 @@ export function CheckoutView(props) {
             disabled: paymentProcessing
           }, '\u2190 Back'),
 
-          paymentMethod === 'reserve' && h('button', {
+          h('button', {
             className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
-            onClick: function() {
-              setPaymentProcessing(true);
-              setTimeout(function() { completeOrder(); }, RESERVE_PROCESSING_DELAY);
-            },
+            onClick: function() { setShowConfirm(true); },
             disabled: paymentProcessing
           },
             paymentProcessing
               ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
               : h('span', null, '\uD83D\uDD12 Reserve Order \u2014 ', formatUSD(total))
-          ),
-
-          paymentMethod === 'card' && h('button', {
-            className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
-            onClick: handleCardPayment,
-            disabled: paymentProcessing
-          },
-            paymentProcessing
-              ? h('span', null, h('span', { className: 'spinner' }), ' Processing\u2026')
-              : h('span', null, h(CreditCardIcon, null), ' Pay ', formatUSD(total))
-          ),
-
-          paymentMethod === 'wallet' && h('button', {
-            className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
-            onClick: handleWalletPayment,
-            disabled: paymentProcessing
-          },
-            paymentProcessing
-              ? h('span', null, h('span', { className: 'spinner' }), ' Processing\u2026')
-              : h('span', null, '\uD83D\uDCF1 Pay with Wallet \u2014 ', formatUSD(total))
           )
         ),
 
-        // Payment info note
         h('div', { className: 'checkout-payment-info' },
-          paymentMethod === 'reserve' && h('p', { className: 'checkout-payment-note' },
+          h('p', { className: 'checkout-payment-note' },
             '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
-          ),
-          paymentMethod === 'card' && h('p', { className: 'checkout-payment-note' },
-            '\uD83D\uDD10 Your payment is processed securely by SumUp. Card details never touch our servers. Merchant: investMTG.'
-          ),
-          paymentMethod === 'wallet' && h('p', { className: 'checkout-payment-note' },
-            '\uD83D\uDCF1 Your digital wallet handles authentication. Payment processed via SumUp.'
           ),
           h('div', { className: 'payment-security-badges' },
             h('span', { className: 'security-badge' }, '\uD83D\uDD12 SSL Encrypted'),
-            h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F PCI Compliant'),
-            h('span', { className: 'security-badge' }, '\u2705 SumUp Verified')
+            h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Checkout'),
+            h('span', { className: 'security-badge' }, '\u2705 Guam Local')
           )
         )
       )
