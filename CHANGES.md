@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-09: Listing modal auto-populate from card data
+
+- **ListingModal.js** now accepts a `prefillCard` prop (the full Scryfall card object) in addition to the existing `prefillCardName` string.
+- When opened from a card detail page, the modal auto-populates: card name (read-only), set name (read-only), and market price as a starting value.
+- Shows a card image preview thumbnail at the top of the modal when card data is available.
+- Displays a "Market reference: $X.XX" hint below the price field so sellers know the current market value.
+- Read-only fields (card name, set name) are visually distinguished with a muted background.
+- The submitted listing now includes `card_id`, `set_name`, and `image_uri` from the card data for richer backend records.
+- Restored `listing-card-preview` and `listing-preview-img` CSS classes (removed in v20 optimization, now needed).
+- Added `input[readonly]` styling for prefilled fields.
+
+---
+
 ## 2026-03-09: Site Performance Optimizations — SW v20
 
 ### CSS Optimization (132KB → 120KB, −9%)

@@ -2,6 +2,7 @@
 import React from 'react';
 import { CloseIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
+import { getCardPrice, formatUSD, getScryfallImageUrl } from '../utils/helpers.js';
 var h = React.createElement;
 
 /* Input sanitization for marketplace listings */
@@ -28,15 +29,41 @@ export function ListingModal(props) {
   var isOpen = props.isOpen;
   var onClose = props.onClose;
   var onSubmit = props.onSubmit;
+  var prefillCard = props.prefillCard;
   var prefillCardName = props.prefillCardName;
   var cardNameRef = React.useRef(null);
+  var setNameRef = React.useRef(null);
+  var priceRef = React.useRef(null);
   var formRef = React.useRef(null);
 
+  /* Extract prefill data from full card object */
+  var cardData = React.useMemo(function() {
+    if (!prefillCard || typeof prefillCard === 'string') return null;
+    var price = getCardPrice(prefillCard);
+    return {
+      name: prefillCard.name || '',
+      setName: prefillCard.set_name || '',
+      price: price > 0 ? price.toFixed(2) : '',
+      cardId: prefillCard.id || null,
+      setCode: prefillCard.set || '',
+      image: getScryfallImageUrl(prefillCard, 'small') || '',
+      imageNormal: getScryfallImageUrl(prefillCard, 'normal') || ''
+    };
+  }, [prefillCard]);
+
   React.useEffect(function() {
-    if (isOpen && prefillCardName && cardNameRef.current) {
+    if (!isOpen) return;
+
+    if (cardData) {
+      /* Full card object available — populate all fields */
+      if (cardNameRef.current) cardNameRef.current.value = cardData.name;
+      if (setNameRef.current) setNameRef.current.value = cardData.setName;
+      if (priceRef.current && cardData.price) priceRef.current.value = cardData.price;
+    } else if (prefillCardName && cardNameRef.current) {
+      /* Fallback: only card name string */
       cardNameRef.current.value = prefillCardName;
     }
-  }, [isOpen, prefillCardName]);
+  }, [isOpen, cardData, prefillCardName]);
 
   if (!isOpen) return null;
 
@@ -67,7 +94,10 @@ export function ListingModal(props) {
       seller: seller,
       contact: contact,
       notes: notes,
-      image: '',
+      card_id: cardData ? cardData.cardId : null,
+      set_name: setName,
+      image: cardData ? cardData.image : '',
+      image_uri: cardData ? cardData.image : '',
       createdAt: Date.now()
     });
 
@@ -88,14 +118,41 @@ export function ListingModal(props) {
           h(CloseIcon)
         )
       ),
+
+      /* Card preview when prefill data is available */
+      cardData && cardData.image && h('div', { className: 'listing-card-preview' },
+        h('img', {
+          src: cardData.image,
+          alt: cardData.name,
+          className: 'listing-preview-img',
+          loading: 'lazy'
+        })
+      ),
+
       h('form', { className: 'mp-listing-form', ref: formRef, onSubmit: handleSubmit },
         h('div', { className: 'mp-form-row' },
           h('label', { htmlFor: 'listing-card-name' }, 'Card Name *'),
-          h('input', { type: 'text', id: 'listing-card-name', ref: cardNameRef, placeholder: 'e.g. Black Lotus', required: true, maxLength: 100 })
+          h('input', {
+            type: 'text',
+            id: 'listing-card-name',
+            ref: cardNameRef,
+            placeholder: 'e.g. Black Lotus',
+            required: true,
+            maxLength: 100,
+            readOnly: !!cardData
+          })
         ),
         h('div', { className: 'mp-form-row' },
           h('label', { htmlFor: 'listing-set-name' }, 'Set Name *'),
-          h('input', { type: 'text', id: 'listing-set-name', placeholder: 'e.g. Unlimited', required: true, maxLength: 100 })
+          h('input', {
+            type: 'text',
+            id: 'listing-set-name',
+            ref: setNameRef,
+            placeholder: 'e.g. Unlimited',
+            required: true,
+            maxLength: 100,
+            readOnly: !!cardData
+          })
         ),
         h('div', { className: 'mp-form-grid-2' },
           h('div', { className: 'mp-form-row' },
@@ -109,9 +166,29 @@ export function ListingModal(props) {
           ),
           h('div', { className: 'mp-form-row' },
             h('label', { htmlFor: 'listing-price' }, 'Price (USD) *'),
-            h('input', { type: 'number', id: 'listing-price', min: '0', max: '99999', step: '0.01', placeholder: '0.00', required: true })
+            h('input', {
+              type: 'number',
+              id: 'listing-price',
+              ref: priceRef,
+              min: '0',
+              max: '99999',
+              step: '0.01',
+              placeholder: '0.00',
+              required: true
+            })
           )
         ),
+
+        /* Market reference when price is known */
+        cardData && cardData.price && h('p', {
+          style: {
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-text-muted)',
+            marginTop: 'calc(-1 * var(--space-2))',
+            marginBottom: 'var(--space-3)'
+          }
+        }, 'Market reference: ' + formatUSD(parseFloat(cardData.price)) + ' — adjust to your asking price'),
+
         h('div', { className: 'mp-form-row' },
           h('label', null, 'Listing Type *'),
           h('div', { className: 'mp-radio-group' },

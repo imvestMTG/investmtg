@@ -382,6 +382,7 @@ function App() {
     h(ToastContainer, null),
     listingModalCard && h(ListingModal, {
       isOpen: true,
+      prefillCard: listingModalCard,
       prefillCardName: listingModalCard.name || listingModalCard,
       onSubmit: function(newListing) {
         // POST to backend via createListing, then refresh marketplace

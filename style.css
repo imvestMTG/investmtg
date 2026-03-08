@@ -59,6 +59,9 @@
 .set-price-na{font-size:var(--text-xs);color:var(--color-text-faint)}
 
 /* ===== Listing Card Preview ===== */
+.listing-card-preview{display:flex;justify-content:center;margin:var(--space-3) 0}
+.listing-preview-img{width:120px;border-radius:var(--radius-md);box-shadow:var(--shadow-md)}
+.mp-form-row input[readonly]{background:var(--color-surface-offset);color:var(--color-text-muted);cursor:default;border-color:transparent}
 
 
 
