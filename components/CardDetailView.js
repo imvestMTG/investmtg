@@ -242,7 +242,8 @@ export function CardDetailView(props) {
         h('p', { className: 'price-source' },
           'Prices from ',
           h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
-          ' \u00B7 Updated daily'
+          ' \u00B7 Updated daily \u00B7 ',
+          h('a', { href: '#pricing', style: { color: 'inherit', textDecoration: 'underline' } }, 'How we source prices')
         ),
 
         h('div', { className: 'card-actions' },

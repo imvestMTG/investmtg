@@ -1,5 +1,17 @@
 # investMTG — Changelog
 
+## 2026-03-09: Site-wide pricing transparency (SW v24)
+
+- **New page: Pricing & Data Sources** (`#pricing`) — A full methodology page explaining every data source, update frequency, data flow, and limitation. Covers Scryfall (card data & reference prices), JustTCG (condition-specific pricing), TCGplayer (underlying market data), tournament/meta sources (EDH Top 16, TopDeck.gg, Moxfield), and the Cloudflare Worker pipeline. Includes a "What We Don’t Do" section linked to SOUL.md’s Data Integrity Policy.
+- **Footer: "Pricing & Sources" link** — Added to the site-wide footer so every page links to `#pricing`.
+- **CardDetailView: inline attribution** — The "Prices via Scryfall" line now includes a "How we source prices" link to `#pricing`.
+- **MarketMoversView: inline attribution** — The "Market data from Scryfall" line now includes a "How we source prices" link to `#pricing`.
+- **ListingModal** — Already had a pricing transparency disclosure section (v23). No changes needed.
+- **SOUL.md: new Rule 4** — "Pricing transparency is non-negotiable" — codifies that every price must be traceable to a named source, inline attribution is required, and suggested prices are never binding. Rules renumbered 4–9.
+- SW bumped to v24.
+
+---
+
 ## 2026-03-09: Pricing transparency disclosure in ListingModal (SW v23)
 
 - Added a **Pricing Transparency** section to the listing form, visible whenever card data is present.

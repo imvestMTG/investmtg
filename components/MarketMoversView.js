@@ -140,7 +140,8 @@ export function MarketMoversView() {
     h('p', { className: 'market-source' },
       'Market data from ',
       h('a', { href: 'https://scryfall.com', target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
-      '. Prices updated daily.'
+      '. Prices updated daily. ',
+      h('a', { href: '#pricing', style: { color: 'var(--color-primary)', textDecoration: 'underline' } }, 'How we source prices')
     )
   );
 }

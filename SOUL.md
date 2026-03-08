@@ -50,12 +50,19 @@ Build a cleaner, more honest local MTG experience for Guam players using transpa
 - external market reference links may point to TCGplayer when available through Scryfall purchase URIs
 - Cardmarket is not part of the modern Guam-first buyer flow
 
-### 4. Trust beats clutter
+### 4. Pricing transparency is non-negotiable
+- Every price displayed on the site must be traceable to a named, verifiable data source
+- The Pricing & Data Sources page (`#pricing`) explains every data pipeline, update frequency, and limitation in plain language
+- Inline attribution appears alongside prices on card detail, market movers, and listing forms so users never have to guess where a number came from
+- If a data source is unavailable, we show nothing rather than fabricating a fallback
+- Suggested prices are never binding — sellers always set their own asking price
+
+### 5. Trust beats clutter
 - every main screen should have a clear primary action
 - feedback must be explicit, especially on seller actions
 - local trade expectations should be visible, not implied
 
-### 5. Ship code and docs together
+### 6. Ship code and docs together
 A release is not complete until the docs and release notes are updated in the same session.
 
 Required updates after release-impacting work:
@@ -66,7 +73,7 @@ Required updates after release-impacting work:
 - `worker/README.md` when worker behavior changes
 - a security check for secrets and sensitive credentials
 
-### 6. QA before every push
+### 7. QA before every push
 No code reaches `main` without passing QA. Every push must include verification, not just implementation.
 
 **Pre-push QA checklist** (minimum):
@@ -78,7 +85,7 @@ No code reaches `main` without passing QA. Every push must include verification,
 4. **Visual verification** — Screenshot the live URL after push. Do not trust "it should work" — verify it does. The screenshot tool captures early, so wait for the full render.
 5. **Console error check** — Open the browser console on the live site. Zero errors is the standard. CSP violations, failed fetches, and module import errors all show here.
 
-### 7. Security posture
+### 8. Security posture
 Security is not optional. Every session must verify these constraints.
 
 **Secrets and credentials:**
@@ -105,7 +112,7 @@ Security is not optional. Every session must verify these constraints.
 - `storageGet()` / `storageSet()` from `utils/storage.js` is the only way to read/write localStorage. Direct `localStorage.getItem()` is banned. The wrapper prevents `JSON.parse` crashes from corrupted values.
 - *Why this exists: v8 — a `JSON.parse(undefined)` crash caused a blank screen that was hard to reproduce because it only happened with corrupted localStorage data.*
 
-### 8. QC audit triggers
+### 9. QC audit triggers
 A targeted codebase audit must happen when any of these conditions are true:
 
 1. **Domain or URL migration** — When any backend URL changes (e.g., `.workers.dev` to custom domain), audit every file that references the old URL. Check CSP, check config imports, check hardcoded strings.
@@ -163,15 +170,15 @@ The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom 
 ## Release discipline
 
 Before any go-live push:
-1. Run the **pre-push QA checklist** (Rule 6) — CSP alignment, URL centralization, visual verification, console error check
-2. Run the **security checks** (Rule 7) — no secrets in frontend code, CSP current, OAuth config intact
+1. Run the **pre-push QA checklist** (Rule 7) — CSP alignment, URL centralization, visual verification, console error check
+2. Run the **security checks** (Rule 8) — no secrets in frontend code, CSP current, OAuth config intact
 3. Verify the root SPA loads correctly (no build step required)
 4. Test on mobile Safari and Chrome to verify no blank screen
 5. Verify no secrets were committed (`git diff --staged` before push)
 6. Verify the Pages workflow still publishes the root directory directly
 7. Verify worker docs and bindings still match the deployed backend
-8. Update the required docs in the same session (Rule 5)
-9. If this is the 3rd+ release in a session, run a **QC audit** (Rule 8) against the cumulative diff
+8. Update the required docs in the same session (Rule 6)
+9. If this is the 3rd+ release in a session, run a **QC audit** (Rule 9) against the cumulative diff
 
 The order matters. QA and security come first because they catch the bugs that are hardest to diagnose after the fact.
 
@@ -179,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v24** — Site-wide pricing transparency: added PricingView.js (`#pricing`) with full methodology page, inline "How we source prices" links on CardDetailView and MarketMoversView, Footer "Pricing & Sources" link, new SOUL.md product principle (Rule 4: Pricing transparency is non-negotiable), rules renumbered 4–9 |
 | 2026-03-09 | **v19** — Fixed CSP `connect-src` (root cause of sign-in failure), auth.js race condition fix, centralized 4 stale `.workers.dev` URLs to `config.js`, removed debug artifacts. Added SOUL.md Rules 6–8: pre-push QA checklist, security posture, QC audit triggers — all derived from real failures in v14–v19; **v18** — Custom domain `api.investmtg.com` for worker, OAuth redirect hardcoded to custom domain, PROXY_BASE updated in frontend config |
 | 2026-03-08 | Cart condition selector UX overhaul: two-tier cart item layout with full-width condition section, animated "Select a condition" prompt with warning icon, red border on items missing condition, checkout button gated until all conditions chosen, scroll-to-first-missing on disabled click; SW v17 |
 | 2026-03-08 | SumUp payment processor restored: Card Widget integration with lazy SDK loading, Pay Online + Reserve & Pay at Pickup dual payment methods, `POST /api/sumup/checkout` worker endpoint, admin bypass layer on worker `getAuthUser()` via `ADMIN_TOKEN` secret for testing, removed all Guam GRT tax references site-wide (config, CartView, CheckoutView, OrderConfirmation, TermsView); SW v16 |

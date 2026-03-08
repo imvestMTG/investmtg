@@ -85,6 +85,12 @@ Key characteristics:
 - My Orders page (`#orders`) lists all orders with status badges, totals, and fulfillment info
 - Order Confirmation page (`#order/:id`) loads server-first with localStorage fallback
 
+### Pricing transparency
+- Dedicated Pricing & Data Sources page (`#pricing`) explains every data source, update frequency, data flow pipeline, and limitation in plain language
+- Inline attribution on card detail, market movers, and listing forms links to `#pricing`
+- Footer site-wide "Pricing & Sources" link
+- SOUL.md Rule 4: Pricing transparency is non-negotiable
+
 ### Home / Discovery
 - featured, trending, and budget card sections loaded from `/api/featured`, `/api/trending`, `/api/budget`
 - ticker strip with 16 live card prices from `/api/ticker`
@@ -154,7 +160,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v23 (PWA offline support + auto-reload + image caching)
+├── sw.js                           # service worker v24 (PWA offline support + auto-reload + image caching)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md
