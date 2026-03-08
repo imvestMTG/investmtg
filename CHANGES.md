@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-09: JustTCG real-time condition pricing in ListingModal (SW v22)
+
+- **Condition-based pricing**: When the seller changes the Condition dropdown (NM/LP/MP/HP), the Price field auto-updates with the real-time market price for that condition from JustTCG API.
+- All 4 condition prices are fetched in a single API call when the modal opens (via `fetchConditionPrices()` in `api.js`). No additional calls on each condition change — instant switching.
+- Price field remains fully editable. If the seller types a custom price, auto-population stops. A "Reset to market price" link appears to restore the JustTCG price.
+- Market reference line shows the current condition’s real market price and, for non-NM conditions, also shows the NM reference.
+- Falls back to Scryfall NM price if JustTCG API is unavailable.
+- API call routed through existing `/justtcg` worker proxy — API key stays server-side (SOUL.md Rule 7).
+- New export `fetchConditionPrices(scryfallId)` in `utils/api.js` returns `{ NM: price, LP: price, MP: price, HP: price }`.
+- SW bumped to v22.
+
+---
+
 ## 2026-03-09: Listing modal auto-populate — controlled state fix (SW v21)
 
 - **Root cause fix**: Replaced unreliable `useRef` + imperative `useEffect` pattern with controlled `useState` for prefilled fields (card name, set name, price). The previous approach set `.value` on DOM nodes after render, which failed under lazy-loading and concurrent React rendering — React had no awareness of these imperative changes and could overwrite them.

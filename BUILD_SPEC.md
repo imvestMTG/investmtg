@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v21`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v22`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -105,7 +105,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/MetaView.js` | `#meta` | Meta/tournament data |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
 | `components/Ticker.js` | persistent | Live price ticker via `/api/ticker` |
-| `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. |
+| `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. On open, fetches all condition prices from JustTCG API via `fetchConditionPrices()`. Condition dropdown change auto-populates the real-time market price for that condition. Price remains editable; "Reset to market price" link restores JustTCG price. |
 | `components/BuyLocalModal.js` | modal overlay | Buy-local modal from Store view |
 
 ### Shared components
@@ -123,7 +123,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 
 | File | Purpose |
 |------|---------|
-| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, and 20+ backend proxy functions for all API endpoints |
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices(scryfallId)` for JustTCG condition pricing, and 20+ backend proxy functions for all API endpoints |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
@@ -254,7 +254,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v21
+├── sw.js                           # service worker v22
 ├── manifest.json
 ├── 404.html
 ├── CNAME

@@ -3,17 +3,15 @@ import React from 'react';
 import { CloseIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
 import { getCardPrice, formatUSD, getScryfallImageUrl } from '../utils/helpers.js';
+import { fetchConditionPrices } from '../utils/api.js';
 var h = React.createElement;
 
 /* Input sanitization for marketplace listings */
 function sanitize(str, maxLen) {
   if (!str) return '';
   var s = str.trim().slice(0, maxLen || 200);
-  /* Strip HTML tags */
   s = s.replace(/<[^>]*>/g, '');
-  /* Remove null bytes and control characters */
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  /* Remove javascript: and data: URIs */
   s = s.replace(/javascript\s*:/gi, '').replace(/data\s*:/gi, '');
   return s;
 }
@@ -21,7 +19,6 @@ function sanitize(str, maxLen) {
 function sanitizePrice(val) {
   var p = parseFloat(val);
   if (isNaN(p) || p < 0) return NaN;
-  /* Cap at $99,999 to prevent absurd listings */
   return Math.min(p, 99999);
 }
 
@@ -35,11 +32,12 @@ export function ListingModal(props) {
   /* Extract prefill data from full card object */
   var cardData = React.useMemo(function() {
     if (!prefillCard || typeof prefillCard === 'string') return null;
-    var price = getCardPrice(prefillCard);
+    var nmPrice = getCardPrice(prefillCard);
     return {
       name: prefillCard.name || '',
       setName: prefillCard.set_name || '',
-      price: price > 0 ? price.toFixed(2) : '',
+      nmPrice: nmPrice,
+      price: nmPrice > 0 ? nmPrice.toFixed(2) : '',
       cardId: prefillCard.id || null,
       setCode: prefillCard.set || '',
       image: getScryfallImageUrl(prefillCard, 'small') || '',
@@ -47,30 +45,89 @@ export function ListingModal(props) {
     };
   }, [prefillCard]);
 
-  /* Controlled state for prefilled fields — reliable across lazy-load & re-renders */
+  /* Controlled state for form fields */
   var ref1 = React.useState(cardData ? cardData.name : (prefillCardName || ''));
   var cardName = ref1[0], setCardName = ref1[1];
   var ref2 = React.useState(cardData ? cardData.setName : '');
   var setName = ref2[0], setSetName = ref2[1];
   var ref3 = React.useState(cardData ? cardData.price : '');
   var price = ref3[0], setPrice = ref3[1];
+  var ref4 = React.useState('NM');
+  var condition = ref4[0], setCondition = ref4[1];
 
-  /* Sync state if prefillCard changes while modal is open */
+  /* JustTCG real-time condition prices: { NM: 918.31, LP: 796.27, ... } */
+  var ref5 = React.useState({});
+  var conditionPrices = ref5[0], setConditionPrices = ref5[1];
+  var ref6 = React.useState(false);
+  var pricesLoading = ref6[0], setPricesLoading = ref6[1];
+
+  /* Track if user manually edited the price — stop auto-updating if so */
+  var ref7 = React.useState(false);
+  var priceManuallyEdited = ref7[0], setPriceManuallyEdited = ref7[1];
+
+  /* Sync state when prefillCard changes (modal opens for a new card) */
   React.useEffect(function() {
     if (cardData) {
       setCardName(cardData.name);
       setSetName(cardData.setName);
       setPrice(cardData.price);
+      setCondition('NM');
+      setPriceManuallyEdited(false);
+      setConditionPrices({});
     } else if (prefillCardName) {
       setCardName(prefillCardName);
       setSetName('');
       setPrice('');
+      setCondition('NM');
+      setPriceManuallyEdited(false);
+      setConditionPrices({});
     }
   }, [cardData, prefillCardName]);
+
+  /* Fetch all condition prices from JustTCG when modal opens with card data */
+  React.useEffect(function() {
+    if (!cardData || !cardData.cardId) return;
+    setPricesLoading(true);
+    fetchConditionPrices(cardData.cardId).then(function(prices) {
+      setConditionPrices(prices);
+      /* If NM price came back from JustTCG and user hasn't edited, use it */
+      if (prices.NM && !priceManuallyEdited) {
+        setPrice(prices.NM.toFixed(2));
+      }
+      setPricesLoading(false);
+    });
+  }, [cardData]);
 
   var formRef = React.useRef(null);
 
   if (!isOpen) return null;
+
+  /* When condition changes, update price to the real JustTCG price for that condition */
+  var handleConditionChange = function(e) {
+    var newCondition = e.target.value;
+    setCondition(newCondition);
+    if (!priceManuallyEdited) {
+      var realPrice = conditionPrices[newCondition];
+      if (realPrice) {
+        setPrice(realPrice.toFixed(2));
+      }
+    }
+  };
+
+  /* When user manually types a price, mark it as edited */
+  var handlePriceChange = function(e) {
+    setPrice(e.target.value);
+    setPriceManuallyEdited(true);
+  };
+
+  /* Reset manual edit flag — lets user go back to auto-populated prices */
+  var handleResetToMarket = function() {
+    var realPrice = conditionPrices[condition];
+    if (realPrice) {
+      setPrice(realPrice.toFixed(2));
+      setPriceManuallyEdited(false);
+    }
+  };
 
   var handleSubmit = function(e) {
     e.preventDefault();
@@ -79,7 +136,6 @@ export function ListingModal(props) {
 
     var cleanName = sanitize(cardName, 100);
     var cleanSet = sanitize(setName, 100);
-    var condition = form.querySelector('#listing-condition').value;
     var cleanPrice = sanitizePrice(price);
     var typeRadio = form.querySelector('input[name="listing-type"]:checked');
     var type = typeRadio ? typeRadio.value : 'sale';
@@ -106,11 +162,13 @@ export function ListingModal(props) {
       createdAt: Date.now()
     });
 
-    /* Reset non-prefilled fields */
     if (form) form.reset();
     setCardName('');
     setSetName('');
     setPrice('');
+    setCondition('NM');
+    setPriceManuallyEdited(false);
+    setConditionPrices({});
     onClose();
     showToast('Listing added!');
   };
@@ -118,6 +176,63 @@ export function ListingModal(props) {
   var handleOverlayClick = function(e) {
     if (e.target === e.currentTarget) onClose();
   };
+
+  /* Build the market reference line */
+  var marketRef = null;
+  var currentConditionPrice = conditionPrices[condition];
+  if (currentConditionPrice) {
+    marketRef = h('div', {
+      style: {
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-text-muted)',
+        marginTop: 'calc(-1 * var(--space-2))',
+        marginBottom: 'var(--space-3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-2)',
+        flexWrap: 'wrap'
+      }
+    },
+      h('span', null,
+        condition + ' market: ' + formatUSD(currentConditionPrice) +
+        (conditionPrices.NM && condition !== 'NM'
+          ? ' (NM: ' + formatUSD(conditionPrices.NM) + ')'
+          : '')
+      ),
+      priceManuallyEdited && h('button', {
+        type: 'button',
+        onClick: handleResetToMarket,
+        style: {
+          background: 'none',
+          border: 'none',
+          color: 'var(--color-primary)',
+          cursor: 'pointer',
+          fontSize: 'var(--text-xs)',
+          padding: '0',
+          textDecoration: 'underline'
+        }
+      }, 'Reset to market price')
+    );
+  } else if (pricesLoading) {
+    marketRef = h('p', {
+      style: {
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-text-muted)',
+        marginTop: 'calc(-1 * var(--space-2))',
+        marginBottom: 'var(--space-3)'
+      }
+    }, 'Fetching market prices\u2026');
+  } else if (cardData && cardData.nmPrice > 0) {
+    /* Fallback: Scryfall NM price if JustTCG didn't return data */
+    marketRef = h('p', {
+      style: {
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-text-muted)',
+        marginTop: 'calc(-1 * var(--space-2))',
+        marginBottom: 'var(--space-3)'
+      }
+    }, 'NM reference: ' + formatUSD(cardData.nmPrice));
+  }
 
   return h('div', { className: 'mp-modal-overlay open', onClick: handleOverlayClick },
     h('div', { className: 'mp-modal' },
@@ -168,7 +283,12 @@ export function ListingModal(props) {
         h('div', { className: 'mp-form-grid-2' },
           h('div', { className: 'mp-form-row' },
             h('label', { htmlFor: 'listing-condition' }, 'Condition *'),
-            h('select', { id: 'listing-condition', required: true },
+            h('select', {
+              id: 'listing-condition',
+              value: condition,
+              onChange: handleConditionChange,
+              required: true
+            },
               h('option', { value: 'NM' }, 'Near Mint (NM)'),
               h('option', { value: 'LP' }, 'Lightly Played (LP)'),
               h('option', { value: 'MP' }, 'Moderately Played (MP)'),
@@ -181,7 +301,7 @@ export function ListingModal(props) {
               type: 'number',
               id: 'listing-price',
               value: price,
-              onChange: function(e) { setPrice(e.target.value); },
+              onChange: handlePriceChange,
               min: '0',
               max: '99999',
               step: '0.01',
@@ -191,15 +311,8 @@ export function ListingModal(props) {
           )
         ),
 
-        /* Market reference when price is known */
-        cardData && cardData.price && h('p', {
-          style: {
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-text-muted)',
-            marginTop: 'calc(-1 * var(--space-2))',
-            marginBottom: 'var(--space-3)'
-          }
-        }, 'Market reference: ' + formatUSD(parseFloat(cardData.price)) + ' — adjust to your asking price'),
+        /* Market reference from JustTCG */
+        marketRef,
 
         h('div', { className: 'mp-form-row' },
           h('label', null, 'Listing Type *'),

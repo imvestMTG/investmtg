@@ -367,3 +367,45 @@ export function clearCartAPI() {
     method: 'DELETE'
   });
 }
+
+/* ── JustTCG Condition Pricing ────────────────────────────────────────── */
+
+/**
+ * Fetch real-time condition-specific prices from JustTCG via the proxy.
+ * Returns a map: { NM: 918.31, LP: 796.27, MP: 724.39, HP: 631.95 }
+ * or {} if the card isn't found or the API errors.
+ *
+ * @param {string} scryfallId — Scryfall UUID (e.g. "1f35877c-e66c-...")
+ */
+export function fetchConditionPrices(scryfallId) {
+  if (!scryfallId) return Promise.resolve({});
+  var qs = '?path=/v1/cards'
+    + '&scryfallId=' + encodeURIComponent(scryfallId)
+    + '&condition=NM,LP,MP,HP'
+    + '&include_price_history=false'
+    + '&include_statistics=';
+  return fetch(PROXY_BASE + '/justtcg' + qs)
+    .then(function(res) {
+      if (!res.ok) throw new Error('JustTCG error: ' + res.status);
+      return res.json();
+    })
+    .then(function(json) {
+      var prices = {};
+      var cards = json.data || [];
+      if (cards.length === 0) return prices;
+      var variants = cards[0].variants || [];
+      variants.forEach(function(v) {
+        if (typeof v.price !== 'number') return;
+        /* Map JustTCG condition names to our short codes */
+        if (v.condition === 'Near Mint')          prices.NM = v.price;
+        else if (v.condition === 'Lightly Played')  prices.LP = v.price;
+        else if (v.condition === 'Moderately Played') prices.MP = v.price;
+        else if (v.condition === 'Heavily Played')  prices.HP = v.price;
+      });
+      return prices;
+    })
+    .catch(function(err) {
+      console.warn('[investMTG] JustTCG price fetch failed:', err.message);
+      return {};
+    });
+}
