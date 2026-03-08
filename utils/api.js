@@ -128,6 +128,15 @@ export function normalizeCard(card) {
 export function backendFetch(path, options) {
   var opts = options || {};
   opts.credentials = 'include';
+  // Include auth token from localStorage for cross-site requests
+  var token = null;
+  try { token = localStorage.getItem('investmtg_auth_token'); } catch(e) { /* ignore */ }
+  if (token) {
+    opts.headers = opts.headers || {};
+    if (!opts.headers['Authorization']) {
+      opts.headers['Authorization'] = 'Bearer ' + token;
+    }
+  }
   return fetch(PROXY_BASE + path, opts).then(function(res) {
     if (!res.ok) throw new Error('Backend error: ' + res.status);
     return res.json();

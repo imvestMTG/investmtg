@@ -230,7 +230,14 @@ async function verifyOAuthState(env, state) {
 }
 
 async function getAuthUser(request, env) {
-  const token = getAuthToken(request);
+  // Accept token from cookie OR Authorization header (for cross-site requests)
+  let token = getAuthToken(request);
+  if (!token) {
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    }
+  }
   if (!token) return null;
 
   const now = Math.floor(Date.now() / 1000);
@@ -517,7 +524,9 @@ async function handleAuthCallback(request, env) {
   const anonymousSession = getSession(request);
   await migrateAnonymousDataToUser(env, anonymousSession, userId);
 
-  return createRedirect(request, env.FRONTEND_URL, [
+  // Pass token via URL query so frontend can store it (cross-site cookies are blocked by modern browsers)
+  const redirectUrl = `${env.FRONTEND_URL}?auth_token=${encodeURIComponent(authToken)}`;
+  return createRedirect(request, redirectUrl, [
     buildCookie('investmtg_auth', authToken, AUTH_SESSION_MAX_AGE),
   ]);
 }
