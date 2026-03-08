@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Full site debug: Bearer token auth (cookie-based failed in modern browsers), Featured card pricing fix (physical-only fallback), SW v7 |
 | 2026-03-08 | Google OAuth authentication: persistent user accounts for sellers and buyers, Worker v3 with auth routes, frontend auth UI |
 | 2026-03-08 | Self-hosted React: eliminated esm.sh redirect chains, vendor/ bundles, SW v4 |
 | 2026-03-08 | Fixed mobile black screen: loading fallbacks, SW v3, es-module-shims polyfill for pre-iOS 16.4 browsers |

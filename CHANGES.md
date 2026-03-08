@@ -1,5 +1,35 @@
 # investMTG — Changelog
 
+## 2026-03-08: Full site debug — Bearer token auth, featured card pricing, SW v7
+
+### What Changed
+Full debug audit of the production site following the auth rewrite. Fixed the auth delivery mechanism (cookie → Bearer token via localStorage), fixed Featured Cards showing $0.00 for digital-only printings, and bumped the service worker.
+
+### Auth Fix: Cookie → Bearer Token
+Modern browsers block third-party cookies, so the cookie-based auth (`investmtg_auth` cookie with `SameSite=None`) failed silently. Switched to a Bearer token flow:
+- **Worker callback** now appends `?auth_token=UUID` to the redirect URL back to the frontend
+- **Frontend `auth.js`** captures the token from the URL on page load, stores it in `localStorage` as `investmtg_auth_token`, and cleans the URL
+- **All API calls** now include `Authorization: Bearer <token>` header via both `authFetch()` (auth.js) and `backendFetch()` (api.js)
+- **Worker `getAuthUser()`** accepts token from cookie OR `Authorization: Bearer` header
+- Cookie is still set as a fallback for browsers that allow it
+
+### Featured Card Pricing Fix
+Featured and Movers endpoints returned $0.00 for dual lands (Tropical Island, Underground Sea, Savannah, Bayou, Volcanic Island) because Scryfall's `/cards/named?exact=` returns the Vintage Masters (digital-only) printing which has no USD price.
+- **Worker `fetchAndCacheCard()`** now detects when a card is digital-only or has no USD price, and automatically falls back to a Scryfall search with `-is:digital has:usd` to find the physical printing
+- Purged stale KV cache entries and D1 price rows for affected cards
+- All featured cards now show correct physical-printing prices (e.g., Tropical Island Revised Edition: $521.41)
+
+### Service Worker
+- Bumped to `investmtg-v7` to force cache purge of stale JS from the auth rewrite
+
+### Files Modified
+- `worker/worker.js` — `fetchAndCacheCard()` physical card fallback, `getAuthUser()` Bearer header support, callback `?auth_token=` redirect
+- `utils/auth.js` — rewritten: localStorage token, `captureTokenFromURL()`, `authFetch()` with Bearer header
+- `utils/api.js` — `backendFetch()` includes `Authorization: Bearer` header from localStorage
+- `sw.js` — v7
+
+---
+
 ## 2026-03-08: Google OAuth authentication — persistent user accounts
 
 ### What Changed

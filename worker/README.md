@@ -58,8 +58,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/auth/google` | GET | Start Google OAuth flow (redirect to Google consent screen) |
-| `/auth/callback` | GET | Google OAuth callback — exchange code for tokens, create/update user, set auth cookie |
-| `/auth/me` | GET | Return current authenticated user (or `{ authenticated: false }`) |
+| `/auth/callback` | GET | Google OAuth callback — exchange code for tokens, create/update user, redirect with `?auth_token=` (Bearer token via localStorage; cookie fallback) |
+| `/auth/me` | GET | Return current authenticated user via Bearer token or cookie (or `{ authenticated: false }`) |
 | `/auth/logout` | DELETE | Destroy auth session, clear cookie |
 
 ### Proxy routes
@@ -138,7 +138,7 @@ npx wrangler secret list
 
 | File | Description |
 |------|-------------|
-| `worker.js` | Worker v2 source |
+| `worker.js` | Worker v3 source |
 | `wrangler.toml` | deployment config with D1 and KV bindings |
 | `schema.sql` | D1 database schema |
 | `seed.sql` | Guam store and event seed data |

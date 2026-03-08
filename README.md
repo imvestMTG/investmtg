@@ -39,6 +39,7 @@ Key characteristics:
 - Cloudflare KV cache for market and discovery responses (ticker, featured, trending, budget, movers)
 - Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1
 - Encrypted secrets for protected third-party APIs and auth credentials
+- Bearer token auth via localStorage (cross-site cookie fallback)
 - Anonymous session cookie support for server-side user state
 
 ### frontend-v2/ (experimental, not deployed)
@@ -77,7 +78,8 @@ Key characteristics:
 ### Front end
 - `app.js` — root application entry, async state init, hash router
 - `components/` — all UI components
-- `utils/api.js` — backend proxy functions and `normalizeCard()` shape converter
+- `utils/api.js` — backend proxy functions, `normalizeCard()` shape converter, Bearer token auth
+- `utils/auth.js` — auth state manager (checkAuth, signIn, signOut, onAuthChange, useAuth)
 - `utils/` — config, helpers, stores, events, marketplace data, sanitization
 - `index.html` — import map for React 18.3.1 / ReactDOM from self-hosted vendor bundles
 - `style.css`, `base.css` — application styles
@@ -87,7 +89,7 @@ Key characteristics:
 - Cloudflare sits in front of the domain for DNS and caching
 
 ### Worker
-- `worker/worker.js` — Cloudflare Worker v2 backend and proxy
+- `worker/worker.js` — Cloudflare Worker v3 backend and proxy
 - `worker/schema.sql` — D1 schema (7 tables)
 - `worker/seed.sql` — D1 seed data for Guam stores and events
 - the Worker is a separate deployment surface from the GitHub Pages front end

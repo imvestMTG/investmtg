@@ -339,8 +339,22 @@ async function scryfallFetch(path) {
 
 async function fetchAndCacheCard(db, name) {
   try {
-    const card = await scryfallFetch('/cards/named?exact=' + encodeURIComponent(name));
+    let card = await scryfallFetch('/cards/named?exact=' + encodeURIComponent(name));
     if (!card || card.object === 'error') return null;
+
+    // If the card is digital-only or has no USD price, search for a physical printing
+    if (card.digital || (!card.prices?.usd && !card.prices?.usd_foil)) {
+      try {
+        const searchResult = await scryfallFetch(
+          '/cards/search?q=!' + encodeURIComponent('"' + name + '"') + '+-is%3Adigital+has%3Ausd&order=usd&dir=desc'
+        );
+        if (searchResult && searchResult.data && searchResult.data.length > 0) {
+          card = searchResult.data[0];
+        }
+      } catch {
+        // Search failed — keep the original card
+      }
+    }
 
     const now = Math.floor(Date.now() / 1000);
     const imageUris = card.image_uris || (card.card_faces && card.card_faces[0] && card.card_faces[0].image_uris) || {};
