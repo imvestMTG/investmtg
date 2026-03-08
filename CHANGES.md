@@ -1,5 +1,25 @@
 # investMTG — Changelog
 
+## 2026-03-09: Auth sign-in fix (CSP + race condition) — SW v19
+
+### Root Cause: CSP Blocking API Calls
+
+- **Problem** — After moving the backend from `investmtg-proxy.bloodshutdawn.workers.dev` to `api.investmtg.com`, the Content-Security-Policy `connect-src` directive in `index.html` was never updated. The browser silently blocked all `fetch()` requests to `https://api.investmtg.com`, including the critical `authFetch('/auth/me')` call that validates the auth token. This caused `checkAuth()` to fail silently (the `.catch()` handler set `_user = null`), leaving the user perpetually signed out despite having a valid token in localStorage.
+- **Fix** — Updated `connect-src` in `index.html` to include `https://api.investmtg.com`. Removed the stale `investmtg-proxy.bloodshutdawn.workers.dev` entry since all API calls now go through the custom domain.
+
+### Auth Race Condition Fix
+
+- **Problem** — In `auth.js`, `captureTokenFromURL()` called `window.location.replace()` to strip the `?auth_token=` param, but `checkAuth()` continued executing after the call, starting an `authFetch('/auth/me')` request that would be aborted by the page navigation. This was a secondary issue (the page reload would re-run `checkAuth()` cleanly), but the aborted fetch wasted a network request and could confuse debugging.
+- **Fix** — `captureTokenFromURL()` now returns `'redirecting'` when it triggers a page reload. `checkAuth()` detects this and returns `new Promise(function() {})` (a never-resolving promise), which prevents any further execution during the page transition.
+
+### Debug Artifact Cleanup
+
+- **Removed** `auth-test.html` diagnostic page (was used to isolate the auth bug).
+- **Removed** `/auth/debug` endpoint from `worker.js` (temporary admin-only endpoint for checking OAuth config).
+- **Removed** debug `console.log` statements from `authFetch()` in `auth.js`.
+
+---
+
 ## 2026-03-09: Custom domain & OAuth branding fix — SW v18
 
 ### Custom API Domain

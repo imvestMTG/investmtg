@@ -38,6 +38,11 @@ The root directory is the production front end. Files at the repository root are
 
 The vendor bundles were sourced from esm.sh’s stable endpoint and have all imports rewritten to local relative paths. No CDN requests are made at runtime for React. This eliminates the esm.sh redirect-chain problem that caused mobile black screens.
 
+### Content Security Policy
+`index.html` includes a `<meta http-equiv="Content-Security-Policy">` tag. **CRITICAL**: When changing backend URLs (e.g. moving from `.workers.dev` to a custom domain), the `connect-src` directive MUST be updated to include the new domain. If omitted, all `fetch()` calls to the backend will be silently blocked by the browser, causing auth failures and broken API calls with no visible error in the network tab (they appear as `net::ERR_BLOCKED_BY_CLIENT` in DevTools Console).
+
+Current `connect-src` allowlist: `'self'`, `api.investmtg.com`, `api.scryfall.com`, `gateway.sumup.com`, `api.sumup.com`, `js.sumup.com`, `api.justtcg.com`, `api2.moxfield.com`, `edhtop16.com`, `topdeck.gg`.
+
 ### Loading fallback chain
 To prevent blank screens on slow connections or mobile browsers:
 1. `index.html` contains visible "Loading…" HTML inside `#root` — shown before React hydrates
@@ -47,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v18`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v19`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -117,7 +122,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | File | Purpose |
 |------|---------|
 | `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, and 20+ backend proxy functions for all API endpoints |
-| `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js |
+| `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
 | `utils/helpers.js` | Shared formatting and utility functions |

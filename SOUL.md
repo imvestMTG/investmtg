@@ -124,7 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
-| 2026-03-09 | Custom domain `api.investmtg.com` for worker (Cloudflare custom domain route), OAuth redirect hardcoded to custom domain so Google consent screen shows `investmtg.com` instead of `bloodshutdawn.workers.dev`, PROXY_BASE updated in frontend config; SW v18 |
+| 2026-03-09 | **v19** — Fixed CSP `connect-src` to allow `api.investmtg.com` (was blocking all API calls, root cause of sign-in failure), fixed auth.js race condition during OAuth redirect, removed debug artifacts (auth-test.html, /auth/debug endpoint, debug console.logs); **v18** — Custom domain `api.investmtg.com` for worker, OAuth redirect hardcoded to custom domain, PROXY_BASE updated in frontend config |
 | 2026-03-08 | Cart condition selector UX overhaul: two-tier cart item layout with full-width condition section, animated "Select a condition" prompt with warning icon, red border on items missing condition, checkout button gated until all conditions chosen, scroll-to-first-missing on disabled click; SW v17 |
 | 2026-03-08 | SumUp payment processor restored: Card Widget integration with lazy SDK loading, Pay Online + Reserve & Pay at Pickup dual payment methods, `POST /api/sumup/checkout` worker endpoint, admin bypass layer on worker `getAuthUser()` via `ADMIN_TOKEN` secret for testing, removed all Guam GRT tax references site-wide (config, CartView, CheckoutView, OrderConfirmation, TermsView); SW v16 |
 | 2026-03-08 | Order workflow overhaul: 4-step checkout wizard with confirmation modal, reserve & pay at pickup, server-generated `GUM-YYYYMM-XXXXX` order IDs, D1 order persistence, My Orders page (`#orders`), Order Confirmation server-first loading, removed dead SumUp code; SW v15 |

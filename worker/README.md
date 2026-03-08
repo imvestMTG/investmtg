@@ -170,3 +170,4 @@ When the worker changes:
 - confirm no secret values appear in tracked files
 - confirm front-end docs still describe the worker as a separate deployment surface
 - confirm the frontend service worker version was bumped if any API response shapes changed (stale-cache prevention)
+- confirm `index.html` CSP `connect-src` includes any new backend domains (missed CSP updates silently block all fetch calls)

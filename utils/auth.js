@@ -48,30 +48,27 @@ function authFetch(path, options) {
   }
   opts.credentials = 'include';
   var url = PROXY_BASE + path;
-  console.log('[investMTG auth] authFetch:', url, 'hasToken:', !!token);
   return fetch(url, opts).then(function(res) {
-    console.log('[investMTG auth] authFetch response:', res.status, res.ok);
     if (!res.ok) throw new Error('Auth error: ' + res.status);
     return res.json();
   });
 }
 
-/** On app startup: check URL for auth_token param from OAuth callback */
+/** On app startup: check URL for auth_token param from OAuth callback.
+ *  Returns 'redirecting' if a page reload was triggered (caller must abort). */
 function captureTokenFromURL() {
   try {
     var params = new URLSearchParams(window.location.search);
     var token = params.get('auth_token');
     if (token) {
-      console.log('[investMTG auth] Captured auth_token from URL, length:', token.length);
       setToken(token);
-      // Force a clean reload so the app starts fresh with the token in localStorage.
-      // This avoids race conditions with stale module caches and ensures
-      // checkAuth() runs in a clean state on the reloaded page.
+      // Strip auth_token from URL and reload so the app starts fresh.
+      // Return 'redirecting' so checkAuth() knows to stop execution.
       window.location.replace(window.location.pathname + (window.location.hash || ''));
-      return token;
+      return 'redirecting';
     }
   } catch(e) {
-    console.error('[investMTG auth] captureTokenFromURL error:', e);
+    /* ignore — will fall through to normal auth check */
   }
   return null;
 }
@@ -80,8 +77,13 @@ function captureTokenFromURL() {
 export function checkAuth() {
   if (_checked) return Promise.resolve(_user);
 
-  // First, check if we just came back from OAuth redirect
-  captureTokenFromURL();
+  // First, check if we just came back from OAuth redirect.
+  // If captureTokenFromURL triggers a page reload, return a pending promise
+  // (the page will navigate before it resolves — this prevents aborted fetches).
+  var captured = captureTokenFromURL();
+  if (captured === 'redirecting') {
+    return new Promise(function() {}); // never resolves — page is reloading
+  }
 
   var token = getToken();
   if (!token) {
