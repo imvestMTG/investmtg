@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v31** — Service worker cache strategy fix: changed CSS from cache-first to network-first, preventing stale style.css from being served after deployments. Cloudflare zone cache purged. |
 | 2026-03-09 | **v30** — Cart page complete redesign from scratch. New CartView.js with CartItem/ConditionOption components, BEM class naming (.cart-card, .cond-option, .cart-summary, .cart-group), horizontal flex-wrap condition grid, consolidated ~560 fragmented CSS lines into single clean block, removed all teal accent fallbacks, 899px tablet breakpoint |
 | 2026-03-09 | **v29** — Cart condition selector CSS fix: consolidated duplicate `.cart-item` rules (row vs column conflict caused condition cards to render as jumbled text), ensured condition buttons styled properly after button reset, seller group needs-condition border fix |
 | 2026-03-09 | **v28** — Cart condition selector redesign (pill chips → full-width cards with dot, abbreviation, full name, price), removed 5-condition limit, full CSS optimization (formatted for readable diffs, replaced 45+ hardcoded gold colors with CSS variables, removed dead classes, added cart-cond-card layout), JS error handling improvements (4 silent catches → console.warn), Cloudflare DNS cleanup (deleted junk CNAME, removed duplicate DMARC, TLS 1.2) |

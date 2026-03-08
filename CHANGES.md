@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-09: Service worker cache fix (SW v31)
+
+- **sw.js** — Changed CSS/manifest/font caching strategy from cache-first to network-first. Root cause of persistent stale-CSS bug: the old cache-first strategy served the old cached style.css even after a new SW version activated, because the page had already loaded before the SW update cycle completed. Network-first ensures fresh CSS is always fetched on page load, falling back to cache only when offline. JS files were already network-first (line 64-72).
+- **Cloudflare** — Purged entire zone cache to clear stale CDN-cached CSS.
+- SW bumped to v31.
+
+---
+
 ## 2026-03-09: Cart page complete redesign (SW v30)
 
 - **CartView.js** — Complete rewrite from scratch. Extracted `CartItem` as a separate internal component with cleaner DOM structure. Extracted `ConditionOption` (replaces `ConditionChip`). New BEM-style class naming: `.cart-card`, `.cart-card__row`, `.cart-card__cond`, `.cond-option`, `.cart-summary`, `.cart-group`, `.cart-layout`. Condition selector now uses horizontal flex-wrap grid on desktop (all conditions visible in a row), vertical stack on mobile. All handler logic (qty update, remove, condition select) centralized and passed as props to CartItem.

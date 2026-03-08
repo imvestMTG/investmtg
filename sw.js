@@ -1,6 +1,6 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v30';
+var CACHE_NAME = 'investmtg-v31';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
@@ -112,19 +112,18 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  /* For CSS, manifest, fonts: cache-first with network fallback */
+  /* For CSS, manifest, fonts: network-first so deploys serve fresh styles immediately */
   event.respondWith(
-    caches.match(req).then(function(cached) {
-      if (cached) return cached;
-      return fetch(req).then(function(response) {
-        if (response && response.status === 200 && response.type === 'basic') {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(req, clone);
-          });
-        }
-        return response;
-      });
+    fetch(req).then(function(response) {
+      if (response && response.status === 200 && response.type === 'basic') {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(req, clone);
+        });
+      }
+      return response;
+    }).catch(function() {
+      return caches.match(req);
     })
   );
 });
