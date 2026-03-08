@@ -16,27 +16,27 @@ The production architecture combines:
 The root directory is the production front end. Files at the repository root are what gets deployed to GitHub Pages.
 
 ### Stack
-- React 19 (loaded from [esm.sh](https://esm.sh) via import map)
-- ReactDOM 19 (loaded from esm.sh via import map)
+- React 18.3.1 (self-hosted in `vendor/` directory)
+- ReactDOM 18.3.1 + Scheduler 0.23.2 (self-hosted in `vendor/`)
 - Vanilla JavaScript — no TypeScript, no bundler, no transpiler
 - Native ES modules via `<script type="module">`
 - No npm dependencies for the frontend — no `package.json` at root level
 
 ### Import map
-`index.html` contains the import map that wires React 19 and ReactDOM:
+`index.html` contains the import map that wires React and ReactDOM to self-hosted vendor bundles:
 
 ```html
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19",
-    "react-dom/client": "https://esm.sh/react-dom@19/client"
+    "react": "./vendor/react.mjs",
+    "react-dom/client": "./vendor/react-dom-client.mjs"
   }
 }
 </script>
 ```
 
-`es-module-shims` is loaded before the import map to polyfill import map support on pre-iOS 16.4 browsers (iOS Safari < 16.4 does not support native import maps). The polyfill is loaded from `ga.jspm.io` and is reflected in the CSP `script-src` and `connect-src` directives.
+The vendor bundles were sourced from esm.sh’s stable endpoint and have all imports rewritten to local relative paths. No CDN requests are made at runtime for React. This eliminates the esm.sh redirect-chain problem that caused mobile black screens.
 
 ### Loading fallback chain
 To prevent blank screens on slow connections or mobile browsers:
@@ -47,11 +47,11 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v3`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v4`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
-- **JS files**: never cached — always fetches fresh on deploy to avoid stale module problems
+- **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
-- **Cross-origin requests** (esm.sh, backend Worker): skipped entirely — the service worker does not intercept them
+- **Cross-origin requests** (backend Worker, Scryfall, etc.): skipped entirely — the service worker does not intercept them
 - On activation, all previous cache versions are purged
 
 ### Coding rules
@@ -220,6 +220,11 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── schema.sql
 │   ├── seed.sql
 │   └── README.md
+├── vendor/
+│   ├── react.mjs                   # React 18.3.1 production bundle
+│   ├── react-dom.mjs               # ReactDOM 18.3.1 production bundle
+│   ├── react-dom-client.mjs        # ReactDOM/client entry
+│   └── scheduler.mjs               # Scheduler 0.23.2 production bundle
 ├── frontend-v2/                    # experimental rewrite — not deployed
 ├── images/
 ├── app.js                          # root application entry point

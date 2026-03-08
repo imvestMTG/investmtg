@@ -69,7 +69,7 @@ Required updates after release-impacting work:
 ## Architecture principles
 
 ### Front end
-The production front end is the root-level SPA: vanilla JavaScript with React 19 loaded via import maps from esm.sh. There is no build step — the repository root is deployed directly to GitHub Pages.
+The production front end is the root-level SPA: vanilla JavaScript with React 18.3.1 loaded via import maps from self-hosted vendor bundles. There is no build step — the repository root is deployed directly to GitHub Pages.
 
 Coding rules (must be followed in all root-level JS files):
 - `var h = React.createElement;` — no JSX, no Babel transform
@@ -77,7 +77,7 @@ Coding rules (must be followed in all root-level JS files):
 - `var` only — no `let` or `const`
 - `function` keyword only — no arrow functions inside component bodies
 - Native ES modules via `<script type="module">` and import maps
-- React 19 and ReactDOM 19 loaded from `esm.sh`
+- React 18.3.1 and ReactDOM 18.3.1 self-hosted in `vendor/`
 
 Key characteristics:
 - hash-based routing

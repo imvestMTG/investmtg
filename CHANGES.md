@@ -1,5 +1,31 @@
 # investMTG — Changelog
 
+## 2026-03-08: Self-host React — eliminate esm.sh redirect chains (mobile black screen fix)
+
+### Root Cause
+The esm.sh CDN returns 158-byte stub modules that re-export from internal relative paths (e.g. `/react@18.3.1/es2022/react.development.mjs`). This creates a cascading chain of module loads that fails on mobile browsers, especially with the es-module-shims polyfill intercepting cross-origin requests. The `?dev=false` parameter also resolved to development builds, adding deeper dependency chains.
+
+### Fix
+- Downloaded React 18.3.1, ReactDOM, ReactDOM/client, and Scheduler production bundles from esm.sh stable endpoint
+- Saved as self-hosted files in `vendor/` directory with all imports rewritten to local relative paths
+- Updated import map in `index.html` to point to `./vendor/react.mjs` and `./vendor/react-dom-client.mjs`
+- Removed es-module-shims polyfill (no longer needed — all modules are same-origin)
+- Removed esm.sh and ga.jspm.io from Content Security Policy
+- Added `modulepreload` hints for all four vendor modules
+- Bumped service worker to v4; extended JS-never-cache rule to cover `.mjs` files
+
+### Files Added
+- `vendor/react.mjs` — React 18.3.1 production bundle (9.6 KB, self-contained)
+- `vendor/react-dom.mjs` — ReactDOM production bundle (132 KB, imports react + scheduler)
+- `vendor/react-dom-client.mjs` — ReactDOM/client (1.5 KB, imports react-dom)
+- `vendor/scheduler.mjs` — Scheduler production bundle (6.8 KB, self-contained)
+
+### Files Modified
+- `index.html` — import map, CSP, modulepreload hints, removed polyfill
+- `sw.js` — v4, .mjs handling
+
+---
+
 ## 2026-03-08: Fix mobile black screen — loading fallbacks, SW v3, import map polyfill
 
 ### Root Cause Analysis (GPT 5.4)

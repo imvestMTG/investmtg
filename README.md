@@ -8,7 +8,7 @@ investMTG is a Guam-first Magic: The Gathering marketplace and pricing experienc
 
 ## Production architecture
 
-The live site at www.investmtg.com is served from the **root-level SPA** — a vanilla JavaScript application using React 19 via import maps. There is no build step. The repository root is published directly to GitHub Pages.
+The live site at www.investmtg.com is served from the **root-level SPA** — a vanilla JavaScript application using React 18.3.1 via import maps with self-hosted vendor bundles. There is no build step. The repository root is published directly to GitHub Pages.
 
 All API data flows through the Cloudflare Worker v2 backend at `https://investmtg-proxy.bloodshutdawn.workers.dev`.
 
@@ -16,7 +16,7 @@ All API data flows through the Cloudflare Worker v2 backend at `https://investmt
 The root-level SPA (`app.js`, `components/`, `utils/`) is the production frontend.
 
 Key characteristics:
-- React 19 loaded via import maps from [esm.sh](https://esm.sh) — no npm, no bundler
+- React 18.3.1 self-hosted in `vendor/` via import maps — no npm, no bundler, no CDN
 - Vanilla JavaScript — `var` only, no JSX, `React.createElement` for all elements
 - Hash-based routing
 - Native ES modules via `<script type="module">`
@@ -78,7 +78,7 @@ Key characteristics:
 - `components/` — all UI components
 - `utils/api.js` — backend proxy functions and `normalizeCard()` shape converter
 - `utils/` — config, helpers, stores, events, marketplace data, sanitization
-- `index.html` — import map for React 19 / ReactDOM from esm.sh
+- `index.html` — import map for React 18.3.1 / ReactDOM from self-hosted vendor bundles
 - `style.css`, `base.css` — application styles
 
 ### Hosting
@@ -169,7 +169,7 @@ npx serve .
 python3 -m http.server 8080
 ```
 
-The import map in `index.html` points to esm.sh for React 19 and ReactDOM 19.
+The import map in `index.html` points to self-hosted vendor bundles (`vendor/react.mjs`, `vendor/react-dom-client.mjs`) for React 18.3.1 and ReactDOM 18.3.1.
 
 ### Worker
 ```bash
