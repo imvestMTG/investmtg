@@ -94,7 +94,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users
-- `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Has `user_id` index. Auto-created by worker if missing. v33 adds ALTER TABLE migration for new payment columns on existing tables.
+- `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Uses `user_email` column (not user_id). Guest orders store `contact_email` as `user_email`. Auto-created by worker if missing. v33 adds ALTER TABLE migration for new payment columns on existing tables.
 - `order_counters` — monthly sequential counter for `GUM-YYYYMM-XXXXX` order IDs. Atomic upsert via `ON CONFLICT DO UPDATE`.
 
 ## Security

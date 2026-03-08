@@ -1,5 +1,12 @@
 # investMTG — Changelog
 
+## 2026-03-09: Fix SumUp checkout + guest orders (SW v36)
+
+- **worker/worker.js** — Fixed critical SumUp checkout validation error. Root cause: merchant code was `M55T01IN` (letter I) but the actual SumUp merchant code is `M55T011N` (digit 1). Also fixed D1 schema mismatch: all order SQL queries referenced `user_id` column but D1 `orders` table uses `user_email`. Fixed all order handlers (GET list, GET /:id, POST create, payment-status) to use `user_email`. Enabled guest checkout: removed hard auth requirement from `/api/orders` POST and `/api/sumup/checkout`. Guest orders use `contact_email` as `user_email`. Improved SumUp error handling to parse both array and object error formats from SumUp API. Removed deprecated `pay_to_email` field from checkout body (using `merchant_code` only per SumUp recommendation). Amount is now rounded to 2 decimal places before sending to SumUp.
+- SW bumped to v36.
+
+---
+
 ## 2026-03-09: Restore cart to pre-v30 structure (SW v35)
 
 - **CartView.js** — Reverted to the v29 cart layout structure which displays all condition options as card-style rows in a vertical list. The v30 redesign introduced a grid/step-wizard layout that broke the cart visually. Restored: `.cart-item` → `.cart-item-top` → `.cart-condition-section` → `.cart-condition-chips` → `.cart-cond-card` hierarchy. Retained v32 enhancements: trust badges (`.cart-trust-badges`, `.cart-trust-row`), savings badges (`.cond-card-save`), and package count (`.cart-packages-info`).

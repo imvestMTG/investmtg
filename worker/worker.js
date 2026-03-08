@@ -30,8 +30,8 @@
  *   /api/stores           — Local stores from D1
  *   /api/events           — Community events from D1
  *   /api/cart             — Shopping cart CRUD (auth user or anonymous session)
- *   /api/orders           — Order CRUD (auth required; POST creates, GET lists, GET/:id gets one)
- *   /api/sumup/checkout   — Create SumUp checkout (auth required)
+ *   /api/orders           — Order CRUD (POST allows guests with contact_email; GET/GET/:id auth required)
+ *   /api/sumup/checkout   — Create SumUp checkout (guests allowed)
  *   /auth/google          — Start Google OAuth flow
  *   /auth/callback        — Google OAuth callback
  *   /auth/me              — Current authenticated user
@@ -1091,8 +1091,8 @@ async function handleOrders(request, env, orderId) {
     if (!auth) return json({ error: 'Authentication required' }, 401, request);
 
     const row = await env.DB.prepare(
-      'SELECT * FROM orders WHERE id = ? AND user_id = ?'
-    ).bind(orderId, auth.userId).first().catch(() => null);
+      'SELECT * FROM orders WHERE id = ? AND user_email = ?'
+    ).bind(orderId, auth.user.email).first().catch(() => null);
 
     if (!row) return json({ error: 'Order not found' }, 404, request);
 
@@ -1114,8 +1114,8 @@ async function handleOrders(request, env, orderId) {
     if (!auth) return json({ error: 'Authentication required' }, 401, request);
 
     const rows = await env.DB.prepare(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
-    ).bind(auth.userId).all().catch(() => ({ results: [] }));
+      'SELECT * FROM orders WHERE user_email = ? ORDER BY created_at DESC'
+    ).bind(auth.user.email).all().catch(() => ({ results: [] }));
 
     const orders = (rows.results || []).map(function(row) {
       const order = Object.assign({}, row);
@@ -1134,7 +1134,6 @@ async function handleOrders(request, env, orderId) {
   // ── POST /api/orders ──
   if (method === 'POST') {
     const auth = await getAuthUser(request, env);
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
 
     const body = await request.json().catch(() => null);
     if (!body || !body.items || !Array.isArray(body.items)) {
@@ -1148,7 +1147,7 @@ async function handleOrders(request, env, orderId) {
     await env.DB.prepare(
       `CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        user_email TEXT NOT NULL,
         items TEXT NOT NULL,
         subtotal REAL NOT NULL,
         tax REAL NOT NULL,
@@ -1174,6 +1173,12 @@ async function handleOrders(request, env, orderId) {
     await env.DB.prepare('ALTER TABLE orders ADD COLUMN checkout_id TEXT DEFAULT NULL').run().catch(() => {});
     await env.DB.prepare('ALTER TABLE orders ADD COLUMN sumup_txn_id TEXT DEFAULT NULL').run().catch(() => {});
 
+    // Guest orders use contact_email as identifier; authenticated users use their auth email
+    const userEmail = auth ? auth.user.email : (body.contact_email || '').trim();
+    if (!userEmail) {
+      return json({ error: 'contact_email required for guest orders' }, 400, request);
+    }
+
     const id = await generateOrderId(env.DB);
     const nowStr = new Date().toISOString();
     const itemsJson = JSON.stringify(body.items);
@@ -1183,13 +1188,13 @@ async function handleOrders(request, env, orderId) {
 
     await env.DB.prepare(
       `INSERT INTO orders
-       (id, user_id, items, subtotal, tax, shipping, total, fulfillment,
+       (id, user_email, items, subtotal, tax, shipping, total, fulfillment,
         pickup_store, contact_name, contact_email, contact_phone,
         payment_method, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id,
-      auth.userId,
+      userEmail,
       itemsJson,
       body.subtotal,
       body.tax || 0,
@@ -1209,7 +1214,7 @@ async function handleOrders(request, env, orderId) {
     const initialStatus = body.payment_method === 'sumup' ? 'pending_payment' : 'reserved';
     const order = {
       id,
-      user_id: auth.userId,
+      user_email: userEmail,
       items: body.items,
       subtotal: body.subtotal,
       tax: body.tax || 0,
@@ -1251,24 +1256,29 @@ async function handleSumUpCheckout(request, env) {
     return json({ error: 'SumUp not configured. Set SUMUP_SECRET_KEY via wrangler secret put.' }, 500, request);
   }
 
-  const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
-
+  // Allow guest checkouts — SumUp handles payment security
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: 'Invalid JSON body' }, 400, request);
   if (!body.amount || body.amount <= 0) return json({ error: 'amount must be > 0' }, 400, request);
   if (!body.order_id) return json({ error: 'order_id required' }, 400, request);
 
+  // Round amount to 2 decimal places and ensure it's a number
+  const amount = Math.round(parseFloat(body.amount) * 100) / 100;
+  if (isNaN(amount) || amount <= 0) {
+    return json({ error: 'Invalid amount' }, 400, request);
+  }
+
   const checkoutBody = {
-    amount: body.amount,
-    currency: 'USD',
     checkout_reference: body.order_id,
-    merchant_code: 'M55T01IN',
+    amount: amount,
+    currency: 'USD',
+    merchant_code: 'M55T011N',
     description: 'investMTG Order ' + body.order_id,
-    pay_to_email: 'bloodshutdawn@gmail.com',
-    return_url: 'https://api.investmtg.com/api/sumup-webhook',
-    redirect_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id,
   };
+
+  // Only add redirect_url if needed for 3DS flow
+  const redirectUrl = (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id;
+  checkoutBody.redirect_url = redirectUrl;
 
   try {
     const resp = await fetch('https://api.sumup.com/v0.1/checkouts', {
@@ -1283,10 +1293,18 @@ async function handleSumUpCheckout(request, env) {
     const data = await resp.json();
 
     if (!resp.ok) {
-      console.error('SumUp checkout error:', JSON.stringify(data));
+      console.error('SumUp checkout error:', resp.status, JSON.stringify(data));
+      // SumUp returns an array of errors like [{message, error_code, param}] or an object {error_message, error_code}
+      let detail = 'Unknown error';
+      if (Array.isArray(data)) {
+        detail = data.map(e => (e.param ? e.param + ': ' : '') + (e.message || e.error_code || '')).join('; ');
+      } else if (data && typeof data === 'object') {
+        detail = data.error_message || data.message || data.error_code || JSON.stringify(data);
+      }
       return json({
         error: 'SumUp checkout creation failed',
-        detail: data.message || data.error_code || 'Unknown error',
+        detail: detail,
+        sumup_errors: data,
         status: resp.status,
       }, resp.status >= 500 ? 502 : resp.status, request);
     }
@@ -1385,14 +1403,14 @@ async function handleOrderPaymentStatus(request, env, orderId) {
   }
 
   const auth = await getAuthUser(request, env);
-  if (!auth || !auth.userId) {
+  if (!auth) {
     return json({ error: 'Authentication required' }, 401, request);
   }
 
   // Fetch the order
   const row = await env.DB.prepare(
-    'SELECT id, status, payment_status, checkout_id, sumup_txn_id, payment_method FROM orders WHERE id = ? AND user_id = ?'
-  ).bind(orderId, auth.userId).first().catch(() => null);
+    'SELECT id, status, payment_status, checkout_id, sumup_txn_id, payment_method FROM orders WHERE id = ? AND user_email = ?'
+  ).bind(orderId, auth.user.email).first().catch(() => null);
 
   if (!row) {
     return json({ error: 'Order not found' }, 404, request);
