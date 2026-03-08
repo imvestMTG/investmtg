@@ -96,18 +96,23 @@ const TICKER_CARDS = [
 const FEATURED_CARD_NAMES = [
   'Serra\'s Sanctum', 'Tropical Island', 'Underground Sea',
   'Savannah', 'Bayou', 'Volcanic Island',
+  'Tundra', 'Badlands', 'Plateau', 'Scrubland',
+  'Gaea\'s Cradle', 'The Tabernacle at Pendrell Vale',
 ];
 
 // Trending cards
 const TRENDING_CARD_NAMES = [
   'Fatal Push', 'The One Ring', 'Ragavan, Nimble Pilferer',
   'Sheoldred, the Apocalypse', 'Orcish Bowmasters', 'Mana Crypt',
+  'Jewel Lotus', 'Dockside Extortionist', 'Fierce Guardianship',
+  'Smothering Tithe', 'Cyclonic Rift', 'Atraxa, Grand Unifier',
 ];
 
 // Budget staples
 const BUDGET_CARD_NAMES = [
   'Sol Ring', 'Rampant Growth', 'Path to Exile', 'Counterspell',
   'Swords to Plowshares', 'Lightning Bolt', 'Cultivate', 'Arcane Signet',
+  'Beast Within', 'Chaos Warp', 'Farseek', 'Command Tower',
 ];
 
 /* ── CORS helpers ── */

@@ -228,6 +228,64 @@
 .cart-checkout-blocked--loading{border-color:var(--color-border);color:var(--color-text-muted);background:var(--color-surface-offset)}
 .cart-item.cart-item--needs-condition{border:2px solid var(--color-error)!important;box-shadow:0 0 0 3px rgba(212,43,74,0.15)!important;border-radius:var(--radius-lg)!important}
 
+/* ===== Card Section + Carousel ===== */
+.card-section{margin-bottom:var(--space-10);padding-top:var(--space-2)}
+.card-section-header{margin-bottom:var(--space-5)}
+.card-section-header h2{font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-1)}
+.card-section-header h2::before{content:'';display:inline-block;width:4px;height:1.1em;background:linear-gradient(180deg,var(--color-primary) 0%,oklch(from var(--color-primary) l c h / 0.3) 100%);border-radius:2px;flex-shrink:0}
+.card-section-header h2 svg{width:22px;height:22px;color:var(--color-primary)}
+.card-section-sub{font-size:var(--text-sm);color:var(--color-text-muted);padding-left:calc(4px + var(--space-3))}
+
+/* Carousel wrapper */
+.carousel-wrap{position:relative}
+
+/* Scroll track */
+.carousel-track{display:flex;gap:var(--space-4);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:var(--space-2);scroll-padding-left:var(--space-1)}
+.carousel-track::-webkit-scrollbar{display:none}
+.carousel-track--skeleton{scrollbar-width:none;overflow:hidden}
+.carousel-track--skeleton::-webkit-scrollbar{display:none}
+
+/* Individual card in carousel */
+.carousel-card{flex:0 0 200px;scroll-snap-align:start;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;perspective:800px;transition:box-shadow var(--transition-interactive),border-color var(--transition-interactive),transform var(--transition-interactive)}
+.carousel-card:hover{box-shadow:0 0 20px oklch(from var(--color-primary) l c h / 0.15);border-color:oklch(from var(--color-primary) l c h / 0.4);transform:translateY(-3px)}
+
+/* Card image */
+.carousel-card-image{aspect-ratio:745/1040;background:var(--color-surface-offset);overflow:hidden;position:relative}
+.carousel-card-image::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--color-surface-offset) 0%,var(--color-surface-dynamic) 100%);z-index:0}
+.carousel-card-image img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:1}
+
+/* Card info */
+.carousel-card-info{padding:var(--space-3)}
+.carousel-card-name{font-family:var(--font-display);font-size:var(--text-sm);font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carousel-card-set{font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carousel-card-price-row{display:flex;justify-content:space-between;align-items:center;gap:var(--space-2)}
+.carousel-card-price{font-weight:700;font-variant-numeric:tabular-nums lining-nums;font-size:var(--text-sm)}
+.carousel-card-foil{font-size:var(--text-xs);font-weight:500;color:var(--color-text-muted);font-variant-numeric:tabular-nums lining-nums}
+
+/* Arrow buttons */
+.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-full);background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text);cursor:pointer;box-shadow:var(--shadow-md);transition:background var(--transition-interactive),border-color var(--transition-interactive),color var(--transition-interactive),box-shadow var(--transition-interactive),transform var(--transition-interactive)}
+.carousel-arrow:hover{background:var(--color-surface-offset);border-color:var(--color-primary);color:var(--color-primary);box-shadow:var(--shadow-lg)}
+.carousel-arrow--left{left:calc(-1 * var(--space-5))}
+.carousel-arrow--right{right:calc(-1 * var(--space-5))}
+
+/* Skeleton in carousel track */
+.carousel-track .skeleton-card{flex:0 0 200px}
+
+/* Edge fade hints */
+.carousel-wrap::before,.carousel-wrap::after{content:'';position:absolute;top:0;bottom:var(--space-2);width:24px;z-index:3;pointer-events:none}
+.carousel-wrap::before{left:0;background:linear-gradient(to right,var(--color-bg),transparent);opacity:0}
+.carousel-wrap::after{right:0;background:linear-gradient(to left,var(--color-bg),transparent)}
+
+@media(max-width:767px){
+  .carousel-arrow{display:none}
+  .carousel-card{flex:0 0 170px}
+  .carousel-arrow--left,.carousel-arrow--right{display:none}
+  .card-section-header h2{font-size:var(--text-lg)}
+}
+@media(min-width:1024px){
+  .carousel-card{flex:0 0 220px}
+}
+
 /* ===== ToS Gate ===== */
 .tos-gate-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:var(--space-4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .tos-gate-modal{background:var(--color-surface);border-radius:var(--radius-lg);padding:var(--space-8) var(--space-6);max-width:440px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)}

@@ -3,7 +3,7 @@ import React from 'react';
 import { fetchFeatured, fetchTrending, fetchBudget } from '../utils/api.js';
 import { getEventsAsync } from '../utils/events-config.js';
 import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
-import { CardGrid } from './shared/CardGrid.js';
+import { CardCarousel } from './shared/CardCarousel.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon, MapPinIcon, ClockIcon } from './shared/Icons.js';
 var h = React.createElement;
@@ -33,9 +33,9 @@ export function HomeView(props) {
 
     Promise.all([fetchFeatured(), fetchTrending(), fetchBudget()]).then(function(results) {
       if (!cancelled) {
-        setFeatured(results[0].slice(0, 3));
-        setTrending(results[1].slice(0, 3));
-        setBudget(results[2].slice(0, 3));
+        setFeatured(results[0]);
+        setTrending(results[1]);
+        setBudget(results[2]);
         setLoading(false);
       }
     }).catch(function() {
@@ -173,42 +173,42 @@ export function HomeView(props) {
           )
         );
       })(),
-      h('section', { className: 'watchlist-section scroll-reveal' },
-        h('h2', null, h(SparkleIcon, null), ' Featured Cards'),
+      h('section', { className: 'card-section scroll-reveal' },
+        h('div', { className: 'card-section-header' },
+          h('h2', null, h(SparkleIcon, null), ' Featured Cards'),
+          h('p', { className: 'card-section-sub' }, 'High-value Reserved List and Legacy staples')
+        ),
         loading
-          ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
-          : h(CardGrid, {
+          ? h('div', { className: 'carousel-track carousel-track--skeleton' }, [1,2,3,4,5].map(function(i) { return h(SkeletonCard, { key: i }); }))
+          : h(CardCarousel, {
               cards: featured,
               state: state,
-              updateCart: updateCart,
-              updatePortfolio: updatePortfolio,
-              updateWatchlist: updateWatchlist,
               onOpenListing: onOpenListing
             })
       ),
-      h('section', { className: 'watchlist-section scroll-reveal' },
-        h('h2', null, h(TrendingIcon, null), ' Trending Now'),
+      h('section', { className: 'card-section scroll-reveal' },
+        h('div', { className: 'card-section-header' },
+          h('h2', null, h(TrendingIcon, null), ' Trending Now'),
+          h('p', { className: 'card-section-sub' }, 'Hot picks moving the market this week')
+        ),
         loading
-          ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
-          : h(CardGrid, {
+          ? h('div', { className: 'carousel-track carousel-track--skeleton' }, [1,2,3,4,5].map(function(i) { return h(SkeletonCard, { key: i }); }))
+          : h(CardCarousel, {
               cards: trending,
               state: state,
-              updateCart: updateCart,
-              updatePortfolio: updatePortfolio,
-              updateWatchlist: updateWatchlist,
               onOpenListing: onOpenListing
             })
       ),
-      h('section', { className: 'watchlist-section scroll-reveal' },
-        h('h2', null, h(StarIcon, null), ' Budget Staples'),
+      h('section', { className: 'card-section scroll-reveal' },
+        h('div', { className: 'card-section-header' },
+          h('h2', null, h(StarIcon, null), ' Budget Staples'),
+          h('p', { className: 'card-section-sub' }, 'Powerful cards that won\u2019t break the bank')
+        ),
         loading
-          ? h('div', { className: 'card-grid' }, [1,2,3].map(function(i) { return h(SkeletonCard, { key: i }); }))
-          : h(CardGrid, {
+          ? h('div', { className: 'carousel-track carousel-track--skeleton' }, [1,2,3,4,5].map(function(i) { return h(SkeletonCard, { key: i }); }))
+          : h(CardCarousel, {
               cards: budget,
               state: state,
-              updateCart: updateCart,
-              updatePortfolio: updatePortfolio,
-              updateWatchlist: updateWatchlist,
               onOpenListing: onOpenListing
             })
       )
