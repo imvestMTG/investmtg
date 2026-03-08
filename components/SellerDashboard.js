@@ -8,6 +8,7 @@ import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 import { fetchSeller, registerSeller, createListing, deleteListing, fetchListings } from '../utils/api.js';
 import { storageGet } from '../utils/storage.js';
+import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
@@ -130,6 +131,8 @@ function RegistrationForm(props) {
   var submitting = ref3[0], setSubmitting = ref3[1];
   var ref4 = React.useState(null);
   var submitError = ref4[0], setSubmitError = ref4[1];
+  var refTos = React.useState(false);
+  var tosAccepted = refTos[0], setTosAccepted = refTos[1];
 
   function update(key, val) {
     setForm(function(p) { return Object.assign({}, p, { [key]: val }); });
@@ -140,6 +143,7 @@ function RegistrationForm(props) {
     var e = {};
     if (!form.name.trim()) { e.name = 'Seller name is required'; }
     if (!form.contact.trim()) { e.contact = 'Contact info is required'; }
+    if (!tosAccepted) { e.tos = 'You must agree to the Terms of Service'; }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -222,6 +226,14 @@ function RegistrationForm(props) {
             onChange: function(e) { update('bio', e.target.value); }
           })
         ),
+        h(TermsCheckbox, {
+          checked: tosAccepted,
+          onChange: function(val) {
+            setTosAccepted(val);
+            setErrors(function(p) { return Object.assign({}, p, { tos: '' }); });
+          },
+          error: errors.tos
+        }),
         h('button', { type: 'submit', className: 'btn btn-primary btn-lg', disabled: submitting },
           submitting ? 'Creating...' : 'Create Seller Account'
         )

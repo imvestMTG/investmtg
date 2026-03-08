@@ -91,6 +91,13 @@ Key characteristics:
 - Footer site-wide "Pricing & Sources" link
 - SOUL.md Rule 4: Pricing transparency is non-negotiable
 
+### Legal & compliance
+- Terms of Service (`#terms`) — 14-section ToS covering user accounts, marketplace transactions, card conditions, pricing sources, payments, seller obligations, prohibited conduct, IP/WotC, and dispute resolution under Guam law
+- Privacy Policy (`#privacy`) — covers Google OAuth data collection, D1 database storage, server-side accounts, third-party services, data retention, and user rights
+- First-visit ToS acceptance gate — versioned modal shown on first visit; re-triggers when ToS is updated
+- ToS checkbox required on seller registration and checkout before proceeding
+- Cookie consent banner for third-party service cookies
+
 ### Home / Discovery
 - featured, trending, and budget card sections loaded from `/api/featured`, `/api/trending`, `/api/budget`
 - ticker strip with 16 live card prices from `/api/ticker`
@@ -133,6 +140,8 @@ investmtg/
 │   ├── SellerDashboard.js
 │   ├── StoreView.js
 │   ├── Ticker.js
+│   ├── TermsGate.js
+│   ├── CookieNotice.js
 │   ├── ... (other views and shared components)
 │   └── shared/
 │       ├── CardGrid.js
@@ -160,7 +169,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v25 (PWA offline support + auto-reload + image caching)
+├── sw.js                           # service worker v26 (PWA offline support + auto-reload + image caching)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md

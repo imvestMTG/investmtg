@@ -7,6 +7,7 @@ import { SHIPPING_FLAT_RATE, PROXY_BASE, SUMUP_PUBLIC_KEY } from '../utils/confi
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 import { storageGet, storageSet, storageGetRaw } from '../utils/storage.js';
+import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
 
 /* Lazy-load SumUp Card SDK v2 */
@@ -74,6 +75,11 @@ export function CheckoutView(props) {
 
   var ref13 = React.useState(false);
   var sumupMounted = ref13[0], setSumupMounted = ref13[1];
+
+  var refTos = React.useState(false);
+  var tosAccepted = refTos[0], setTosAccepted = refTos[1];
+  var refTosErr = React.useState('');
+  var tosError = refTosErr[0], setTosError = refTosErr[1];
 
   // Ref for SumUp card widget container
   var sumupContainerRef = React.useRef(null);
@@ -515,12 +521,25 @@ export function CheckoutView(props) {
           )
         ),
 
+        h(TermsCheckbox, {
+          checked: tosAccepted,
+          onChange: function(val) {
+            setTosAccepted(val);
+            setTosError('');
+          },
+          error: tosError
+        }),
+
         h('div', { className: 'checkout-actions' },
           h('button', { className: 'btn btn-secondary', onClick: function() { setStep(2); } }, '\u2190 Back'),
           h('button', {
             className: 'btn btn-primary',
             onClick: function() {
-              if (validateContact()) { setStep(4); }
+              var contactValid = validateContact();
+              if (!tosAccepted) {
+                setTosError('You must agree to the Terms of Service');
+              }
+              if (contactValid && tosAccepted) { setStep(4); }
             }
           }, 'Proceed to Payment \u2192')
         )

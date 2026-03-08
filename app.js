@@ -12,6 +12,7 @@ import { Footer } from './components/Footer.js';
 import { BackToTop } from './components/shared/BackToTop.js';
 import { ToastContainer, showToast } from './components/shared/Toast.js';
 import { CookieNotice } from './components/CookieNotice.js';
+import { TermsGate } from './components/TermsGate.js';
 import { ErrorBoundary } from './components/shared/ErrorBoundary.js';
 
 var h = React.createElement;
@@ -380,6 +381,7 @@ function App() {
     ),
     h(Footer, null),
     h(CookieNotice, null),
+    h(TermsGate, null),
     h(Chatbot, null),
     h(BackToTop, null),
     h(ToastContainer, null),

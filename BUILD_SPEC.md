@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v25`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v26`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -95,15 +95,19 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id` |
 | `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
-| `components/SellerDashboard.js` | `#seller` | Seller registration, listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
+| `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (two-tier layout: item row + full-width condition section), checkout gated until all conditions chosen |
-| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
+| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
 | `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. |
 | `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
 | `components/DecklistView.js` | `#decklist` | Decklist import |
 | `components/MetaView.js` | `#meta` | Meta/tournament data |
 | `components/PricingView.js` | `#pricing` | Pricing & Data Sources methodology page — explains all data sources (Scryfall, JustTCG, TCGplayer), update frequencies, data flow pipeline, limitations, and links to SOUL.md Data Integrity Policy |
+| `components/TermsView.js` | `#terms` | Terms of Service (14 sections). Covers user accounts, marketplace transactions, 5 card conditions, pricing data sources, payments, seller obligations, prohibited conduct, IP/WotC, dispute resolution under Guam law. |
+| `components/PrivacyPolicyView.js` | `#privacy` | Privacy Policy. Covers Google OAuth data collection, D1 database storage, server-side accounts, third-party services, data retention, and user rights. |
+| `components/TermsGate.js` | site-wide overlay | First-visit ToS acceptance modal (versioned `2026-03-09`). Stores acceptance in localStorage. Also exports `TermsCheckbox` component used in seller registration and checkout. |
+| `components/CookieNotice.js` | site-wide banner | Third-party cookie consent notice |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
 | `components/Ticker.js` | persistent | Live price ticker via `/api/ticker` |
 | `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. On open, fetches all 5 condition prices (NM/LP/MP/HP/DMG) from JustTCG API via `fetchConditionPrices()`. Condition dropdown change auto-populates the real-time market price for that condition. Price remains editable; "Reset to market price" link restores JustTCG price. |
@@ -216,6 +220,8 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── StoreView.js
 │   ├── Ticker.js
 │   ├── TermsView.js
+│   ├── TermsGate.js
+│   ├── CookieNotice.js
 │   └── shared/
 │       ├── BackToTop.js
 │       ├── CardGrid.js
@@ -255,7 +261,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v23
+├── sw.js                           # service worker v26
 ├── manifest.json
 ├── 404.html
 ├── CNAME

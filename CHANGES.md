@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-09: Terms of Service update + acceptance gate + Privacy Policy fix (SW v26)
+
+- **TermsView.js updated** — Now reflects Google OAuth accounts (Section 3: User Accounts), 5 card conditions (NM/LP/MP/HP/DMG) in Section 4, JustTCG condition pricing in Section 5, and links to Privacy Policy and Pricing & Data Sources pages. Renumbered to 14 sections.
+- **PrivacyPolicyView.js rewritten** — Fixed critical inaccuracy: previously stated "no backend server" when the site now has a Cloudflare Worker with D1 database, Google OAuth, and server-side user accounts. Now covers: Google OAuth data collection, D1 database storage, server-side account data, authentication tokens, data retention policy, and account deletion rights.
+- **TermsGate.js (new)** — First-visit Terms of Service acceptance modal. Versioned (`2026-03-09`) so it re-triggers on future ToS updates. Stores acceptance in localStorage via `storageSetRaw()`.
+- **TermsCheckbox (new export)** — Reusable ToS agreement checkbox component, used in both seller registration and checkout.
+- **SellerDashboard.js** — Added required ToS checkbox to seller registration form. Registration is blocked until checkbox is checked.
+- **CheckoutView.js** — Added required ToS checkbox to checkout step 3 (Contact Information). Checkout cannot proceed to payment until checkbox is checked.
+- **style.css** — Added `.tos-gate-*` overlay/modal styles and `.tos-checkbox-*` form checkbox styles.
+- SW bumped to v26.
+
+---
+
 ## 2026-03-09: 5th card condition — Damaged (DMG) (SW v25)
 
 - Added **Damaged (DMG)** as the 5th supported card condition across the entire platform.
