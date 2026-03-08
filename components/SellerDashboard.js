@@ -3,7 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { STORE_OPTIONS } from '../utils/stores.js';
 import { getStoreOptionsAsync } from '../utils/stores.js';
-import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
+import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 import { fetchSeller, registerSeller, createListing, deleteListing, fetchListings } from '../utils/api.js';
@@ -46,6 +46,75 @@ function useScryfallAutocomplete(query) {
   }, [query]);
 
   return { results: results, loading: loading };
+}
+
+// ===== SCRYFALL SET PRINTINGS HOOK =====
+// Fetches all printings for a given exact card name, returns set options
+function useScryfallPrintings(cardName) {
+  var ref = React.useState([]);
+  var printings = ref[0], setPrintings = ref[1];
+
+  var ref2 = React.useState(false);
+  var loading = ref2[0], setLoading = ref2[1];
+
+  var ref3 = React.useState(null);
+  var error = ref3[0], setError = ref3[1];
+
+  React.useEffect(function() {
+    if (!cardName || cardName.length < 2) {
+      setPrintings([]);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    var cancelled = false;
+    // Small delay to respect Scryfall rate limits
+    var timerId = setTimeout(function() {
+      var url = 'https://api.scryfall.com/cards/search?q=!' + encodeURIComponent('"' + cardName + '"') + '&unique=prints&order=released&dir=desc';
+      fetch(url)
+        .then(function(r) {
+          if (!r.ok) throw new Error('Not found');
+          return r.json();
+        })
+        .then(function(data) {
+          if (cancelled) return;
+          var cards = data.data || [];
+          // Build unique set options with prices and images
+          var setMap = {};
+          var setList = [];
+          cards.forEach(function(card) {
+            var key = card.set + '-' + (card.collector_number || '');
+            if (!setMap[key]) {
+              setMap[key] = true;
+              setList.push({
+                setCode: card.set,
+                setName: card.set_name,
+                collectorNumber: card.collector_number,
+                rarity: card.rarity,
+                priceUsd: card.prices && card.prices.usd,
+                priceUsdFoil: card.prices && card.prices.usd_foil,
+                imageSmall: card.image_uris && card.image_uris.small,
+                imageNormal: card.image_uris && card.image_uris.normal,
+                scryfallId: card.id
+              });
+            }
+          });
+          setPrintings(setList);
+          setLoading(false);
+        })
+        .catch(function() {
+          if (!cancelled) {
+            setPrintings([]);
+            setError('Could not fetch printings');
+            setLoading(false);
+          }
+        });
+    }, 150);
+    return function() { cancelled = true; clearTimeout(timerId); };
+  }, [cardName]);
+
+  return { printings: printings, loading: loading, error: error };
 }
 
 // ===== REGISTRATION FORM =====
@@ -165,7 +234,7 @@ function RegistrationForm(props) {
   );
 }
 
-// ===== ADD/EDIT LISTING FORM =====
+// ===== ADD/EDIT LISTING FORM WITH SET AUTOCOMPLETE =====
 function ListingForm(props) {
   var initial = props.initial;
   var onSave = props.onSave;
@@ -174,11 +243,13 @@ function ListingForm(props) {
   var defaultForm = {
     cardName: '',
     setName: '',
+    setCode: '',
     condition: 'NM',
     price: '',
     type: 'sale',
     notes: '',
-    contact: ''
+    contact: '',
+    imageUri: ''
   };
   var ref1 = React.useState(Object.assign({}, defaultForm, initial || {}));
   var form = ref1[0], setForm = ref1[1];
@@ -195,7 +266,16 @@ function ListingForm(props) {
   var ref5 = React.useState(false);
   var submitting = ref5[0], setSubmitting = ref5[1];
 
+  // Card name for which we should fetch printings
+  var ref6 = React.useState('');
+  var confirmedCardName = ref6[0], setConfirmedCardName = ref6[1];
+
+  // Set dropdown open state
+  var ref7 = React.useState(false);
+  var setDropdownOpen = ref7[0], setSetDropdownOpen = ref7[1];
+
   var ac = useScryfallAutocomplete(autocompleteQuery);
+  var printingsData = useScryfallPrintings(confirmedCardName);
 
   function update(key, val) {
     setForm(function(p) { return Object.assign({}, p, { [key]: val }); });
@@ -207,12 +287,36 @@ function ListingForm(props) {
     update('cardName', val);
     setAutocompleteQuery(val);
     setAcOpen(val.length >= 2);
+    // Clear set selection when card name changes manually
+    if (val !== confirmedCardName) {
+      setConfirmedCardName('');
+      update('setName', '');
+      update('setCode', '');
+      update('imageUri', '');
+    }
   }
 
   function handleAcSelect(name) {
     update('cardName', name);
     setAutocompleteQuery('');
     setAcOpen(false);
+    // Trigger printings fetch for the selected card
+    setConfirmedCardName(name);
+    // Clear previous set selection
+    update('setName', '');
+    update('setCode', '');
+    update('imageUri', '');
+  }
+
+  function handleSetSelect(printing) {
+    update('setName', printing.setName);
+    update('setCode', printing.setCode);
+    update('imageUri', printing.imageSmall || '');
+    // Auto-fill price if available and price field is empty
+    if (!form.price && printing.priceUsd) {
+      update('price', printing.priceUsd);
+    }
+    setSetDropdownOpen(false);
   }
 
   function validate() {
@@ -233,21 +337,30 @@ function ListingForm(props) {
     onSave(Object.assign({}, form, {
       id: (initial && initial.id) || null,
       price: parseFloat(form.price) || 0,
-      image: null,
+      image: form.imageUri || null,
       createdAt: (initial && initial.createdAt) || new Date().toISOString()
     }), function() { setSubmitting(false); });
+  }
+
+  // Selected set display for the dropdown
+  var selectedPrinting = null;
+  if (form.setCode && printingsData.printings.length > 0) {
+    selectedPrinting = printingsData.printings.find(function(p) {
+      return p.setCode === form.setCode;
+    });
   }
 
   return h('form', { onSubmit: handleSubmit, className: 'listing-form' },
     h('h3', { className: 'listing-form-title' }, initial && initial.id ? 'Edit Listing' : 'Add New Listing'),
 
+    // Card Name with Scryfall autocomplete
     h('div', { className: 'form-group listing-form-autocomplete' },
       h('label', { className: 'form-label', htmlFor: 'lf-card' }, 'Card Name'),
       h('input', {
         id: 'lf-card',
         type: 'text',
         className: 'form-input' + (errors.cardName ? ' error' : ''),
-        placeholder: 'Type to search Scryfall…',
+        placeholder: 'Type to search Scryfall\u2026',
         value: form.cardName,
         onChange: handleCardNameChange,
         autoComplete: 'off',
@@ -264,21 +377,87 @@ function ListingForm(props) {
         })
       ),
       acOpen && ac.loading && h('div', { className: 'autocomplete-dropdown open' },
-        h('div', { className: 'autocomplete-item', style: { color: 'var(--color-text-muted)' } }, 'Searching…')
+        h('div', { className: 'autocomplete-item', style: { color: 'var(--color-text-muted)' } }, 'Searching\u2026')
       )
     ),
 
-    h('div', { className: 'form-group' },
-      h('label', { className: 'form-label', htmlFor: 'lf-set' }, 'Set Name'),
-      h('input', {
-        id: 'lf-set',
-        type: 'text',
-        className: 'form-input' + (errors.setName ? ' error' : ''),
-        placeholder: 'e.g. Modern Horizons 2',
-        value: form.setName,
-        onChange: function(e) { update('setName', e.target.value); }
-      }),
+    // Set Name — smart dropdown when printings are loaded, fallback to text input
+    h('div', { className: 'form-group listing-form-autocomplete' },
+      h('label', { className: 'form-label', htmlFor: 'lf-set' },
+        'Set / Printing',
+        confirmedCardName && printingsData.loading && h('span', { className: 'set-loading-hint' }, ' \u2014 loading printings\u2026')
+      ),
+      confirmedCardName && printingsData.printings.length > 0
+        ? h('div', { className: 'set-picker-wrapper' },
+            h('button', {
+              type: 'button',
+              className: 'form-input set-picker-btn' + (errors.setName ? ' error' : ''),
+              onClick: function() { setSetDropdownOpen(!setDropdownOpen); }
+            },
+              form.setName
+                ? h('span', { className: 'set-picker-selected' },
+                    selectedPrinting && selectedPrinting.imageSmall
+                      ? h('img', {
+                          src: selectedPrinting.imageSmall,
+                          className: 'set-picker-thumb',
+                          alt: ''
+                        })
+                      : null,
+                    h('span', null, form.setName),
+                    selectedPrinting && selectedPrinting.priceUsd
+                      ? h('span', { className: 'set-picker-price' }, '$' + selectedPrinting.priceUsd)
+                      : null
+                  )
+                : h('span', { className: 'set-picker-placeholder' },
+                    'Select a set (' + printingsData.printings.length + ' printings available)'
+                  )
+            ),
+            setDropdownOpen && h('div', { className: 'set-dropdown open' },
+              printingsData.printings.map(function(p) {
+                var isSelected = form.setCode === p.setCode && form.setName === p.setName;
+                return h('div', {
+                  key: p.setCode + '-' + p.collectorNumber,
+                  className: 'set-dropdown-item' + (isSelected ? ' selected' : ''),
+                  onMouseDown: function() { handleSetSelect(p); }
+                },
+                  p.imageSmall && h('img', {
+                    src: p.imageSmall,
+                    className: 'set-dropdown-thumb',
+                    alt: '',
+                    loading: 'lazy'
+                  }),
+                  h('div', { className: 'set-dropdown-info' },
+                    h('div', { className: 'set-dropdown-name' }, p.setName),
+                    h('div', { className: 'set-dropdown-meta' },
+                      h('span', { className: 'set-code-badge' }, p.setCode.toUpperCase()),
+                      p.collectorNumber && h('span', null, '#' + p.collectorNumber),
+                      p.rarity && h('span', { className: 'rarity-' + p.rarity }, p.rarity.charAt(0).toUpperCase() + p.rarity.slice(1))
+                    )
+                  ),
+                  h('div', { className: 'set-dropdown-prices' },
+                    p.priceUsd ? h('span', { className: 'set-price-usd' }, '$' + p.priceUsd) : null,
+                    p.priceUsdFoil ? h('span', { className: 'set-price-foil' }, '\u2728$' + p.priceUsdFoil) : null,
+                    !p.priceUsd && !p.priceUsdFoil ? h('span', { className: 'set-price-na' }, 'N/A') : null
+                  )
+                );
+              })
+            )
+          )
+        : h('input', {
+            id: 'lf-set',
+            type: 'text',
+            className: 'form-input' + (errors.setName ? ' error' : ''),
+            placeholder: confirmedCardName && printingsData.loading ? 'Loading printings\u2026' : 'e.g. Modern Horizons 2',
+            value: form.setName,
+            onChange: function(e) { update('setName', e.target.value); },
+            disabled: confirmedCardName && printingsData.loading
+          }),
       errors.setName && h('p', { className: 'form-error' }, errors.setName)
+    ),
+
+    // Card preview thumbnail
+    form.imageUri && h('div', { className: 'listing-card-preview' },
+      h('img', { src: form.imageUri, alt: form.cardName || 'Card preview', className: 'listing-preview-img' })
     ),
 
     h('div', { className: 'form-row-2col' },
@@ -291,7 +470,7 @@ function ListingForm(props) {
           onChange: function(e) { update('condition', e.target.value); }
         },
           CONDITIONS.map(function(c) {
-            return h('option', { key: c, value: c }, c + ' — ' + ({ NM: 'Near Mint', LP: 'Light Play', MP: 'Moderate Play', HP: 'Heavy Play' }[c] || c));
+            return h('option', { key: c, value: c }, c + ' \u2014 ' + ({ NM: 'Near Mint', LP: 'Light Play', MP: 'Moderate Play', HP: 'Heavy Play' }[c] || c));
           })
         )
       ),
@@ -334,7 +513,7 @@ function ListingForm(props) {
         id: 'lf-contact',
         type: 'text',
         className: 'form-input',
-        placeholder: 'How to reach you (email, phone, discord…)',
+        placeholder: 'How to reach you (email, phone, discord\u2026)',
         value: form.contact,
         onChange: function(e) { update('contact', e.target.value); }
       })
@@ -345,7 +524,7 @@ function ListingForm(props) {
       h('textarea', {
         id: 'lf-notes',
         className: 'form-input',
-        placeholder: 'Any details about the card, trade wants, availability…',
+        placeholder: 'Any details about the card, trade wants, availability\u2026',
         value: form.notes,
         rows: 2,
         onChange: function(e) { update('notes', e.target.value); }
@@ -356,6 +535,409 @@ function ListingForm(props) {
       h('button', { type: 'button', className: 'btn btn-secondary', onClick: onCancel }, 'Cancel'),
       h('button', { type: 'submit', className: 'btn btn-primary', disabled: submitting },
         submitting ? 'Saving...' : (initial && initial.id ? 'Save Changes' : 'Add Listing')
+      )
+    )
+  );
+}
+
+// ===== CSV / MANABOX BULK IMPORT =====
+function parseManaboxCSV(csvText) {
+  var lines = csvText.split(/\r?\n/).filter(function(l) { return l.trim(); });
+  if (lines.length < 2) return { cards: [], errors: ['CSV must have a header row and at least one data row'] };
+
+  // Parse header — Manabox uses comma-separated with possible quoted fields
+  var header = parseCSVLine(lines[0]).map(function(h) { return h.toLowerCase().trim(); });
+
+  // Find column indices — support Manabox column names
+  var nameIdx = findCol(header, ['name', 'card name', 'card_name', 'cardname']);
+  var setIdx = findCol(header, ['set name', 'set_name', 'setname', 'set', 'edition']);
+  var setCodeIdx = findCol(header, ['set code', 'set_code', 'setcode']);
+  var qtyIdx = findCol(header, ['quantity', 'qty', 'count']);
+  var condIdx = findCol(header, ['condition', 'cond']);
+  var foilIdx = findCol(header, ['foil']);
+  var priceIdx = findCol(header, ['purchase price', 'price', 'purchase_price', 'cost']);
+  var scryfallIdx = findCol(header, ['scryfall id', 'scryfall_id', 'scryfallid']);
+
+  if (nameIdx === -1) {
+    return { cards: [], errors: ['Could not find a "Name" or "Card Name" column in CSV header. Found columns: ' + header.join(', ')] };
+  }
+
+  var cards = [];
+  var parseErrors = [];
+
+  for (var i = 1; i < lines.length; i++) {
+    var cols = parseCSVLine(lines[i]);
+    var name = (cols[nameIdx] || '').trim();
+    if (!name) {
+      parseErrors.push('Row ' + (i + 1) + ': empty card name, skipped');
+      continue;
+    }
+
+    var qty = 1;
+    if (qtyIdx !== -1 && cols[qtyIdx]) {
+      var parsedQty = parseInt(cols[qtyIdx], 10);
+      if (!isNaN(parsedQty) && parsedQty > 0) qty = parsedQty;
+    }
+
+    var condition = 'NM';
+    if (condIdx !== -1 && cols[condIdx]) {
+      var rawCond = cols[condIdx].trim().toUpperCase();
+      if (['NM', 'LP', 'MP', 'HP'].indexOf(rawCond) !== -1) {
+        condition = rawCond;
+      } else if (rawCond === 'NEAR MINT' || rawCond === 'MINT') {
+        condition = 'NM';
+      } else if (rawCond === 'LIGHTLY PLAYED' || rawCond === 'LIGHT PLAY') {
+        condition = 'LP';
+      } else if (rawCond === 'MODERATELY PLAYED' || rawCond === 'MODERATE PLAY') {
+        condition = 'MP';
+      } else if (rawCond === 'HEAVILY PLAYED' || rawCond === 'HEAVY PLAY' || rawCond === 'DAMAGED') {
+        condition = 'HP';
+      }
+    }
+
+    var price = 0;
+    if (priceIdx !== -1 && cols[priceIdx]) {
+      var rawPrice = cols[priceIdx].replace(/[^0-9.]/g, '');
+      var parsedPrice = parseFloat(rawPrice);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) price = parsedPrice;
+    }
+
+    var setName = '';
+    if (setIdx !== -1 && cols[setIdx]) setName = cols[setIdx].trim();
+
+    var setCode = '';
+    if (setCodeIdx !== -1 && cols[setCodeIdx]) setCode = cols[setCodeIdx].trim();
+
+    var foil = false;
+    if (foilIdx !== -1 && cols[foilIdx]) {
+      var rawFoil = cols[foilIdx].trim().toLowerCase();
+      foil = rawFoil === 'true' || rawFoil === 'yes' || rawFoil === '1' || rawFoil === 'foil';
+    }
+
+    var scryfallId = '';
+    if (scryfallIdx !== -1 && cols[scryfallIdx]) scryfallId = cols[scryfallIdx].trim();
+
+    // Expand quantity into individual cards for bulk creation
+    for (var q = 0; q < qty; q++) {
+      cards.push({
+        cardName: name,
+        setName: setName,
+        setCode: setCode,
+        condition: condition,
+        price: price,
+        foil: foil,
+        scryfallId: scryfallId,
+        notes: foil ? 'Foil' : ''
+      });
+    }
+  }
+
+  return { cards: cards, errors: parseErrors };
+}
+
+function findCol(header, aliases) {
+  for (var i = 0; i < aliases.length; i++) {
+    var idx = header.indexOf(aliases[i]);
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function parseCSVLine(line) {
+  var cols = [];
+  var current = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        cols.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  cols.push(current);
+  return cols;
+}
+
+function BulkImportForm(props) {
+  var onBulkSave = props.onBulkSave;
+  var onCancel = props.onCancel;
+  var seller = props.seller;
+
+  var ref1 = React.useState('');
+  var csvText = ref1[0], setCsvText = ref1[1];
+
+  var ref2 = React.useState(null);
+  var parsedResult = ref2[0], setParsedResult = ref2[1];
+
+  var ref3 = React.useState(false);
+  var submitting = ref3[0], setSubmitting = ref3[1];
+
+  var ref4 = React.useState('');
+  var defaultPrice = ref4[0], setDefaultPrice = ref4[1];
+
+  var ref5 = React.useState('sale');
+  var listingType = ref5[0], setListingType = ref5[1];
+
+  var ref6 = React.useState('');
+  var contact = ref6[0], setContact = ref6[1];
+
+  var ref7 = React.useState(null);
+  var progress = ref7[0], setProgress = ref7[1];
+
+  function handleFileUpload(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var text = evt.target.result;
+      setCsvText(text);
+      var result = parseManaboxCSV(text);
+      setParsedResult(result);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleParseText() {
+    if (!csvText.trim()) return;
+    var result = parseManaboxCSV(csvText);
+    setParsedResult(result);
+  }
+
+  function handleSubmitBulk() {
+    if (!parsedResult || parsedResult.cards.length === 0) return;
+    setSubmitting(true);
+    setProgress({ done: 0, total: parsedResult.cards.length, failed: 0 });
+
+    var cards = parsedResult.cards.map(function(card) {
+      return Object.assign({}, card, {
+        type: listingType,
+        price: card.price > 0 ? card.price : (parseFloat(defaultPrice) || 0),
+        contact: contact || seller.contact || ''
+      });
+    });
+
+    // Submit cards sequentially to respect rate limits
+    var idx = 0;
+    var failedCount = 0;
+
+    function submitNext() {
+      if (idx >= cards.length) {
+        setSubmitting(false);
+        setProgress(function(p) { return Object.assign({}, p, { done: cards.length, failed: failedCount }); });
+        onBulkSave(cards.length - failedCount);
+        return;
+      }
+      var card = cards[idx];
+      var backendData = {
+        card_name: card.cardName || '',
+        price: card.price || 0,
+        condition: card.condition || 'NM',
+        seller_name: seller.name || '',
+        seller_contact: card.contact || seller.contact || '',
+        set_name: card.setName || '',
+        notes: card.notes || '',
+        image_uri: null
+      };
+
+      createListing(backendData).then(function() {
+        idx++;
+        setProgress(function(p) { return Object.assign({}, p, { done: idx }); });
+        // Small delay between submissions
+        setTimeout(submitNext, 200);
+      }).catch(function() {
+        failedCount++;
+        idx++;
+        setProgress(function(p) { return Object.assign({}, p, { done: idx, failed: failedCount }); });
+        setTimeout(submitNext, 200);
+      });
+    }
+
+    submitNext();
+  }
+
+  var cardCount = parsedResult ? parsedResult.cards.length : 0;
+
+  return h('div', { className: 'bulk-import-form' },
+    h('h3', { className: 'listing-form-title' },
+      h(LayersIcon, null), ' Bulk Import'
+    ),
+    h('p', { className: 'bulk-import-desc' },
+      'Import multiple cards at once from a CSV file. Supports ',
+      h('strong', null, 'Manabox'),
+      ' export format and standard CSV with columns like Name, Set, Quantity, Condition, Price.'
+    ),
+
+    // File upload
+    h('div', { className: 'form-group' },
+      h('label', { className: 'form-label' }, 'Upload CSV File'),
+      h('div', { className: 'bulk-upload-zone' },
+        h('input', {
+          type: 'file',
+          accept: '.csv,.txt',
+          onChange: handleFileUpload,
+          className: 'bulk-file-input',
+          id: 'bulk-file-input'
+        }),
+        h('label', { htmlFor: 'bulk-file-input', className: 'bulk-upload-label' },
+          h(UploadIcon, null),
+          h('span', null, 'Choose CSV file or drag & drop'),
+          h('span', { className: 'bulk-upload-hint' }, 'Manabox, Deckbox, or custom CSV')
+        )
+      )
+    ),
+
+    // Or paste CSV text
+    h('div', { className: 'bulk-divider' },
+      h('span', null, 'or paste CSV text below')
+    ),
+
+    h('div', { className: 'form-group' },
+      h('textarea', {
+        className: 'form-input bulk-csv-textarea',
+        rows: 6,
+        placeholder: 'Name,Set Name,Set Code,Quantity,Condition,Purchase Price\nLightning Bolt,Alpha,LEA,1,NM,450.00\nCounterspell,Ice Age,ICE,4,LP,2.50',
+        value: csvText,
+        onChange: function(e) { setCsvText(e.target.value); setParsedResult(null); }
+      }),
+      !parsedResult && csvText.trim() && h('button', {
+        type: 'button',
+        className: 'btn btn-secondary btn-sm',
+        onClick: handleParseText,
+        style: { marginTop: 'var(--space-2)' }
+      }, 'Parse CSV')
+    ),
+
+    // Parse results preview
+    parsedResult && h('div', { className: 'bulk-preview' },
+      parsedResult.errors.length > 0 && h('div', { className: 'bulk-warnings' },
+        h(AlertCircleIcon, null),
+        h('div', null,
+          parsedResult.errors.map(function(err, i) {
+            return h('p', { key: i, className: 'bulk-warning-text' }, err);
+          })
+        )
+      ),
+
+      cardCount > 0 && h('div', { className: 'bulk-preview-summary' },
+        h(CheckCircleIcon, null),
+        h('span', null, cardCount + ' card' + (cardCount !== 1 ? 's' : '') + ' ready to import')
+      ),
+
+      cardCount > 0 && h('div', { className: 'bulk-preview-table-wrap' },
+        h('table', { className: 'bulk-preview-table' },
+          h('thead', null,
+            h('tr', null,
+              h('th', null, 'Card Name'),
+              h('th', null, 'Set'),
+              h('th', null, 'Cond'),
+              h('th', null, 'Price')
+            )
+          ),
+          h('tbody', null,
+            parsedResult.cards.slice(0, 20).map(function(card, i) {
+              return h('tr', { key: i },
+                h('td', null, card.cardName),
+                h('td', null, card.setName || card.setCode || '\u2014'),
+                h('td', null, h('span', { className: 'mp-badge-condition cond-' + card.condition.toLowerCase() }, card.condition)),
+                h('td', null, card.price > 0 ? '$' + card.price.toFixed(2) : '\u2014')
+              );
+            }),
+            cardCount > 20 && h('tr', null,
+              h('td', { colSpan: 4, style: { textAlign: 'center', color: 'var(--color-text-muted)' } },
+                '\u2026 and ' + (cardCount - 20) + ' more'
+              )
+            )
+          )
+        )
+      ),
+
+      // Bulk settings
+      cardCount > 0 && h('div', { className: 'bulk-settings' },
+        h('h4', null, 'Bulk Settings'),
+        h('div', { className: 'form-row-2col' },
+          h('div', { className: 'form-group' },
+            h('label', { className: 'form-label' }, 'Default Price (for cards without price)'),
+            h('div', { className: 'form-input-prefix' },
+              h('span', { className: 'form-prefix-symbol' }, '$'),
+              h('input', {
+                type: 'number',
+                step: '0.01',
+                min: '0',
+                className: 'form-input form-input-prefixed',
+                placeholder: '0.00',
+                value: defaultPrice,
+                onChange: function(e) { setDefaultPrice(e.target.value); }
+              })
+            )
+          ),
+          h('div', { className: 'form-group' },
+            h('label', { className: 'form-label' }, 'Listing Type'),
+            h('select', {
+              className: 'form-input',
+              value: listingType,
+              onChange: function(e) { setListingType(e.target.value); }
+            },
+              h('option', { value: 'sale' }, 'For Sale'),
+              h('option', { value: 'trade' }, 'Trade Only')
+            )
+          )
+        ),
+        h('div', { className: 'form-group' },
+          h('label', { className: 'form-label' }, 'Contact'),
+          h('input', {
+            type: 'text',
+            className: 'form-input',
+            placeholder: seller.contact || 'How buyers can reach you',
+            value: contact,
+            onChange: function(e) { setContact(e.target.value); }
+          })
+        )
+      ),
+
+      // Progress bar
+      progress && h('div', { className: 'bulk-progress' },
+        h('div', { className: 'bulk-progress-bar' },
+          h('div', {
+            className: 'bulk-progress-fill',
+            style: { width: Math.round((progress.done / progress.total) * 100) + '%' }
+          })
+        ),
+        h('p', { className: 'bulk-progress-text' },
+          progress.done + ' / ' + progress.total + ' listings created' +
+          (progress.failed > 0 ? ' (' + progress.failed + ' failed)' : '')
+        )
+      )
+    ),
+
+    // Actions
+    h('div', { className: 'listing-form-actions' },
+      h('button', { type: 'button', className: 'btn btn-secondary', onClick: onCancel }, 'Cancel'),
+      cardCount > 0 && h('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        disabled: submitting,
+        onClick: handleSubmitBulk
+      },
+        submitting
+          ? ('Importing' + (progress ? ' ' + progress.done + '/' + progress.total : '\u2026'))
+          : ('Import ' + cardCount + ' Card' + (cardCount !== 1 ? 's' : ''))
       )
     )
   );
@@ -399,7 +981,7 @@ export function SellerDashboard(props) {
   var ref1b = React.useState(true); // loading seller check on mount
   var sellerLoading = ref1b[0], setSellerLoading = ref1b[1];
 
-  var ref2 = React.useState('listings'); // 'listings' | 'add' | 'history' | 'profile'
+  var ref2 = React.useState('listings'); // 'listings' | 'add' | 'bulk' | 'history' | 'profile'
   var activeTab = ref2[0], setActiveTab = ref2[1];
 
   var ref3 = React.useState(null); // listing being edited
@@ -460,7 +1042,6 @@ export function SellerDashboard(props) {
   }
 
   function handleAddListing(listingData, doneCallback) {
-    var isEdit = !!(listingData.id);
     var backendData = {
       card_name: listingData.cardName || '',
       price: listingData.price || 0,
@@ -469,7 +1050,7 @@ export function SellerDashboard(props) {
       seller_contact: listingData.contact || seller.contact || '',
       set_name: listingData.setName || '',
       notes: listingData.notes || '',
-      image_uri: listingData.image || null
+      image_uri: listingData.image || listingData.imageUri || null
     };
 
     createListing(backendData).then(function() {
@@ -483,6 +1064,13 @@ export function SellerDashboard(props) {
       if (doneCallback) doneCallback();
       flash('Failed to add listing. Please try again.');
     });
+  }
+
+  function handleBulkComplete(successCount) {
+    flash(successCount + ' listing' + (successCount !== 1 ? 's' : '') + ' imported to marketplace!');
+    setActiveTab('listings');
+    refreshSellerListings();
+    if (refreshMarketplace) refreshMarketplace();
   }
 
   function handleDeleteListing(id) {
@@ -556,7 +1144,7 @@ export function SellerDashboard(props) {
     flashMsg && h('div', { className: 'seller-flash' },
       h(CheckCircleIcon, null), ' ', flashMsg,
       flashMsg.indexOf('marketplace') !== -1
-        ? h('a', { href: '#store', style: { marginLeft: 'var(--space-2)', color: 'inherit', textDecoration: 'underline' } }, 'View Marketplace →')
+        ? h('a', { href: '#store', style: { marginLeft: 'var(--space-2)', color: 'inherit', textDecoration: 'underline' } }, 'View Marketplace \u2192')
         : null
     ),
 
@@ -601,7 +1189,7 @@ export function SellerDashboard(props) {
       )
     ),
 
-    // Tab nav
+    // Tab nav — now includes Bulk Import tab
     h('div', { className: 'seller-tabs' },
       h('button', {
         className: 'seller-tab' + (activeTab === 'listings' ? ' active' : ''),
@@ -611,6 +1199,10 @@ export function SellerDashboard(props) {
         className: 'seller-tab' + (activeTab === 'add' ? ' active' : ''),
         onClick: function() { setActiveTab('add'); setEditingListing(null); }
       }, h(PlusIcon, null), ' Add Listing'),
+      h('button', {
+        className: 'seller-tab' + (activeTab === 'bulk' ? ' active' : ''),
+        onClick: function() { setActiveTab('bulk'); }
+      }, h(LayersIcon, null), ' Bulk Import'),
       h('button', {
         className: 'seller-tab' + (activeTab === 'history' ? ' active' : ''),
         onClick: function() { setActiveTab('history'); }
@@ -634,10 +1226,16 @@ export function SellerDashboard(props) {
         ? h('div', { className: 'empty-state' },
             h('h3', null, 'No listings yet'),
             h('p', null, 'Add your first listing to appear in the marketplace.'),
-            h('button', {
-              className: 'btn btn-primary',
-              onClick: function() { setActiveTab('add'); }
-            }, h(PlusIcon, null), ' Add Your First Listing')
+            h('div', { className: 'empty-state-actions' },
+              h('button', {
+                className: 'btn btn-primary',
+                onClick: function() { setActiveTab('add'); }
+              }, h(PlusIcon, null), ' Add Single Listing'),
+              h('button', {
+                className: 'btn btn-secondary',
+                onClick: function() { setActiveTab('bulk'); }
+              }, h(LayersIcon, null), ' Bulk Import from CSV')
+            )
           )
         : h('div', { className: 'seller-listings-grid' },
             listings.map(function(listing) {
@@ -649,8 +1247,10 @@ export function SellerDashboard(props) {
               var listingPrice = listing.price || 0;
               var listingCondition = listing.condition || 'NM';
               var listingNotes = listing.notes || '';
+              var imageUri = listing.image_uri || listing.imageUri || '';
 
               return h('div', { key: listingId, className: 'seller-listing-card' },
+                imageUri && h('img', { src: imageUri, className: 'seller-listing-thumb', alt: cardName, loading: 'lazy' }),
                 h('div', { className: 'seller-listing-top' },
                   h('div', null,
                     h('div', { className: 'seller-listing-name' }, cardName),
@@ -696,6 +1296,15 @@ export function SellerDashboard(props) {
         initial: editingListing,
         onSave: handleAddListing,
         onCancel: function() { setActiveTab('listings'); setEditingListing(null); }
+      })
+    ),
+
+    // ===== BULK IMPORT TAB =====
+    activeTab === 'bulk' && h('div', { className: 'seller-tab-content' },
+      h(BulkImportForm, {
+        seller: seller,
+        onBulkSave: handleBulkComplete,
+        onCancel: function() { setActiveTab('listings'); }
       })
     ),
 

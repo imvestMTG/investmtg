@@ -1,5 +1,41 @@
 # investMTG — Changelog
 
+## 2026-03-08: Seller listing improvements — set autocomplete, bulk CSV import, CX polish — SW v12
+
+### Features Added
+
+**Set autocomplete on Add Listing form:**
+- When a seller types a card name and selects it from the Scryfall autocomplete, the system now queries Scryfall's `cards/search?unique=prints` endpoint to fetch all available printings
+- A rich dropdown displays all printings with card thumbnail, set name, set code, collector number, rarity, and USD price (regular + foil)
+- Selecting a printing auto-fills the set name and auto-suggests the Scryfall price for the price field
+- Falls back to a plain text input if no card is confirmed or printings fail to load
+- Respects Scryfall rate limits (150ms debounce)
+
+**CSV / Manabox bulk import tab:**
+- New "Bulk Import" tab in the Seller Dashboard lets sellers upload or paste CSV data to create multiple listings at once
+- Supports Manabox export format (columns: Name, Set Name, Set Code, Quantity, Foil, Condition, Purchase Price, Scryfall ID)
+- Also supports generic CSV with flexible column name matching (e.g., "Card Name", "card_name", "cardname")
+- Full CSV parser handles quoted fields, escaped quotes, and multi-line values
+- Condition values auto-mapped from full names ("Near Mint" → NM, "Lightly Played" → LP, etc.)
+- Preview table shows parsed cards before submission (max 20 rows displayed, with count of remaining)
+- Bulk settings panel lets the seller set a default price, listing type (sale/trade), and contact info
+- Sequential submission with progress bar and failure count
+- 200ms delay between submissions to respect backend rate limits
+
+**Customer service / UX improvements:**
+- Card preview thumbnail shown in the listing form when a set is selected
+- Listings in the "My Listings" grid now display card thumbnails (from image_uri)
+- Empty state on the listings tab offers two CTAs: "Add Single Listing" and "Bulk Import from CSV"
+- New icon components: UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon
+
+### Files Modified
+- `components/SellerDashboard.js` — complete rewrite of ListingForm (set autocomplete), new BulkImportForm component, new useScryfallPrintings hook, updated tab navigation
+- `components/shared/Icons.js` — added UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon
+- `style.css` — added CSS for set-picker dropdown, bulk import zone/preview/progress, listing card preview, seller listing thumbnails
+- `sw.js` — bumped to v12
+
+---
+
 ## 2026-03-08: Full-stack deployment audit + Moxfield CORS fix — SW v11
 
 ### Audit Scope

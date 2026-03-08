@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Seller listing improvements: set autocomplete via Scryfall printings API, CSV/Manabox bulk import tab, card preview thumbnails, CX polish; SW v12 |
 | 2026-03-08 | Full-stack deployment audit: fixed Moxfield CORS (Decks page), added User-Agent to worker proxy, seller role auto-promotion, DB session cleanup; SW v11 |
 | 2026-03-08 | Seller registration fix + ListingModal CSS: fixed D1 NOT NULL constraint on session_token for auth-based seller registration; added all missing mp-modal CSS for ListingModal; SW v10 |
 | 2026-03-08 | Card detail button hardening & SW auto-reload: try-catch + toast feedback on all button handlers, SW v9 with postMessage auto-reload to eliminate stale-cache bugs |

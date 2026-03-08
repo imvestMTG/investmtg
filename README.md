@@ -66,7 +66,8 @@ Key characteristics:
 - localStorage fallback for unauthenticated sessions
 
 ### Seller flow
-- guided Guam listing workflow
+- guided Guam listing workflow with Scryfall-powered set autocomplete
+- CSV/Manabox bulk import for listing multiple cards at once
 - meetup zone and island delivery framing
 - full CRUD via `/api/sellers` and `/api/listings`
 
@@ -139,7 +140,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v10 (PWA offline support + auto-reload)
+├── sw.js                           # service worker v12 (PWA offline support + auto-reload)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md
