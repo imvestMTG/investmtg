@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart Test Harness</title>
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "./vendor/react.mjs",
+      "react-dom/client": "./vendor/react-dom-client.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { CartView } from './components/CartView.js';
+
+    var h = React.createElement;
+
+    /* Mock cart data — 2 items, no condition selected yet */
+    var mockCart = [
+      {
+        id: 'b740e7f0-45b5-4e54-8757-85fb6477031b',
+        name: 'Underground Sea',
+        set: 'Revised Edition',
+        setCode: '3ed',
+        price: 523.46,
+        image: 'https://cards.scryfall.io/small/front/b/7/b740e7f0-45b5-4e54-8757-85fb6477031b.jpg',
+        qty: 1,
+        seller: 'Unknown Seller',
+        tcgplayerId: 8800
+      },
+      {
+        id: '0c2e0e40-4735-4950-85d3-5765c4f53b20',
+        name: 'Black Lotus',
+        set: 'Unlimited Edition',
+        setCode: '2ed',
+        price: 28500.00,
+        image: 'https://cards.scryfall.io/small/front/0/c/0c2e0e40-4735-4950-85d3-5765c4f53b20.jpg',
+        qty: 1,
+        seller: 'Island Cards GU',
+        tcgplayerId: 1088
+      }
+    ];
+
+    /* Wrapper that manages cart state so condition selection works */
+    function TestWrapper() {
+      var ref = React.useState(mockCart);
+      var cart = ref[0];
+      var setCart = ref[1];
+
+      function updateCart(newCart) {
+        setCart(newCart);
+      }
+
+      return h(CartView, {
+        state: { cart: cart },
+        updateCart: updateCart
+      });
+    }
+
+    var root = createRoot(document.getElementById('root'));
+    root.render(h(TestWrapper));
+  </script>
+</body>
+</html>
