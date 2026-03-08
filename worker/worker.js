@@ -149,11 +149,11 @@ function generateSession() {
 }
 
 function buildCookie(name, value, maxAge) {
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAge}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${maxAge}`;
 }
 
 function clearCookie(name) {
-  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
+  return `${name}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
 }
 
 function withCookies(response, cookies) {
