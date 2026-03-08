@@ -118,12 +118,29 @@
 
 <!-- Global error handler — show message if modules fail to load -->
 <script>
-window.addEventListener('error', function() {
-  var r = document.getElementById('root');
-  if (r && !r.querySelector('[data-app]')) {
-    r.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#E8E6E1;background:#0D0F12;font:14px system-ui,sans-serif;text-align:center;">investMTG failed to load.<br>Please refresh. If this keeps happening, clear website data.</div>';
-  }
-});
+(function() {
+  var moduleError = false;
+  window.addEventListener('error', function(e) {
+    // Only treat script/module errors as fatal — ignore image, font, etc.
+    var tag = e.target && e.target.tagName;
+    if (tag === 'IMG' || tag === 'LINK') return;
+    moduleError = true;
+  });
+  // Check after a delay — give React time to mount before showing fatal error
+  setTimeout(function() {
+    if (!moduleError) return;
+    var r = document.getElementById('root');
+    if (r && !r.querySelector('[data-app]')) {
+      // Unregister service worker and force reload on next visit
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) { reg.unregister(); });
+        });
+      }
+      r.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#E8E6E1;background:#0D0F12;font:14px system-ui,sans-serif;text-align:center;">investMTG failed to load.<br>Please refresh the page (Ctrl+Shift+R or Cmd+Shift+R).</div>';
+    }
+  }, 8000);
+})();
 </script>
 
 <!-- Preload self-hosted React for faster mobile startup -->
