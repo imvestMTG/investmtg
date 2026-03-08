@@ -1,7 +1,9 @@
-/* moxfield-api.js — Moxfield decklist integration (unofficial public API) */
+/* moxfield-api.js — Moxfield decklist integration (unofficial public API)
+ * Routed through Cloudflare Worker CORS proxy since Moxfield blocks browser CORS.
+ */
 
-var MOXFIELD_BASE = 'https://api2.moxfield.com/v2';
-var UA = 'investMTG/1.0';
+var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+var MOXFIELD_API = 'https://api2.moxfield.com/v2';
 
 /* ── Cache ── */
 var moxCache = {};
@@ -31,9 +33,9 @@ export function getMoxfieldDeck(deckIdOrUrl) {
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  return fetch(MOXFIELD_BASE + '/decks/all/' + deckId, {
-    headers: { 'User-Agent': UA }
-  }).then(function(res) {
+  var targetUrl = MOXFIELD_API + '/decks/all/' + deckId;
+  var proxyUrl = PROXY_URL + '/?target=' + encodeURIComponent(targetUrl);
+  return fetch(proxyUrl).then(function(res) {
     if (!res.ok) throw new Error('Moxfield error: ' + res.status);
     return res.json();
   }).then(function(data) {

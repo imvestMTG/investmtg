@@ -1056,7 +1056,11 @@ async function handleGenericProxy(request) {
   if (!isAllowed) return json({ error: 'Target host not allowed' }, 403, request);
   let fetchOpts = {
     method: request.method,
-    headers: { 'Content-Type': request.headers.get('Content-Type') || 'application/json', 'Accept': request.headers.get('Accept') || 'application/json' },
+    headers: {
+      'Content-Type': request.headers.get('Content-Type') || 'application/json',
+      'Accept': request.headers.get('Accept') || 'application/json',
+      'User-Agent': 'investMTG/1.0 (Cloudflare Worker)',
+    },
   };
   if (request.method === 'POST' || request.method === 'PUT') fetchOpts.body = await request.text();
   const resp = await fetch(targetUrl.toString(), fetchOpts);
