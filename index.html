@@ -159,7 +159,33 @@
 
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
 <div id="root">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#8B8D94;background:#0D0F12;font:14px system-ui,sans-serif;">Loading…</div>
+  <!-- App shell — visible until React mounts, improves FCP + perceived load -->
+  <div style="min-height:100vh;background:var(--color-bg,#0D0F12);color:var(--color-text,#E8E6E1)">
+    <header style="position:sticky;top:0;z-index:100;background:oklch(from #0D0F12 l c h / 0.85);backdrop-filter:blur(16px);border-bottom:1px solid #2A2F3A;padding:12px 16px">
+      <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-family:'Clash Display',sans-serif;font-size:clamp(1.125rem,0.95rem + 0.85vw,1.5rem);font-weight:700;letter-spacing:-0.02em">invest<span style="color:#D4A843">MTG</span></span>
+        <div style="display:flex;gap:8px">
+          <div style="width:36px;height:36px;border-radius:8px;background:#1A1E27"></div>
+          <div style="width:36px;height:36px;border-radius:8px;background:#1A1E27"></div>
+        </div>
+      </div>
+    </header>
+    <div style="text-align:center;padding:clamp(3rem,8vw,6rem) 16px clamp(2rem,5vw,4rem)">
+      <div style="font-family:'Clash Display',sans-serif;font-size:clamp(3rem,0.5rem + 7vw,8rem);font-weight:700;line-height:1.05;margin-bottom:24px;background:linear-gradient(135deg,#D4A843,#E8B84A,#D4A843,#C09838);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Know What Your Cards Are Worth</div>
+      <p style="font-size:clamp(1.125rem,0.95rem + 0.85vw,1.5rem);color:#8B8D94;margin-bottom:32px;max-width:600px;margin-left:auto;margin-right:auto">Guam's MTG marketplace with live market pricing, portfolio tracking, and zero markup.</p>
+      <div style="max-width:600px;margin:0 auto 32px;height:44px;background:#111318;border:1px solid #2A2F3A;border-radius:16px"></div>
+    </div>
+    <div style="max-width:1200px;margin:0 auto;padding:0 16px">
+      <div style="margin-bottom:20px"><div style="height:28px;width:200px;background:#1A1E27;border-radius:6px;margin-bottom:8px"></div><div style="height:16px;width:300px;background:#161A22;border-radius:4px"></div></div>
+      <div style="display:flex;gap:16px;overflow:hidden">
+        <div style="flex:0 0 200px;background:#111318;border:1px solid #2A2F3A;border-radius:12px;overflow:hidden"><div style="aspect-ratio:745/1040;background:linear-gradient(135deg,#1A1E27,#252A36);animation:shimmer 1.5s ease-in-out infinite"></div><div style="padding:12px"><div style="height:14px;width:80%;background:#1A1E27;border-radius:4px;margin-bottom:6px"></div><div style="height:12px;width:50%;background:#161A22;border-radius:4px"></div></div></div>
+        <div style="flex:0 0 200px;background:#111318;border:1px solid #2A2F3A;border-radius:12px;overflow:hidden"><div style="aspect-ratio:745/1040;background:linear-gradient(135deg,#1A1E27,#252A36);animation:shimmer 1.5s ease-in-out infinite"></div><div style="padding:12px"><div style="height:14px;width:80%;background:#1A1E27;border-radius:4px;margin-bottom:6px"></div><div style="height:12px;width:50%;background:#161A22;border-radius:4px"></div></div></div>
+        <div style="flex:0 0 200px;background:#111318;border:1px solid #2A2F3A;border-radius:12px;overflow:hidden"><div style="aspect-ratio:745/1040;background:linear-gradient(135deg,#1A1E27,#252A36);animation:shimmer 1.5s ease-in-out infinite"></div><div style="padding:12px"><div style="height:14px;width:80%;background:#1A1E27;border-radius:4px;margin-bottom:6px"></div><div style="height:12px;width:50%;background:#161A22;border-radius:4px"></div></div></div>
+        <div style="flex:0 0 200px;background:#111318;border:1px solid #2A2F3A;border-radius:12px;overflow:hidden"><div style="aspect-ratio:745/1040;background:linear-gradient(135deg,#1A1E27,#252A36);animation:shimmer 1.5s ease-in-out infinite"></div><div style="padding:12px"><div style="height:14px;width:80%;background:#1A1E27;border-radius:4px;margin-bottom:6px"></div><div style="height:12px;width:50%;background:#161A22;border-radius:4px"></div></div></div>
+        <div style="flex:0 0 200px;background:#111318;border:1px solid #2A2F3A;border-radius:12px;overflow:hidden"><div style="aspect-ratio:745/1040;background:linear-gradient(135deg,#1A1E27,#252A36);animation:shimmer 1.5s ease-in-out infinite"></div><div style="padding:12px"><div style="height:14px;width:80%;background:#1A1E27;border-radius:4px;margin-bottom:6px"></div><div style="height:12px;width:50%;background:#161A22;border-radius:4px"></div></div></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="./app.js"></script>
