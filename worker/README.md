@@ -69,7 +69,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/justtcg` | api.justtcg.com | condition pricing | API key injected server-side |
 | `/topdeck` | topdeck.gg API | tournament data | API key injected server-side |
 | `/chatbot` | text.pollinations.ai | chat relay | rate-limited |
-| `/?target=` | allowlisted hosts | generic proxy | use sparingly and keep allowlisted |
+| `/?target=` | allowlisted hosts | generic proxy | Adds `User-Agent: investMTG/1.0 (Cloudflare Worker)` header; use sparingly and keep allowlisted |
 
 ## Database schema
 
@@ -79,7 +79,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `prices`
 - `portfolios` — has `user_id` FK to users
 - `listings` — has `user_id` FK to users
-- `sellers` — has `user_id` FK to users. Note: `session_token` column has NOT NULL + UNIQUE constraint; auth-based registrations use `'auth_<userId>'` as placeholder.
+- `sellers` — has `user_id` FK to users. Note: `session_token` column has NOT NULL + UNIQUE constraint; auth-based registrations use `'auth_<userId>'` as placeholder. On seller registration, user role is auto-promoted from 'buyer' to 'seller'.
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users

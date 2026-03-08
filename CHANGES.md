@@ -1,5 +1,43 @@
 # investMTG — Changelog
 
+## 2026-03-08: Full-stack deployment audit + Moxfield CORS fix — SW v11
+
+### Audit Scope
+Comprehensive 9-point deployment audit covering: live site visual check (8 pages), all API endpoints, D1 database integrity, auth flow, service worker, security scan, and performance analysis.
+
+### Issues Found & Fixed
+
+**Decks page broken — Moxfield API CORS block:**
+- `utils/moxfield-api.js` was calling `https://api2.moxfield.com/v2` directly from the browser. Moxfield returns no CORS headers, so all browser requests failed silently.
+- Fixed by routing through the worker's `/?target=` proxy (same pattern as edhtop16-api.js and justtcg-api.js).
+- Also added `User-Agent: investMTG/1.0 (Cloudflare Worker)` header to the generic proxy handler — Moxfield returns 429 "HACK THE PLANET!" without a valid UA.
+
+**Seller role auto-promotion:**
+- When a user registers as a seller, their `users.role` was not updated from 'buyer' to 'seller'. Added `UPDATE users SET role='seller'` after seller INSERT in the worker's POST /api/sellers handler.
+- Manually promoted bloodshutdawn@gmail.com (user_id 2) to 'seller' role.
+
+**Database cleanup:**
+- Purged 5 duplicate auth sessions for user 1 (test artifacts), keeping only the most recent.
+
+### Audit Results (All Pass)
+1. Visual audit: 8/8 pages render correctly (Decks fixed)
+2. API endpoints: all 14 routes responding (health, ticker, featured, trending, budget, search, movers, listings, stores, events, sellers, portfolio, cart, auth)
+3. D1 database: 9 tables intact, schemas correct, data consistent
+4. Auth flow: Google OAuth login/callback/me/logout all working
+5. Service worker: v11 deployed, caching strategy correct
+6. Security: no secrets in tracked files, .env gitignored, CORS restricted
+7. Performance: ~108 KB CSS (16 KB gzipped), ~15 KB app.js (4 KB gzipped), all views lazy-loaded, React vendor ~48 KB gzipped
+
+### Files Modified
+- `utils/moxfield-api.js` — route through CORS proxy instead of direct Moxfield calls
+- `worker/worker.js` — User-Agent on generic proxy + seller role auto-promotion
+- `sw.js` — v11 cache bump
+
+### Commits
+- `4458aa2` — fix: route Moxfield API through worker CORS proxy
+
+---
+
 ## 2026-03-08: Seller registration fix + ListingModal CSS — SW v10
 
 ### Issues Reported

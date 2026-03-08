@@ -898,6 +898,10 @@ async function handleSellers(request, env) {
       'INSERT OR REPLACE INTO sellers (user_id, session_token, name, contact, store_affiliation, bio, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(auth.userId, sessionPlaceholder, body.name, body.contact || '', body.store_affiliation || '', body.bio || '', now).run();
 
+    // Promote user role to 'seller' now that they have a seller account
+    await env.DB.prepare('UPDATE users SET role = ? WHERE id = ? AND role = ?')
+      .bind('seller', auth.userId, 'buyer').run();
+
     // Fetch the newly created seller to return full object
     const newSeller = await env.DB.prepare(
       'SELECT * FROM sellers WHERE user_id = ?'

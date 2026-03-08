@@ -41,6 +41,8 @@ Key characteristics:
 - Encrypted secrets for protected third-party APIs and auth credentials
 - Bearer token auth via localStorage (cross-site cookie fallback)
 - Anonymous session cookie support for server-side user state
+- Generic CORS proxy (`/?target=`) for Moxfield, Scryfall, and EDH Top 16 APIs with User-Agent forwarding
+- Auto-promotes user role to 'seller' on seller registration
 
 ### frontend-v2/ (experimental, not deployed)
 `frontend-v2/` is a TypeScript/Vite rewrite of the application. It exists in the repository as an experimental project but **is not the live production app** and is not deployed anywhere.
