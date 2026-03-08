@@ -1398,12 +1398,13 @@
 
 .cart-item {
   display: flex;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  align-items: center;
+  padding: 0;
+  overflow: hidden;
 }
 
 .cart-item-image {
@@ -1590,11 +1591,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  width: 100%;
   padding: var(--space-2) var(--space-3);
   background: var(--color-surface-offset);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
   transition: border-color var(--transition-interactive), background var(--transition-interactive), box-shadow var(--transition-interactive);
 }
 
@@ -1688,7 +1692,12 @@
 .cart-item.cart-item--needs-condition {
   border: 2px solid var(--color-error) !important;
   box-shadow: 0 0 0 3px rgba(212, 43, 74, 0.15) !important;
-  border-radius: var(--radius-lg) !important;
+}
+
+.cart-seller-group .cart-item.cart-item--needs-condition {
+  border: 2px solid var(--color-error) !important;
+  box-shadow: 0 0 0 3px rgba(212, 43, 74, 0.15) !important;
+  border-radius: var(--radius-md) !important;
 }
 
 @media (max-width: 767px) {
@@ -7114,21 +7123,7 @@ a.market-card:hover {
   overflow: hidden;
 }
 
-/* ── Cart condition selector v17 ── */
 
-.cart-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.cart-item--needs-condition {
-  border: 2px solid var(--color-error);
-  box-shadow: 0 0 0 3px rgba(212,43,74,0.15);
-}
 
 
 

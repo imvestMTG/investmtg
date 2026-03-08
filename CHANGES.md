@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-09: Cart condition selector CSS fix (SW v29)
+
+- **style.css** — Fixed cart item layout bug where condition selector rendered as jumbled plaintext instead of interactive cards. Root cause: duplicate `.cart-item` rules at lines 1399 and 7119 conflicted — the early rule set `display: flex` with implicit `flex-direction: row` and `align-items: center`, causing `.cart-item-top` and `.cart-condition-section` to render side-by-side instead of stacking vertically. Consolidated into a single `.cart-item` block with `flex-direction: column`, `gap: 0`, `padding: 0`, and `overflow: hidden`. Removed the stale v17 duplicate block from line 7119.
+- **style.css** — Added `width: 100%`, `font-family: var(--font-body)`, and `text-align: left` to `.cart-cond-card` to ensure condition card buttons render with proper styling after the `button { background: none; border: none }` reset in base.css.
+- **style.css** — Added `.cart-seller-group .cart-item.cart-item--needs-condition` selector to ensure the red error border renders correctly for items inside seller groups (where `.cart-seller-group .cart-item` strips borders).
+- SW bumped to v29.
+
+---
+
 ## 2026-03-09: Cart condition selector redesign + CSS optimization + Cloudflare cleanup (SW v28)
 
 - **CartView.js** — Redesigned `ConditionChip` component from small pill buttons to full-width card-style selectors. Each condition now shows a colored status dot, abbreviation (NM/LP/MP/HP/DMG), full condition name (e.g. "Near Mint"), and price. Removed `.slice(0, 5)` limit so all available conditions from JustTCG are displayed. Removed inline hover/press state management (moved to CSS).
