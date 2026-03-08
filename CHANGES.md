@@ -1,6 +1,15 @@
 # investMTG — Changelog
 
-## 2026-03-09: Auth fix + URL centralization audit — SW v19
+## 2026-03-09: Auth fix + URL centralization audit + SOUL rules — SW v19
+
+### SOUL.md Rules 6–8 (new)
+
+- **Rule 6: QA before every push** — Pre-push checklist: CSP alignment check, URL centralization check, auth flow smoke test, visual verification via screenshot, console error check. Each item includes the specific grep command to run and a "why this exists" reference to the real failure that motivated it.
+- **Rule 7: Security posture** — Codified secrets policy (no keys in frontend, all through worker), CSP as security boundary, OAuth hardcoded redirect URI, `storage.js` as the only localStorage interface. Each rule traces to a real incident.
+- **Rule 8: QC audit triggers** — Defines when a targeted codebase audit is mandatory: domain migrations, new integrations, auth changes, 3+ rapid releases, and user-reported failures. Specifies audit scope (CSP, URLs, auth trace, error handling, dead code, doc accuracy).
+- **Release discipline updated** — Now references Rules 6–8 explicitly and orders QA/security before docs/deployment.
+
+---
 
 ### Root Cause: CSP Blocking API Calls
 

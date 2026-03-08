@@ -66,6 +66,56 @@ Required updates after release-impacting work:
 - `worker/README.md` when worker behavior changes
 - a security check for secrets and sensitive credentials
 
+### 6. QA before every push
+No code reaches `main` without passing QA. Every push must include verification, not just implementation.
+
+**Pre-push QA checklist** (minimum):
+1. **CSP alignment** — Run `grep -roh 'https://[a-zA-Z0-9._-]*' --include='*.js' . | sort -u` against the `connect-src` in `index.html`. Every external domain the frontend fetches from must be in the CSP. A single missing entry silently kills all calls to that domain with zero visible error.
+   - *Why this exists: v19 — sign-in was broken for an entire session because `api.investmtg.com` was missing from CSP after the domain migration. The backend was 100% working; the browser was blocking the requests before they ever left.*
+2. **URL centralization** — Run `grep -rn 'https://' --include='*.js' . | grep -v vendor | grep -v worker | grep -v node_modules`. Every backend URL in frontend code must come from `config.js PROXY_BASE`. No hardcoded proxy URLs.
+   - *Why this exists: v19 audit — 4 API modules still pointed to the old `.workers.dev` URL after the domain migration. The CSP fix would have broken JustTCG, EDH Top 16, Moxfield, and TopDeck data.*
+3. **Auth flow smoke test** — After any auth-related change, verify the full loop: `signIn()` → Google consent → `/auth/callback` → `?auth_token=` in URL → token stored → `checkAuth()` returns user → Header shows user name. If you cannot test the full loop (auth-gated), verify each leg independently.
+4. **Visual verification** — Screenshot the live URL after push. Do not trust "it should work" — verify it does. The screenshot tool captures early, so wait for the full render.
+5. **Console error check** — Open the browser console on the live site. Zero errors is the standard. CSP violations, failed fetches, and module import errors all show here.
+
+### 7. Security posture
+Security is not optional. Every session must verify these constraints.
+
+**Secrets and credentials:**
+- No API keys, tokens, client secrets, or passwords in frontend code. Ever.
+- All secret-backed API calls route through the Cloudflare Worker. The worker injects secrets server-side.
+- `SumUp public key` is the only exception — it is designed by SumUp to be client-side.
+- After every commit, run `grep -rn 'API_KEY\|SECRET\|password\|token.*=.*["'\']' --include='*.js' . | grep -v vendor | grep -v node_modules | grep -v worker/` and verify zero matches leak real values.
+- *Why this exists: early builds had JustTCG and TopDeck API keys exposed in client-side JS. They were moved behind the worker proxy, but the pattern must never recur.*
+
+**Content Security Policy (CSP):**
+- The CSP in `index.html` is a security boundary. It controls what the browser is allowed to connect to, load scripts from, embed frames from, and display images from.
+- Any change to backend URLs, third-party integrations, or external services must include a corresponding CSP update.
+- The CSP is the first thing to check when any `fetch()` call fails silently.
+- *Why this exists: the v18→v19 CSP mismatch was invisible in the network tab, returned no error message, and took multiple sessions and a diagnostic page to identify. A 30-second grep would have caught it.*
+
+**OAuth and authentication:**
+- OAuth client ID and client secret are stored as Cloudflare Worker secrets, never in frontend code.
+- The `OAUTH_REDIRECT_URI` is hardcoded in the worker (not derived from `url.origin`) to prevent redirect attacks and ensure the Google consent screen shows `investmtg.com`.
+- Auth tokens are stored in localStorage via `storageSetRaw()` (not cookies — cross-site cookies are blocked by modern browsers).
+- The `/auth/me` endpoint is the single source of truth for "is this user authenticated." If it fails, the user is not signed in. Period.
+- *Why this exists: the original OAuth implementation used `url.origin` to build the redirect URI, which resolved to the `.workers.dev` domain and made Google show "bloodshutdawn.workers.dev" on the consent screen.*
+
+**Data integrity:**
+- `storageGet()` / `storageSet()` from `utils/storage.js` is the only way to read/write localStorage. Direct `localStorage.getItem()` is banned. The wrapper prevents `JSON.parse` crashes from corrupted values.
+- *Why this exists: v8 — a `JSON.parse(undefined)` crash caused a blank screen that was hard to reproduce because it only happened with corrupted localStorage data.*
+
+### 8. QC audit triggers
+A targeted codebase audit must happen when any of these conditions are true:
+
+1. **Domain or URL migration** — When any backend URL changes (e.g., `.workers.dev` to custom domain), audit every file that references the old URL. Check CSP, check config imports, check hardcoded strings.
+2. **New third-party integration** — When adding a new external API or SDK, verify: CSP allows it, the URL is centralized in config, the API key (if any) is server-side only.
+3. **Auth flow changes** — When anything in the sign-in/sign-out path changes, verify the full loop end-to-end. Auth bugs are invisible and cascade.
+4. **3+ rapid releases** — When shipping 3 or more versions in a single session, pause and run the pre-push QA checklist against the cumulative diff, not just the last commit. Fast iteration accumulates silent drift.
+5. **User-reported "it doesn't work"** — Before debugging application logic, check CSP, check network tab, check console. The browser may be blocking things before the code even runs.
+
+The audit scope: CSP alignment, URL centralization, auth flow trace, error handling (silent catches), dead code (unused exports/files), and doc accuracy.
+
 ## Architecture principles
 
 ### Front end
@@ -113,18 +163,23 @@ The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom 
 ## Release discipline
 
 Before any go-live push:
-1. verify the root SPA loads correctly (no build step required)
-2. test on mobile Safari and Chrome to verify no blank screen
-3. verify no secrets were committed
-4. verify the Pages workflow still publishes the root directory directly
-5. verify worker docs and bindings still match the deployed backend
-6. update the required docs in the same session
+1. Run the **pre-push QA checklist** (Rule 6) — CSP alignment, URL centralization, visual verification, console error check
+2. Run the **security checks** (Rule 7) — no secrets in frontend code, CSP current, OAuth config intact
+3. Verify the root SPA loads correctly (no build step required)
+4. Test on mobile Safari and Chrome to verify no blank screen
+5. Verify no secrets were committed (`git diff --staged` before push)
+6. Verify the Pages workflow still publishes the root directory directly
+7. Verify worker docs and bindings still match the deployed backend
+8. Update the required docs in the same session (Rule 5)
+9. If this is the 3rd+ release in a session, run a **QC audit** (Rule 8) against the cumulative diff
+
+The order matters. QA and security come first because they catch the bugs that are hardest to diagnose after the fact.
 
 ## Changelog
 
 | Date | Change |
 |------|--------|
-| 2026-03-09 | **v19** — Fixed CSP `connect-src` to allow `api.investmtg.com` (root cause of sign-in failure), fixed auth.js race condition during OAuth redirect, centralized all 4 stale `.workers.dev` hardcoded URLs in `justtcg-api.js`/`edhtop16-api.js`/`moxfield-api.js`/`topdeck-api.js` to import from `config.js`, removed debug artifacts; **v18** — Custom domain `api.investmtg.com` for worker, OAuth redirect hardcoded to custom domain, PROXY_BASE updated in frontend config |
+| 2026-03-09 | **v19** — Fixed CSP `connect-src` (root cause of sign-in failure), auth.js race condition fix, centralized 4 stale `.workers.dev` URLs to `config.js`, removed debug artifacts. Added SOUL.md Rules 6–8: pre-push QA checklist, security posture, QC audit triggers — all derived from real failures in v14–v19; **v18** — Custom domain `api.investmtg.com` for worker, OAuth redirect hardcoded to custom domain, PROXY_BASE updated in frontend config |
 | 2026-03-08 | Cart condition selector UX overhaul: two-tier cart item layout with full-width condition section, animated "Select a condition" prompt with warning icon, red border on items missing condition, checkout button gated until all conditions chosen, scroll-to-first-missing on disabled click; SW v17 |
 | 2026-03-08 | SumUp payment processor restored: Card Widget integration with lazy SDK loading, Pay Online + Reserve & Pay at Pickup dual payment methods, `POST /api/sumup/checkout` worker endpoint, admin bypass layer on worker `getAuthUser()` via `ADMIN_TOKEN` secret for testing, removed all Guam GRT tax references site-wide (config, CartView, CheckoutView, OrderConfirmation, TermsView); SW v16 |
 | 2026-03-08 | Order workflow overhaul: 4-step checkout wizard with confirmation modal, reserve & pay at pickup, server-generated `GUM-YYYYMM-XXXXX` order IDs, D1 order persistence, My Orders page (`#orders`), Order Confirmation server-first loading, removed dead SumUp code; SW v15 |
