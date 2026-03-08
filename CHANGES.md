@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-09: Restore cart to pre-v30 structure (SW v35)
+
+- **CartView.js** — Reverted to the v29 cart layout structure which displays all condition options as card-style rows in a vertical list. The v30 redesign introduced a grid/step-wizard layout that broke the cart visually. Restored: `.cart-item` → `.cart-item-top` → `.cart-condition-section` → `.cart-condition-chips` → `.cart-cond-card` hierarchy. Retained v32 enhancements: trust badges (`.cart-trust-badges`, `.cart-trust-row`), savings badges (`.cond-card-save`), and package count (`.cart-packages-info`).
+- **style.css** — Replaced v30 cart CSS block (~587 lines) with restored v29 cart styles (~559 lines). Restored class names: `.cart-page`, `.cart-page-header`, `.cart-grid`, `.cart-items`, `.cart-seller-group`, `.cart-item`, `.cart-item-top`, `.cart-condition-section`, `.cart-condition-chips`, `.cart-cond-card`, `.order-summary`. Fixed teal accent references to use `var(--color-primary)` instead of `var(--color-accent, #2dd4bf)`. Kept v32 additions: trust badges, savings badge, packages info, SumUp dark theme CSS.
+- SW bumped to v35.
+
+---
+
 ## 2026-03-09: Fix listing modal condition pricing (SW v34)
 
 - **utils/api.js** — `fetchConditionPrices()` now accepts `{ tcgplayerId, scryfallId }` object and prefers `tcgplayerId` (the native JustTCG key) over `scryfallId`. This was the root cause: JustTCG’s API resolves cards by TCGplayer ID, not Scryfall UUID, so condition-specific prices were never returned.
