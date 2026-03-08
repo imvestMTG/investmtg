@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head><title>investMTG Debug</title></head>
+<body style="background:#0D0F12;color:#E8E6E1;font:14px monospace;padding:24px;">
+<h2>investMTG Module Load Test</h2>
+<pre id="log">Testing...</pre>
+<script type="module">
+var log = document.getElementById('log');
+function addLog(msg) {
+  log.textContent += '\n' + msg;
+}
+
+try {
+  addLog('1. Testing React import...');
+  var React = await import('./vendor/react.mjs');
+  addLog('   React loaded OK: ' + typeof React.default.createElement);
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('2. Testing ReactDOM import...');
+  var ReactDOM = await import('./vendor/react-dom-client.mjs');
+  addLog('   ReactDOM loaded OK: ' + typeof ReactDOM.createRoot);
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('3. Testing config.js import...');
+  var config = await import('./utils/config.js');
+  addLog('   config.js OK, PROXY_BASE=' + config.PROXY_BASE);
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('4. Testing auth.js import...');
+  var auth = await import('./utils/auth.js');
+  addLog('   auth.js OK, exports: ' + Object.keys(auth).join(', '));
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('5. Testing api.js import...');
+  var api = await import('./utils/api.js');
+  addLog('   api.js OK, backendFetch=' + typeof api.backendFetch);
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('6. Testing marketplace-data.js import...');
+  var mkt = await import('./utils/marketplace-data.js');
+  addLog('   marketplace-data.js OK');
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('7. Testing app.js import...');
+  // Don't actually import app.js as it will try to mount
+  // Instead just check if we can resolve all its static imports
+  var Ticker = await import('./components/Ticker.js');
+  addLog('   Ticker.js OK');
+  var Header = await import('./components/Header.js');
+  addLog('   Header.js OK');
+  var HomeView = await import('./components/HomeView.js');
+  addLog('   HomeView.js OK');
+  var Footer = await import('./components/Footer.js');
+  addLog('   Footer.js OK');
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+try {
+  addLog('8. Testing remaining components...');
+  await import('./components/shared/BackToTop.js');
+  await import('./components/shared/Toast.js');
+  await import('./components/CookieNotice.js');
+  await import('./components/shared/ErrorBoundary.js');
+  addLog('   All shared components OK');
+} catch(e) {
+  addLog('   FAILED: ' + e.message);
+}
+
+addLog('\n=== Service Worker Status ===');
+if ('serviceWorker' in navigator) {
+  var reg = await navigator.serviceWorker.getRegistration();
+  if (reg) {
+    addLog('SW registered: ' + (reg.active ? reg.active.scriptURL : 'no active'));
+    addLog('SW state: ' + (reg.active ? reg.active.state : 'none'));
+  } else {
+    addLog('No SW registered');
+  }
+} else {
+  addLog('SW not supported');
+}
+
+addLog('\n=== DONE ===');
+</script>
+</body>
+</html>
