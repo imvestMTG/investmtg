@@ -8,7 +8,7 @@ The production architecture combines:
 - the root-level SPA (`app.js`, `components/`, `utils/`) — no build step
 - the Cloudflare Worker v3 backend in `worker/`
 
-`frontend-v2/` is an experimental TypeScript/Vite rewrite that exists in the repository but is not deployed.
+`frontend-v2/` was an experimental TypeScript/Vite rewrite that was removed in the v20 optimization pass (dead code cleanup).
 
 ## Front-end architecture
 
@@ -52,10 +52,12 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v19`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v20`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
+- **Local images** (`.webp`, `.jpg`, `.png`, `.svg`): stale-while-revalidate — serves cached copy instantly, fetches fresh in background
+- **Hero image** (`hero-bg.webp`): precached on install for instant LCP on repeat visits
 - **Cross-origin requests** (backend Worker, Scryfall, SumUp SDK, etc.): skipped entirely — the service worker does not intercept them
 - On activation, all previous cache versions are purged
 - On activation, sends `postMessage({ type: 'SW_UPDATED' })` to all open tabs, which triggers an automatic page reload via a listener in `app.js`. This eliminates stale-cache bugs during SW version transitions.
@@ -206,7 +208,7 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── MetaView.js
 │   ├── OrderConfirmation.js
 │   ├── PortfolioView.js
-│   ├── PriceHistoryChart.js
+# PriceHistoryChart.js removed in v20 (dead code — never imported)
 │   ├── PrivacyPolicyView.js
 │   ├── SearchView.js
 │   ├── SellerDashboard.js
@@ -246,13 +248,13 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── react-dom.mjs               # ReactDOM 18.3.1 production bundle
 │   ├── react-dom-client.mjs        # ReactDOM/client entry
 │   └── scheduler.mjs               # Scheduler 0.23.2 production bundle
-├── frontend-v2/                    # experimental rewrite — not deployed
+# frontend-v2/ removed in v20 (dead code cleanup)
 ├── images/
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v17
+├── sw.js                           # service worker v20
 ├── manifest.json
 ├── 404.html
 ├── CNAME

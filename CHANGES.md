@@ -1,5 +1,40 @@
 # investMTG — Changelog
 
+## 2026-03-09: Site Performance Optimizations — SW v20
+
+### CSS Optimization (132KB → 120KB, −9%)
+
+- Identified and removed 84 unused CSS class selectors via automated cross-reference against all JS/HTML files. Removed classes include abandoned payment-method-selector UI, unused condition-grid styles, dead local-stores-section, unused mana-pip colors, stale set-picker-wrapper, and duplicate `.cart-checkout-btn--disabled` rules.
+- Kept all actively referenced classes intact — safety-checked each removal against the full codebase.
+
+### Image Optimization (271KB → 232KB, −14%)
+
+- Converted all local images from JPEG to WebP: hero-bg (34KB→29KB), event-tcgcon (109KB→97KB), event-commander (69KB→57KB), event-weekend (59KB→48KB).
+- Updated CSS (`hero::after` background), HTML preload, and `events-config.js` fallback paths to use `.webp`.
+- Updated D1 events table `image_key` column from `.jpg` to `.webp` for all 3 active events.
+- Removed original `.jpg` files from `images/` directory.
+- Kept `og-image.jpg` for social media crawler compatibility (some crawlers don't support WebP).
+
+### Dead Code Removal (454KB removed)
+
+- Deleted `components/PriceHistoryChart.js` (5.5KB) — defined but never imported anywhere in the codebase.
+- Deleted `frontend-v2/` directory (448KB) — abandoned TypeScript/Vite rewrite, not deployed.
+
+### Service Worker v20
+
+- Bumped cache version from `investmtg-v19` to `investmtg-v20`.
+- Added `hero-bg.webp` to precached static assets for instant hero render on repeat visits.
+- Added stale-while-revalidate strategy for local images (`.webp`, `.jpg`, `.png`, `.svg`) — serves cached copy instantly while fetching fresh version in background.
+- Added separate `investmtg-images-v1` cache for Scryfall card images with 100-entry limit, preventing static cache bloat.
+
+### Resource Loading Optimization
+
+- Restructured `<head>` resource order: font CSS preloaded as `<link rel="preload" as="style">` to start parallel download before render-blocking stylesheet loads.
+- Removed redundant `base.css` preload (it's only 2KB and loads instantly as the first stylesheet).
+- Added `type="image/webp"` to hero preload for correct content negotiation.
+
+---
+
 ## 2026-03-09: Auth fix + URL centralization audit + SOUL rules — SW v19
 
 ### SOUL.md Rules 6–8 (new)

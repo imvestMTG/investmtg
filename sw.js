@@ -1,11 +1,16 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v19';
+var CACHE_NAME = 'investmtg-v20';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
-  '/manifest.json'
+  '/manifest.json',
+  '/images/hero-bg.webp'
 ];
+
+/* Image cache — separate from static to limit size */
+var IMG_CACHE = 'investmtg-images-v1';
+var IMG_CACHE_MAX = 100;
 
 self.addEventListener('install', function(event) {
   event.waitUntil(
@@ -23,7 +28,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(names) {
       return Promise.all(
         names.map(function(name) {
-          if (name !== CACHE_NAME) return caches.delete(name);
+          if (name !== CACHE_NAME && name !== IMG_CACHE) return caches.delete(name);
         })
       );
     }).then(function() {
@@ -69,7 +74,45 @@ self.addEventListener('fetch', function(event) {
   /* Never intercept cross-origin requests (esm.sh, Scryfall, backend, etc.) */
   if (url.origin !== self.location.origin) return;
 
-  /* For CSS, manifest, images: cache-first with network fallback */
+  /* Scryfall card images — cache-first with size limit */
+  if (url.hostname === 'cards.scryfall.io') {
+    event.respondWith(
+      caches.match(req).then(function(cached) {
+        if (cached) return cached;
+        return fetch(req).then(function(response) {
+          if (response && response.status === 200) {
+            var clone = response.clone();
+            caches.open(IMG_CACHE).then(function(cache) {
+              cache.put(req, clone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  /* Local images — stale-while-revalidate */
+  if (url.pathname.match(/\.(webp|jpg|png|svg)$/)) {
+    event.respondWith(
+      caches.match(req).then(function(cached) {
+        var networkFetch = fetch(req).then(function(response) {
+          if (response && response.status === 200 && response.type === 'basic') {
+            var clone = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(req, clone);
+            });
+          }
+          return response;
+        });
+        return cached || networkFetch;
+      })
+    );
+    return;
+  }
+
+  /* For CSS, manifest, fonts: cache-first with network fallback */
   event.respondWith(
     caches.match(req).then(function(cached) {
       if (cached) return cached;

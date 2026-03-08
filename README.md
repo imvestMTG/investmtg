@@ -46,8 +46,8 @@ Key characteristics:
 - SumUp payment integration: `POST /api/sumup/checkout` creates a SumUp checkout, frontend mounts SumUp Card Widget for PCI-compliant card entry
 - Admin bypass: `ADMIN_TOKEN` secret allows testing worker endpoints without Google OAuth
 
-### frontend-v2/ (experimental, not deployed)
-`frontend-v2/` is a TypeScript/Vite rewrite of the application. It exists in the repository as an experimental project but **is not the live production app** and is not deployed anywhere.
+### frontend-v2/ (removed)
+`frontend-v2/` was an experimental TypeScript/Vite rewrite that was removed in the v20 optimization pass as dead code.
 
 ## Core experience
 
@@ -149,12 +149,12 @@ investmtg/
 │   ├── schema.sql
 │   ├── seed.sql
 │   └── README.md
-├── frontend-v2/                    # experimental TypeScript/Vite rewrite (not deployed)
+# frontend-v2/ removed in v20 optimization pass
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v17 (PWA offline support + auto-reload)
+├── sw.js                           # service worker v20 (PWA offline support + auto-reload + image caching)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md
@@ -213,7 +213,7 @@ npx wrangler dev
 
 ## Notes
 
-- The root-level SPA is the production front end. `frontend-v2/` is an experimental rewrite that is not deployed.
+- The root-level SPA is the production front end. `frontend-v2/` was removed in v20 (dead code cleanup).
 - Cardmarket is excluded from the modern buyer experience.
 - No deployment is considered complete until `README.md`, `BUILD_SPEC.md`, `CHANGES.md`, `SOUL.md`, and `worker/README.md` are updated in the same session.
 

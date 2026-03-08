@@ -9,7 +9,7 @@ export var COMMUNITY_EVENTS = [
     title: 'TCG Con 2026',
     subtitle: 'Las Vegas Convention Center',
     date: 'July 2026',
-    image: 'images/event-tcgcon.jpg',
+    image: 'images/event-tcgcon.webp',
     link: null
   },
   {
@@ -17,7 +17,7 @@ export var COMMUNITY_EVENTS = [
     title: 'Commander Night',
     subtitle: 'Weekly at Geek Out Guam',
     date: 'Every Thursday',
-    image: 'images/event-commander.jpg',
+    image: 'images/event-commander.webp',
     link: null
   },
   {
@@ -25,7 +25,7 @@ export var COMMUNITY_EVENTS = [
     title: 'MTG Weekend',
     subtitle: 'Modern & Standard',
     date: 'Monthly',
-    image: 'images/event-weekend.jpg',
+    image: 'images/event-weekend.webp',
     link: null
   }
 ];

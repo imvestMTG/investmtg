@@ -101,20 +101,16 @@
 <link rel="dns-prefetch" href="https://api2.moxfield.com">
 
 <!-- Preload hero LCP image -->
-<link rel="preload" href="./images/hero-bg.jpg" as="image" fetchpriority="high">
+<link rel="preload" href="./images/hero-bg.webp" as="image" type="image/webp" fetchpriority="high">
 
-<!-- Preload critical CSS -->
-<link rel="preload" href="./base.css" as="style">
+<!-- Fonts — display:swap already set, move after preloads for better waterfall -->
+<link rel="preload" href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" as="style">
+
+<!-- Styles — base.css is tiny (2KB), style.css preloaded for parallel fetch -->
 <link rel="preload" href="./style.css" as="style">
-
-<!-- Fonts -->
-<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
-
-<!-- Chart.js and SumUp Card SDK v2 are lazy-loaded on demand -->
-
-<!-- Styles -->
 <link rel="stylesheet" href="./base.css">
 <link rel="stylesheet" href="./style.css">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
 
 <!-- Global error handler — show message if modules fail to load -->
 <script>

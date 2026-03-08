@@ -134,7 +134,7 @@ Key characteristics:
 - static-hosting friendly (no server-side rendering)
 - all API data flows through the Worker v3 backend at `api.investmtg.com`
 - Google OAuth 2.0 for persistent user accounts (sellers and buyers); OAuth redirect uses the custom domain so Google consent screen shows `investmtg.com`
-- `frontend-v2/` exists in the repository as an experimental TypeScript/Vite rewrite but is **not deployed** and is not the production source of truth
+- `frontend-v2/` was removed in v20 (dead code cleanup — it was an abandoned TypeScript/Vite rewrite)
 
 ### Worker
 The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom domain) with the legacy `.workers.dev` URL still active. It serves as the gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture plus Google OAuth authentication.
@@ -158,7 +158,7 @@ The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom 
 - show Cardmarket as part of the modern Guam-first buyer flow
 - rely on fake listing activity to make the market look alive
 - imply global-shipping capability in a Guam-only product mode
-- treat `frontend-v2/` as the production deployment — it is an experimental rewrite, not deployed
+- treat dead code as acceptable — unused components and abandoned directories are removed proactively
 
 ## Release discipline
 

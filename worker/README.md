@@ -158,6 +158,8 @@ npx wrangler secret list
 | `schema.sql` | D1 database schema |
 | `seed.sql` | Guam store and event seed data |
 
+**Note:** The `events` table `image_key` column stores relative paths to local images (e.g., `images/event-tcgcon.webp`). As of v20, all event images use WebP format.
+
 ## Live URLs
 
 - **Primary (custom domain):** `https://api.investmtg.com`
