@@ -161,12 +161,13 @@ function getTypeCategory(type) {
 }
 
 /* ── Curated popular decks (since search endpoint is blocked) ── */
+/* Popular decks — verified 2026-03-08. Replace IDs if decks go private/deleted. */
 var POPULAR_DECKS = [
   { id: 'oEWXWHM5eEGMmopExLWRCA', name: 'Commander Tier List [cEDH]', format: 'commander' },
-  { id: 'yJYnZm2YXEO5xF8EKQGXQw', name: 'Mono Red Aggro', format: 'standard' },
-  { id: 'T-X_T1R9BUGIz-4s2Vz95g', name: 'Azorius Control', format: 'standard' },
-  { id: 'ZKk49gQ-j0qbQvT3vHLVOA', name: 'Dimir Midrange', format: 'modern' },
-  { id: '6OBGf_IqgUiGdfWRYjPDWg', name: 'Mono Green Devotion', format: 'pioneer' },
+  { id: 'wAVaIwJLcES5Wo8HyHW0cQ', name: 'Nationals Azorius Control', format: 'standard' },
+  { id: 'mqjvKOBtsEicQRa4MdtdLg', name: 'Standard Prowess', format: 'standard' },
+  { id: 'UDgLae4ejUWdmOVAEcHw8Q', name: 'Creativity', format: 'modern' },
+  { id: 'amht9VwANE22Tbsd7nmWKA', name: 'Izzet Phoenix', format: 'pioneer' },
 ];
 
 export function getPopularDeckList() {
