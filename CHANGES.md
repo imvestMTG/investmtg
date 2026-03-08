@@ -1,5 +1,33 @@
 # investMTG — Changelog
 
+## 2026-03-08: Fix mobile black screen — loading fallbacks, SW v3, import map polyfill
+
+### Root Cause Analysis (GPT 5.4)
+Multiple layers of failure combined to produce a black screen on mobile:
+1. `Promise.all` in app.js had no `.catch()` — if backend calls timed out, `loading` stayed `true` forever and the app rendered `null` (invisible against dark background)
+2. Loading state returned `null` instead of visible text
+3. Lazy component loader returned `null` while dynamic imports resolved
+4. No import map polyfill — iOS Safari < 16.4 doesn't support native import maps, causing silent module load failure
+5. Service worker (v2) cached stale `index.html` and `app.js` from previous deploys
+
+### Fixes Applied
+- **app.js**: Added `.catch()` on `Promise.all` + 6-second safety timeout that clears loading gate with localStorage fallbacks
+- **app.js**: Loading state now renders visible "Loading…" text instead of `null`
+- **app.js**: `lazyComponent()` shows "Loading…" placeholder while chunks load, with `.catch()` that resets on failure
+- **app.js**: Added `data-app` marker so error handler knows when React has mounted
+- **index.html**: Added `es-module-shims` polyfill from `ga.jspm.io` for pre-iOS 16.4 browsers
+- **index.html**: Fallback "Loading…" HTML inside `#root` (visible before React hydrates)
+- **index.html**: Global error handler catches module load failures with user-friendly message
+- **index.html**: `modulepreload` hints for React CDN modules
+- **index.html**: Import map pinned to `?dev=false` for production builds
+- **index.html**: CSP updated to allow `ga.jspm.io` in `script-src` and `connect-src`
+- **sw.js**: Bumped cache to `investmtg-v3`, purges all old caches on activation
+- **sw.js**: Never caches HTML navigation (always fetches fresh `index.html`)
+- **sw.js**: Never caches `.js` files (always fetches fresh on deploy)
+- **sw.js**: Skips cross-origin requests entirely (no interference with esm.sh or backend)
+
+---
+
 ## 2026-03-08: Go Live — Frontend wired to Cloudflare Worker v2 backend
 
 ### What Changed

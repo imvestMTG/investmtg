@@ -36,6 +36,24 @@ The root directory is the production front end. Files at the repository root are
 </script>
 ```
 
+`es-module-shims` is loaded before the import map to polyfill import map support on pre-iOS 16.4 browsers (iOS Safari < 16.4 does not support native import maps). The polyfill is loaded from `ga.jspm.io` and is reflected in the CSP `script-src` and `connect-src` directives.
+
+### Loading fallback chain
+To prevent blank screens on slow connections or mobile browsers:
+1. `index.html` contains visible "Loading…" HTML inside `#root` — shown before React hydrates
+2. `app.js` loading state renders visible "Loading…" text instead of `null`
+3. `lazyComponent()` shows a "Loading…" placeholder while dynamic imports resolve
+4. A global error handler in `index.html` catches module load failures and displays a user-friendly message
+5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
+
+### Service worker strategy
+`sw.js` is on cache version `investmtg-v3`. The caching strategy is:
+- **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
+- **JS files**: never cached — always fetches fresh on deploy to avoid stale module problems
+- **CSS and other static assets**: cache-first with network fallback
+- **Cross-origin requests** (esm.sh, backend Worker): skipped entirely — the service worker does not intercept them
+- On activation, all previous cache versions are purged
+
 ### Coding rules
 These rules apply to all root-level `.js` files and must not be violated:
 

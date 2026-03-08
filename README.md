@@ -22,6 +22,7 @@ Key characteristics:
 - Native ES modules via `<script type="module">`
 - No build step — deploy as-is to GitHub Pages
 - All data loaded from Worker v2 backend API endpoints
+- `es-module-shims` polyfill for pre-iOS 16.4 browser compatibility
 
 Coding rules enforced across all root-level JS files:
 - `var h = React.createElement;` — no JSX transform

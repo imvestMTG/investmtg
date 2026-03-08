@@ -7,6 +7,7 @@ Cloudflare Worker that serves as the unified backend for investMTG — combining
 - the front end is the root-level SPA (vanilla JS, React 19 via import maps) deployed directly to GitHub Pages from the repository root — no build step
 - the worker remains the secure layer for proxied API access, server-side data, and protected integrations
 - the domain can continue to sit behind Cloudflare while the front-end files are served from GitHub Pages
+- the frontend has a 6-second safety timeout on its `Promise.all` backend calls — if the worker does not respond in time, the loading gate is cleared and the app renders with localStorage fallbacks rather than showing a blank screen
 
 ## Architecture
 

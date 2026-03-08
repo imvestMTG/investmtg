@@ -112,15 +112,17 @@ The Cloudflare Worker remains a separate gateway for protected or proxied API ac
 
 Before any go-live push:
 1. verify the root SPA loads correctly (no build step required)
-2. verify no secrets were committed
-3. verify the Pages workflow still publishes the root directory directly
-4. verify worker docs and bindings still match the deployed backend
-5. update the required docs in the same session
+2. test on mobile Safari and Chrome to verify no blank screen
+3. verify no secrets were committed
+4. verify the Pages workflow still publishes the root directory directly
+5. verify worker docs and bindings still match the deployed backend
+6. update the required docs in the same session
 
 ## Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Fixed mobile black screen: loading fallbacks, SW v3, es-module-shims polyfill for pre-iOS 16.4 browsers |
 | 2026-03-08 | Wired root-level SPA to Cloudflare Worker v2 backend; site live at www.investmtg.com; deploy workflow updated to publish root directory directly |
 | 2026-03-08 | Formalized `frontend-v2/` as an experimental rewrite (not deployed); root-level SPA confirmed as the production front end |
 | 2026-03-08 | Established the Cloudflare Worker v2 backend with D1 database and KV cache support |
