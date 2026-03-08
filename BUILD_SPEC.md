@@ -97,7 +97,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
 | `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
-| `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (two-tier layout: item row + full-width condition section), checkout gated until all conditions chosen |
+| `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (card-style layout: colored dot + abbreviation + full name + price per condition), all conditions displayed, checkout gated until all conditions chosen |
 | `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
 | `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. |
 | `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
@@ -261,9 +261,9 @@ investmtg/                          # root = production frontend deployment arti
 ├── images/
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
-├── style.css
-├── base.css
-├── sw.js                           # service worker v27
+├── style.css                       # all component styles (formatted, ~7500 lines)
+├── base.css                        # reset, body defaults, confirm modal
+├── sw.js                           # service worker v28
 ├── manifest.json
 ├── 404.html
 ├── CNAME

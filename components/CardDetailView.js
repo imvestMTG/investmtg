@@ -84,7 +84,7 @@ export function CardDetailView(props) {
             });
             setPrintings(others);
           }
-        }).catch(function() {});
+        }).catch(function(err) { console.warn('[CardDetail] printings fetch failed:', err); });
       }
     }).catch(function() {
       setError('Card not found.');

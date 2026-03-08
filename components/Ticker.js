@@ -52,7 +52,7 @@ export function Ticker() {
             setItems(data);
             saveCache(data);
           }
-        }).catch(function() {});
+        }).catch(function(err) { console.warn('[Ticker] fallback fetch failed:', err); });
       }, CACHE_TTL);
     }, 2000);
 

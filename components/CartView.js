@@ -7,18 +7,13 @@ import { CART_MAX_QUANTITY } from '../utils/config.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
-/* ConditionChip — interactive button for selecting card condition */
+/* ConditionChip — card-style button for selecting card condition */
 function ConditionChip(_ref) {
   var abbr = _ref.abbr;
   var fullLabel = _ref.fullLabel;
   var price = _ref.price;
   var isSelected = _ref.isSelected;
   var onSelect = _ref.onSelect;
-
-  var ref = React.useState(false);
-  var hovered = ref[0], setHovered = ref[1];
-  var ref2 = React.useState(false);
-  var pressed = ref2[0], setPressed = ref2[1];
 
   /* Condition-specific accent colors */
   var condColor = abbr === 'NM'  ? '#22c55e' :
@@ -27,46 +22,28 @@ function ConditionChip(_ref) {
                   abbr === 'HP'  ? '#f97316' :
                   abbr === 'DMG' ? '#ef4444' : '#888';
 
-  /* Build inline style for hover/press micro-interactions */
-  var chipStyle = {};
+  var cardStyle = {};
   if (isSelected) {
-    chipStyle.background = condColor;
-    chipStyle.borderColor = condColor;
-    chipStyle.color = '#fff';
-    chipStyle.boxShadow = '0 0 0 2px ' + condColor + '40';
-    if (hovered) {
-      chipStyle.transform = 'scale(1.08)';
-      chipStyle.boxShadow = '0 4px 12px ' + condColor + '50, 0 0 0 2px ' + condColor + '40';
-    }
-    if (pressed) {
-      chipStyle.transform = 'scale(0.97)';
-    }
-  } else if (hovered) {
-    chipStyle.transform = 'translateY(-2px) scale(1.06)';
-    chipStyle.borderColor = condColor + '80';
-    chipStyle.color = condColor;
-    chipStyle.boxShadow = '0 4px 12px rgba(0,0,0,0.25)';
-    chipStyle.background = condColor + '15';
-    if (pressed) {
-      chipStyle.transform = 'scale(0.97)';
-      chipStyle.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
-    }
+    cardStyle.borderColor = condColor;
+    cardStyle.boxShadow = '0 0 0 2px ' + condColor + '40';
   }
 
+  var dotStyle = { background: condColor };
+
   return h('button', {
-    className: 'cart-cond-chip' + (isSelected ? ' cart-cond-chip--active' : ''),
-    style: chipStyle,
+    className: 'cart-cond-card' + (isSelected ? ' cart-cond-card--active' : ''),
+    style: cardStyle,
     onClick: onSelect,
-    onMouseEnter: function() { setHovered(true); },
-    onMouseLeave: function() { setHovered(false); setPressed(false); },
-    onMouseDown: function() { setPressed(true); },
-    onMouseUp: function() { setPressed(false); },
     'aria-label': 'Select ' + fullLabel + ' condition at ' + formatUSD(price),
     'aria-pressed': isSelected ? 'true' : 'false',
     title: fullLabel + ' — ' + formatUSD(price)
   },
-    h('span', { className: 'cond-chip-abbr' }, abbr),
-    h('span', { className: 'cond-chip-price' }, formatUSD(price))
+    h('span', { className: 'cond-card-dot', style: dotStyle }),
+    h('span', { className: 'cond-card-label' },
+      h('span', { className: 'cond-card-abbr' }, abbr),
+      h('span', { className: 'cond-card-full' }, fullLabel)
+    ),
+    h('span', { className: 'cond-card-price' }, formatUSD(price))
   );
 }
 
@@ -106,7 +83,7 @@ export function CartView(props) {
             });
           }
         })
-        .catch(function() {});
+        .catch(function(err) { console.warn('[Cart] condition price fetch failed:', err); });
     });
 
     Promise.all(fetches).then(function() {
@@ -265,7 +242,7 @@ export function CartView(props) {
                             return ai - bi;
                           });
                           return entries;
-                        })().slice(0, 5).map(function(entry) {
+                        })().map(function(entry) {
                           var condLabel = entry[0];
                           var condPrice = entry[1];
                           var abbr = condLabel === 'Near Mint' ? 'NM' :

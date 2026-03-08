@@ -1,5 +1,19 @@
 # investMTG — Changelog
 
+## 2026-03-09: Cart condition selector redesign + CSS optimization + Cloudflare cleanup (SW v28)
+
+- **CartView.js** — Redesigned `ConditionChip` component from small pill buttons to full-width card-style selectors. Each condition now shows a colored status dot, abbreviation (NM/LP/MP/HP/DMG), full condition name (e.g. "Near Mint"), and price. Removed `.slice(0, 5)` limit so all available conditions from JustTCG are displayed. Removed inline hover/press state management (moved to CSS).
+- **style.css** — Full CSS overhaul:
+  - **Formatting**: Reformatted from 306-line semi-minified blob to ~7,500 lines of readable CSS. One property per line, 2-space indentation, proper whitespace between blocks. Git diffs are now human-readable.
+  - **Color variables**: Replaced 29 hardcoded `#D4A843` with `var(--color-primary)`, 16 `rgba(212,168,67,...)` with `oklch(from var(--color-primary) l c h / ...)`, plus `#C09838` → `var(--color-primary-active)` and `#E8B84A` → `var(--color-primary-hover)`. Only theme definitions and gradient text stops retain literal hex.
+  - **Dead CSS removed**: `.form-select`, `.form-textarea`, `.price-chart-*` (all unused since v20), old `.cart-cond-chip` pill classes.
+  - **Cart condition cards**: New `.cart-cond-card` card layout with `.cond-card-dot`, `.cond-card-label`, `.cond-card-abbr`, `.cond-card-full`, `.cond-card-price`. Vertical stack (`flex-direction: column`). Responsive mobile hides full condition names.
+- **JS error handling** — Replaced 4 silent `catch(function() {})` blocks with `console.warn` logging in CardDetailView, CartView, SearchView, and Ticker. Errors now surface in dev tools without crashing.
+- **Cloudflare DNS cleanup** — Deleted suspicious `investmtg.investmtg.com` CNAME pointing to non-resolving `minimax.1o` domain. Removed duplicate `_dmarc` TXT record (`p=none`), keeping only `p=reject`. Upgraded minimum TLS version from 1.0 to 1.2.
+- SW bumped to v28.
+
+---
+
 ## 2026-03-09: Homepage carousel card sections + app shell (SW v27)
 
 - **CardCarousel.js (new)** — Horizontal scrolling carousel component for homepage card sections. CSS scroll-snap, touch-friendly swiping, left/right arrow navigation on desktop (hidden on mobile), edge fade hints, responsive card widths (170px mobile / 200px default / 220px large screens).

@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v28** — Cart condition selector redesign (pill chips → full-width cards with dot, abbreviation, full name, price), removed 5-condition limit, full CSS optimization (formatted for readable diffs, replaced 45+ hardcoded gold colors with CSS variables, removed dead classes, added cart-cond-card layout), JS error handling improvements (4 silent catches → console.warn), Cloudflare DNS cleanup (deleted junk CNAME, removed duplicate DMARC, TLS 1.2) |
 | 2026-03-09 | **v27** — Homepage carousel card sections: new CardCarousel component (horizontal scroll, CSS scroll-snap, arrow nav, touch-friendly), expanded worker card lists to 12 each (Featured/Trending/Budget), section headers with subtitles, app shell in index.html (skeleton UI before React mounts for faster FCP) |
 | 2026-03-09 | **v26** — Updated Terms of Service (14 sections, now covers Google OAuth, 5 conditions, JustTCG pricing), rewrote Privacy Policy (fixed "no backend server" inaccuracy, now covers D1 database, Google OAuth, server-side accounts), added first-visit ToS acceptance gate (versioned modal), added ToS checkbox to seller registration and checkout flows |
 | 2026-03-09 | **v25** — Added Damaged (DMG) as 5th card condition across all listing, cart, seller, and pricing flows. JustTCG API query includes DMG. CSV import maps "DAMAGED" to DMG (was HP). CSS badge added. |

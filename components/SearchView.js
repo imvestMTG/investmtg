@@ -64,7 +64,7 @@ export function SearchView(props) {
       if (q.length < 2) { setSuggestions([]); return; }
       autocomplete(q).then(function(data) {
         setSuggestions((data && data.data) ? data.data.slice(0, 8) : []);
-      }).catch(function() {});
+      }).catch(function(err) { console.warn('[Search] autocomplete failed:', err); });
     }, 300);
   }, []);
 
