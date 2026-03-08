@@ -10,13 +10,13 @@ h1 { color: #D4A843; font-size: 18px; }
 .err { color: #f87171; }
 .warn { color: #fbbf24; }
 pre { background: #1a1c20; padding: 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-button { background: #D4A843; color: #0D0F12; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin: 8px 4px; }
+button { background: #D4A843; color: #0D0F12; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin: 8px 4px; font-size: 16px; }
 </style>
 </head>
 <body>
 <h1>investMTG Auth Diagnostic</h1>
 <div id="log"></div>
-<script type="module">
+<script>
 var log = document.getElementById('log');
 function add(cls, msg) {
   var p = document.createElement('pre');
@@ -25,92 +25,69 @@ function add(cls, msg) {
   log.appendChild(p);
 }
 
+// Step 1: URL params
 add('', '=== Step 1: Check URL params ===');
+add('', 'Full URL: ' + window.location.href);
 var params = new URLSearchParams(window.location.search);
 var urlToken = params.get('auth_token');
-add(urlToken ? 'ok' : 'warn', 'auth_token in URL: ' + (urlToken ? urlToken.substring(0, 16) + '...' : 'NONE'));
+add(urlToken ? 'ok' : 'warn', 'auth_token in URL: ' + (urlToken ? urlToken.substring(0, 20) + '...' : 'NONE'));
 
+// Step 2: localStorage
 add('', '=== Step 2: Check localStorage ===');
 var stored = null;
 try { stored = localStorage.getItem('investmtg_auth_token'); } catch(e) { add('err', 'localStorage error: ' + e); }
-add(stored ? 'ok' : 'warn', 'Stored token: ' + (stored ? stored.substring(0, 16) + '...' : 'NONE'));
+add(stored ? 'ok' : 'warn', 'Existing stored token: ' + (stored ? stored.substring(0, 20) + '...' : 'NONE'));
 
 // If URL has token, store it
 if (urlToken) {
   try {
     localStorage.setItem('investmtg_auth_token', urlToken);
-    add('ok', 'Stored URL token to localStorage');
+    add('ok', 'Stored URL token to localStorage successfully');
     stored = urlToken;
-    // Clean URL
     window.history.replaceState(null, '', window.location.pathname);
   } catch(e) { add('err', 'Failed to store token: ' + e); }
 }
 
-add('', '=== Step 3: Test API endpoints ===');
 var PROXY = 'https://api.investmtg.com';
 
-// Health check
-try {
-  var r1 = await fetch(PROXY + '/api/health');
-  var d1 = await r1.json();
-  add('ok', 'Health: ' + JSON.stringify(d1));
-} catch(e) {
-  add('err', 'Health FAILED: ' + e.message);
-}
-
-// Test CORS with Origin
-try {
-  var r2 = await fetch(PROXY + '/api/health', { credentials: 'include' });
-  var d2 = await r2.json();
-  add('ok', 'Health (with credentials): ' + JSON.stringify(d2));
-} catch(e) {
-  add('err', 'Health (credentials) FAILED: ' + e.message);
-}
-
-// Auth/me without token
-try {
-  var r3 = await fetch(PROXY + '/auth/me', { credentials: 'include' });
-  var d3 = await r3.json();
-  add(d3.authenticated ? 'ok' : 'warn', 'Auth/me (no token): ' + JSON.stringify(d3));
-} catch(e) {
-  add('err', 'Auth/me (no token) FAILED: ' + e.message);
-}
-
-// Auth/me with stored token
-if (stored) {
-  try {
-    var r4 = await fetch(PROXY + '/auth/me', {
-      headers: { 'Authorization': 'Bearer ' + stored },
-      credentials: 'include'
-    });
-    add('', 'Auth/me response status: ' + r4.status + ' ok=' + r4.ok);
-    var d4 = await r4.json();
-    add(d4.authenticated ? 'ok' : 'err', 'Auth/me (with token): ' + JSON.stringify(d4));
-  } catch(e) {
-    add('err', 'Auth/me (with token) FAILED: ' + e.message);
-  }
+// Step 3: Test auth/me with token
+add('', '=== Step 3: Test /auth/me ===');
+var token = stored;
+if (token) {
+  add('', 'Testing with token: ' + token.substring(0, 20) + '...');
+  fetch(PROXY + '/auth/me', {
+    headers: { 'Authorization': 'Bearer ' + token },
+    credentials: 'include'
+  }).then(function(res) {
+    add('', 'Response status: ' + res.status);
+    return res.json();
+  }).then(function(data) {
+    add(data.authenticated ? 'ok' : 'err', 'Result: ' + JSON.stringify(data, null, 2));
+    if (data.authenticated) {
+      add('ok', '✓ AUTH WORKS! User: ' + data.user.name + ' (' + data.user.email + ')');
+      add('ok', 'The token exchange and /auth/me are both working.');
+      add('warn', 'If the main site still shows "Sign In", the issue is in the main app code.');
+    }
+  }).catch(function(e) {
+    add('err', 'Fetch error: ' + e.message);
+  });
 } else {
-  add('warn', 'No token available — skipping authenticated test');
+  add('warn', 'No token available. Click Sign In below to test the full flow.');
 }
 
-// Test featured cards
-try {
-  var r5 = await fetch(PROXY + '/api/featured');
-  var d5 = await r5.json();
-  add('ok', 'Featured cards: got ' + (d5.data ? d5.data.length : 0) + ' cards');
-} catch(e) {
-  add('err', 'Featured cards FAILED: ' + e.message);
-}
+// Step 4: Sign-in button
+add('', '=== Step 4: Test sign-in ===');
+add('', 'Click below to sign in. After Google auth, you will be redirected BACK to this diagnostic page.');
 
-add('', '=== Step 4: Sign-in test ===');
-add('', 'Click to test sign-in flow:');
 var btn = document.createElement('button');
-btn.textContent = 'Sign In with Google';
+btn.textContent = 'Sign In with Google (test)';
 btn.onclick = function() { window.location.href = PROXY + '/auth/google'; };
 log.appendChild(btn);
 
 add('', '');
-add('', 'After sign-in, revisit this page — if the token was captured, it will show above.');
+add('warn', 'NOTE: The worker currently redirects to www.investmtg.com after auth.');
+add('warn', 'After sign-in, copy the auth_token from the URL and visit:');
+add('', window.location.origin + '/auth-test.html?auth_token=PASTE_TOKEN_HERE');
 </script>
 </body>
 </html>

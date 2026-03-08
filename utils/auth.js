@@ -64,9 +64,10 @@ function captureTokenFromURL() {
     if (token) {
       console.log('[investMTG auth] Captured auth_token from URL, length:', token.length);
       setToken(token);
-      // Clean the URL — remove auth_token param without reload
-      var clean = window.location.pathname + window.location.hash;
-      window.history.replaceState(null, '', clean);
+      // Force a clean reload so the app starts fresh with the token in localStorage.
+      // This avoids race conditions with stale module caches and ensures
+      // checkAuth() runs in a clean state on the reloaded page.
+      window.location.replace(window.location.pathname + (window.location.hash || ''));
       return token;
     }
   } catch(e) {
