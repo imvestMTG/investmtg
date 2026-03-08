@@ -892,11 +892,18 @@ async function handleSellers(request, env) {
     if (!body || !body.name) return json({ error: 'name required' }, 400, request);
 
     const now = Math.floor(Date.now() / 1000);
+    // session_token has NOT NULL + UNIQUE constraint — use 'auth_<userId>' as placeholder
+    const sessionPlaceholder = 'auth_' + auth.userId;
     await env.DB.prepare(
       'INSERT OR REPLACE INTO sellers (user_id, session_token, name, contact, store_affiliation, bio, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(auth.userId, null, body.name, body.contact || '', body.store_affiliation || '', body.bio || '', now).run();
+    ).bind(auth.userId, sessionPlaceholder, body.name, body.contact || '', body.store_affiliation || '', body.bio || '', now).run();
 
-    return json({ success: true, message: 'Seller registered' }, 201, request);
+    // Fetch the newly created seller to return full object
+    const newSeller = await env.DB.prepare(
+      'SELECT * FROM sellers WHERE user_id = ?'
+    ).bind(auth.userId).first();
+
+    return json({ success: true, seller: newSeller }, 201, request);
   }
 
   return json({ error: 'Method not allowed' }, 405, request);
