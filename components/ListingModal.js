@@ -177,22 +177,20 @@ export function ListingModal(props) {
     if (e.target === e.currentTarget) onClose();
   };
 
-  /* Build the market reference line */
+  /* Build the market reference + pricing source disclosure */
   var marketRef = null;
+  var hasTcgPrices = Object.keys(conditionPrices).length > 0;
   var currentConditionPrice = conditionPrices[condition];
+  var mrefStyle = {
+    fontSize: 'var(--text-xs)',
+    color: 'var(--color-text-muted)',
+    marginTop: 'calc(-1 * var(--space-2))',
+    marginBottom: 'var(--space-3)',
+    lineHeight: '1.5'
+  };
+
   if (currentConditionPrice) {
-    marketRef = h('div', {
-      style: {
-        fontSize: 'var(--text-xs)',
-        color: 'var(--color-text-muted)',
-        marginTop: 'calc(-1 * var(--space-2))',
-        marginBottom: 'var(--space-3)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-2)',
-        flexWrap: 'wrap'
-      }
-    },
+    marketRef = h('div', { style: Object.assign({}, mrefStyle, { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }) },
       h('span', null,
         condition + ' market: ' + formatUSD(currentConditionPrice) +
         (conditionPrices.NM && condition !== 'NM'
@@ -214,25 +212,74 @@ export function ListingModal(props) {
       }, 'Reset to market price')
     );
   } else if (pricesLoading) {
-    marketRef = h('p', {
-      style: {
-        fontSize: 'var(--text-xs)',
-        color: 'var(--color-text-muted)',
-        marginTop: 'calc(-1 * var(--space-2))',
-        marginBottom: 'var(--space-3)'
-      }
-    }, 'Fetching market prices\u2026');
+    marketRef = h('p', { style: mrefStyle }, 'Fetching market prices\u2026');
   } else if (cardData && cardData.nmPrice > 0) {
     /* Fallback: Scryfall NM price if JustTCG didn't return data */
-    marketRef = h('p', {
-      style: {
-        fontSize: 'var(--text-xs)',
-        color: 'var(--color-text-muted)',
-        marginTop: 'calc(-1 * var(--space-2))',
-        marginBottom: 'var(--space-3)'
-      }
-    }, 'NM reference: ' + formatUSD(cardData.nmPrice));
+    marketRef = h('p', { style: mrefStyle },
+      'NM reference: ' + formatUSD(cardData.nmPrice) + ' (via Scryfall)'
+    );
   }
+
+  /* Pricing source disclosure — always shown when card data is present */
+  var pricingDisclosure = cardData ? h('div', {
+    className: 'listing-pricing-disclosure',
+    style: {
+      fontSize: 'var(--text-xs)',
+      color: 'var(--color-text-muted)',
+      borderTop: '1px solid var(--color-border, rgba(255,255,255,0.1))',
+      paddingTop: 'var(--space-3)',
+      marginTop: 'var(--space-3)',
+      marginBottom: 'var(--space-3)',
+      lineHeight: '1.6'
+    }
+  },
+    h('p', { style: { margin: '0 0 var(--space-1) 0', fontWeight: '600', color: 'var(--color-text-secondary, var(--color-text-muted))' } },
+      'Pricing Transparency'
+    ),
+    h('p', { style: { margin: '0 0 var(--space-1) 0' } },
+      hasTcgPrices
+        ? 'Suggested prices are real-time TCGplayer market values sourced from '
+        : 'Card data sourced from '
+    ),
+    h('span', null,
+      hasTcgPrices
+        ? h('span', null,
+            h('a', {
+              href: 'https://justtcg.com',
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { color: 'var(--color-primary)', textDecoration: 'underline' }
+            }, 'JustTCG'),
+            ', which aggregates seller data from ',
+            h('a', {
+              href: 'https://www.tcgplayer.com',
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { color: 'var(--color-primary)', textDecoration: 'underline' }
+            }, 'TCGplayer'),
+            '. Prices reflect the lowest available listing for each condition and are updated every 6 hours. Card details provided by ',
+            h('a', {
+              href: 'https://scryfall.com',
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { color: 'var(--color-primary)', textDecoration: 'underline' }
+            }, 'Scryfall'),
+            '.'
+          )
+        : h('span', null,
+            h('a', {
+              href: 'https://scryfall.com',
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { color: 'var(--color-primary)', textDecoration: 'underline' }
+            }, 'Scryfall'),
+            '. Condition-specific pricing unavailable for this card.'
+          )
+    ),
+    h('p', { style: { margin: 'var(--space-2) 0 0 0', fontStyle: 'italic' } },
+      'Prices are estimates and may not reflect actual sale prices. You are free to set any asking price.'
+    )
+  ) : null;
 
   return h('div', { className: 'mp-modal-overlay open', onClick: handleOverlayClick },
     h('div', { className: 'mp-modal' },
@@ -341,6 +388,9 @@ export function ListingModal(props) {
           h('label', { htmlFor: 'listing-notes' }, 'Notes (optional)'),
           h('textarea', { id: 'listing-notes', rows: '3', placeholder: 'Any additional details...', maxLength: 500 })
         ),
+        /* Pricing source disclosure */
+        pricingDisclosure,
+
         h('button', { type: 'submit', className: 'btn btn-primary', style: { width: '100%', padding: 'var(--space-3)' } }, 'Add Listing')
       )
     )

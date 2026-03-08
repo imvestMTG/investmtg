@@ -1,5 +1,17 @@
 # investMTG — Changelog
 
+## 2026-03-09: Pricing transparency disclosure in ListingModal (SW v23)
+
+- Added a **Pricing Transparency** section to the listing form, visible whenever card data is present.
+- When JustTCG prices are available, the disclosure reads: "Suggested prices are real-time TCGplayer market values sourced from JustTCG, which aggregates seller data from TCGplayer. Prices reflect the lowest available listing for each condition and are updated every 6 hours. Card details provided by Scryfall."
+- When JustTCG is unavailable (fallback), the disclosure attributes data to Scryfall and notes that condition-specific pricing is unavailable.
+- All three data sources (JustTCG, TCGplayer, Scryfall) are linked so users can verify independently.
+- Includes an italicized disclaimer: "Prices are estimates and may not reflect actual sale prices. You are free to set any asking price."
+- Placed above the submit button, separated by a subtle border, using `--text-xs` and muted text color.
+- SW bumped to v23.
+
+---
+
 ## 2026-03-09: JustTCG real-time condition pricing in ListingModal (SW v22)
 
 - **Condition-based pricing**: When the seller changes the Condition dropdown (NM/LP/MP/HP), the Price field auto-updates with the real-time market price for that condition from JustTCG API.
