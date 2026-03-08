@@ -31,10 +31,6 @@ export function ListingModal(props) {
   var onSubmit = props.onSubmit;
   var prefillCard = props.prefillCard;
   var prefillCardName = props.prefillCardName;
-  var cardNameRef = React.useRef(null);
-  var setNameRef = React.useRef(null);
-  var priceRef = React.useRef(null);
-  var formRef = React.useRef(null);
 
   /* Extract prefill data from full card object */
   var cardData = React.useMemo(function() {
@@ -51,19 +47,28 @@ export function ListingModal(props) {
     };
   }, [prefillCard]);
 
-  React.useEffect(function() {
-    if (!isOpen) return;
+  /* Controlled state for prefilled fields — reliable across lazy-load & re-renders */
+  var ref1 = React.useState(cardData ? cardData.name : (prefillCardName || ''));
+  var cardName = ref1[0], setCardName = ref1[1];
+  var ref2 = React.useState(cardData ? cardData.setName : '');
+  var setName = ref2[0], setSetName = ref2[1];
+  var ref3 = React.useState(cardData ? cardData.price : '');
+  var price = ref3[0], setPrice = ref3[1];
 
+  /* Sync state if prefillCard changes while modal is open */
+  React.useEffect(function() {
     if (cardData) {
-      /* Full card object available — populate all fields */
-      if (cardNameRef.current) cardNameRef.current.value = cardData.name;
-      if (setNameRef.current) setNameRef.current.value = cardData.setName;
-      if (priceRef.current && cardData.price) priceRef.current.value = cardData.price;
-    } else if (prefillCardName && cardNameRef.current) {
-      /* Fallback: only card name string */
-      cardNameRef.current.value = prefillCardName;
+      setCardName(cardData.name);
+      setSetName(cardData.setName);
+      setPrice(cardData.price);
+    } else if (prefillCardName) {
+      setCardName(prefillCardName);
+      setSetName('');
+      setPrice('');
     }
-  }, [isOpen, cardData, prefillCardName]);
+  }, [cardData, prefillCardName]);
+
+  var formRef = React.useRef(null);
 
   if (!isOpen) return null;
 
@@ -72,36 +77,40 @@ export function ListingModal(props) {
     var form = formRef.current;
     if (!form) return;
 
-    var cardName = sanitize(form.querySelector('#listing-card-name').value, 100);
-    var setName = sanitize(form.querySelector('#listing-set-name').value, 100);
+    var cleanName = sanitize(cardName, 100);
+    var cleanSet = sanitize(setName, 100);
     var condition = form.querySelector('#listing-condition').value;
-    var price = sanitizePrice(form.querySelector('#listing-price').value);
+    var cleanPrice = sanitizePrice(price);
     var typeRadio = form.querySelector('input[name="listing-type"]:checked');
     var type = typeRadio ? typeRadio.value : 'sale';
     var seller = sanitize(form.querySelector('#listing-seller').value, 60);
     var contact = sanitize(form.querySelector('#listing-contact').value, 100);
     var notes = sanitize(form.querySelector('#listing-notes').value, 500);
 
-    if (!cardName || !setName || !condition || isNaN(price) || !seller || !contact) return;
+    if (!cleanName || !cleanSet || !condition || isNaN(cleanPrice) || !seller || !contact) return;
 
     onSubmit({
       id: 'm' + Date.now(),
-      cardName: cardName,
-      setName: setName,
+      cardName: cleanName,
+      setName: cleanSet,
       condition: condition,
-      price: price,
+      price: cleanPrice,
       type: type,
       seller: seller,
       contact: contact,
       notes: notes,
       card_id: cardData ? cardData.cardId : null,
-      set_name: setName,
+      set_name: cleanSet,
       image: cardData ? cardData.image : '',
       image_uri: cardData ? cardData.image : '',
       createdAt: Date.now()
     });
 
-    form.reset();
+    /* Reset non-prefilled fields */
+    if (form) form.reset();
+    setCardName('');
+    setSetName('');
+    setPrice('');
     onClose();
     showToast('Listing added!');
   };
@@ -135,7 +144,8 @@ export function ListingModal(props) {
           h('input', {
             type: 'text',
             id: 'listing-card-name',
-            ref: cardNameRef,
+            value: cardName,
+            onChange: function(e) { if (!cardData) setCardName(e.target.value); },
             placeholder: 'e.g. Black Lotus',
             required: true,
             maxLength: 100,
@@ -147,7 +157,8 @@ export function ListingModal(props) {
           h('input', {
             type: 'text',
             id: 'listing-set-name',
-            ref: setNameRef,
+            value: setName,
+            onChange: function(e) { if (!cardData) setSetName(e.target.value); },
             placeholder: 'e.g. Unlimited',
             required: true,
             maxLength: 100,
@@ -169,7 +180,8 @@ export function ListingModal(props) {
             h('input', {
               type: 'number',
               id: 'listing-price',
-              ref: priceRef,
+              value: price,
+              onChange: function(e) { setPrice(e.target.value); },
               min: '0',
               max: '99999',
               step: '0.01',

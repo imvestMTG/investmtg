@@ -1,15 +1,13 @@
 # investMTG — Changelog
 
-## 2026-03-09: Listing modal auto-populate from card data
+## 2026-03-09: Listing modal auto-populate — controlled state fix (SW v21)
 
-- **ListingModal.js** now accepts a `prefillCard` prop (the full Scryfall card object) in addition to the existing `prefillCardName` string.
-- When opened from a card detail page, the modal auto-populates: card name (read-only), set name (read-only), and market price as a starting value.
-- Shows a card image preview thumbnail at the top of the modal when card data is available.
-- Displays a "Market reference: $X.XX" hint below the price field so sellers know the current market value.
-- Read-only fields (card name, set name) are visually distinguished with a muted background.
-- The submitted listing now includes `card_id`, `set_name`, and `image_uri` from the card data for richer backend records.
-- Restored `listing-card-preview` and `listing-preview-img` CSS classes (removed in v20 optimization, now needed).
-- Added `input[readonly]` styling for prefilled fields.
+- **Root cause fix**: Replaced unreliable `useRef` + imperative `useEffect` pattern with controlled `useState` for prefilled fields (card name, set name, price). The previous approach set `.value` on DOM nodes after render, which failed under lazy-loading and concurrent React rendering — React had no awareness of these imperative changes and could overwrite them.
+- Controlled inputs use `value` + `onChange` props, so React owns the field state declaratively. Fields are guaranteed populated on first render regardless of component load timing.
+- `useEffect` still syncs state if `prefillCard` changes while modal is open, but now calls `setState` (reliable) instead of setting `ref.current.value` (fragile).
+- Removed `cardNameRef`, `setNameRef`, `priceRef` — only `formRef` remains (for reading non-prefilled fields on submit).
+- **Features from initial implementation preserved**: card name (read-only), set name (read-only), market price prefill, card preview thumbnail, market reference hint, `card_id`/`set_name`/`image_uri` in submission payload.
+- SW bumped to v21.
 
 ---
 
