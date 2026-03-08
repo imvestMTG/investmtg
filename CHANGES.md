@@ -1,5 +1,17 @@
 # investMTG — Changelog
 
+## 2026-03-08: Cart condition selector UX overhaul — SW v17
+
+### Condition Selector Redesign
+
+- **CartView.js** — Restructured cart item layout into two-tier design: top row (image + info + qty + price + remove) and full-width condition selector section below.
+- **Condition prompt** — Items without a selected condition now show a prominent animated warning: "Select a condition to continue" with a warning icon. Once selected, shows "Condition: NM" (or whichever was chosen).
+- **Visual alert on items** — Items missing a condition get a red border + shadow (`.cart-item--needs-condition`) to draw attention.
+- **Checkout gate** — "Proceed to Checkout" button is visually disabled and shows a count-based message ("Select conditions for N items before checkout") when any item with available condition pricing hasn't been selected. Clicking the disabled button scrolls to the first un-selected item.
+- **style.css** — New `.cart-condition-section`, `.cart-condition-prompt`, `.cart-checkout-blocked`, `.cart-checkout-btn--disabled` CSS classes. Pulsing animation on the condition prompt. Mobile-responsive chip sizing.
+
+---
+
 ## 2026-03-08: GRT removal, SumUp payment restoration, admin bypass — SW v16
 
 ### GRT Removed Site-Wide
