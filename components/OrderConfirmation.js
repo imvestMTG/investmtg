@@ -6,6 +6,21 @@ import { storageGet } from '../utils/storage.js';
 import { backendFetch } from '../utils/api.js';
 var h = React.createElement;
 
+/* ── Status configuration ── */
+var STATUS_MAP = {
+  reserved:        { label: 'Reserved',        icon: '\uD83D\uDD12', cls: 'order-status--reserved' },
+  pending_payment: { label: 'Payment Pending',  icon: '\u23F3',       cls: 'order-status--pending' },
+  confirmed:       { label: 'Payment Confirmed', icon: '\u2705',       cls: 'order-status--paid' },
+  paid:            { label: 'Paid',              icon: '\u2705',       cls: 'order-status--paid' },
+  payment_failed:  { label: 'Payment Failed',    icon: '\u274C',       cls: 'order-status--failed' },
+  expired:         { label: 'Expired',           icon: '\u23F0',       cls: 'order-status--expired' },
+  fulfilled:       { label: 'Fulfilled',         icon: '\uD83D\uDCE6', cls: 'order-status--fulfilled' }
+};
+
+function getStatusInfo(status) {
+  return STATUS_MAP[status] || { label: status || 'Unknown', icon: '\u2753', cls: 'order-status--reserved' };
+}
+
 export function OrderConfirmation(props) {
   var orderId = props.orderId;
 
@@ -14,6 +29,9 @@ export function OrderConfirmation(props) {
 
   var ref2 = React.useState(false);
   var loaded = ref2[0], setLoaded = ref2[1];
+
+  var ref3 = React.useState(null);
+  var paymentStatus = ref3[0], setPaymentStatus = ref3[1];
 
   React.useEffect(function() {
     if (!orderId) {
@@ -43,7 +61,9 @@ export function OrderConfirmation(props) {
             },
             date: o.created_at || new Date().toISOString(),
             paymentMethod: o.payment_method || 'reserve',
-            status: o.status || 'reserved'
+            status: o.status || 'reserved',
+            paymentStatus: o.payment_status || null,
+            checkoutId: o.checkout_id || null
           };
           setOrder(normalized);
         } else {
@@ -63,6 +83,59 @@ export function OrderConfirmation(props) {
       setOrder(found || null);
     }
   }, [orderId]);
+
+  /* ── Payment status polling for SumUp orders ── */
+  React.useEffect(function() {
+    if (!order || !orderId) return;
+    // Only poll if this is a SumUp payment and status isn't finalized
+    var shouldPoll = order.paymentMethod === 'sumup' &&
+      order.status !== 'confirmed' &&
+      order.status !== 'payment_failed' &&
+      order.status !== 'expired' &&
+      order.status !== 'fulfilled';
+    if (!shouldPoll) return;
+
+    var pollCount = 0;
+    var maxPolls = 60; // 5 min at 5s intervals
+    var timer = null;
+
+    function pollStatus() {
+      if (pollCount >= maxPolls) return;
+      pollCount++;
+      backendFetch('/api/orders/' + encodeURIComponent(orderId) + '/payment-status')
+        .then(function(data) {
+          if (data && data.payment_status) {
+            setPaymentStatus(data.payment_status);
+            // Update order status in local state
+            if (data.status && data.status !== order.status) {
+              setOrder(function(prev) {
+                if (!prev) return prev;
+                var updated = {};
+                for (var k in prev) { updated[k] = prev[k]; }
+                updated.status = data.status;
+                updated.paymentStatus = data.payment_status;
+                return updated;
+              });
+            }
+            // Stop polling if finalized
+            if (data.payment_status === 'paid' || data.payment_status === 'failed' || data.payment_status === 'expired') {
+              return;
+            }
+          }
+          timer = setTimeout(pollStatus, 5000);
+        })
+        .catch(function() {
+          timer = setTimeout(pollStatus, 10000); // Slower retry on error
+        });
+    }
+
+    // Start polling after 2s initial delay
+    timer = setTimeout(pollStatus, 2000);
+
+    return function() {
+      if (timer) clearTimeout(timer);
+    };
+  }, [order && order.paymentMethod, order && order.status, orderId]);
 
   if (!loaded) {
     return h('div', { className: 'container order-confirmation-page' },
@@ -94,18 +167,41 @@ export function OrderConfirmation(props) {
 
   return h('div', { className: 'container order-confirmation-page' },
 
-    // Success banner
-    h('div', { className: 'order-success-banner' },
-      h('div', { className: 'order-success-icon' },
-        h(CheckCircleIcon, null)
-      ),
-      h('div', null,
-        h('h1', { className: 'order-success-title' }, 'Order Reserved!'),
-        h('p', { className: 'order-success-sub' },
-          'Thank you, ', h('strong', null, order.contact.name), '. Your order has been reserved.'
+    // Success banner — adapts to payment status
+    (function() {
+      var si = getStatusInfo(order.status);
+      var isPaid = order.status === 'confirmed' || order.paymentStatus === 'paid';
+      var isFailed = order.status === 'payment_failed' || order.paymentStatus === 'failed';
+      var isPending = order.status === 'pending_payment' || order.paymentStatus === 'pending';
+      var bannerCls = 'order-success-banner';
+      if (isFailed) bannerCls += ' order-success-banner--failed';
+      if (isPending) bannerCls += ' order-success-banner--pending';
+
+      var title = 'Order Reserved!';
+      var subtitle = 'Your order has been reserved.';
+      if (isPaid) {
+        title = 'Payment Confirmed!';
+        subtitle = 'Your payment has been received.';
+      } else if (isFailed) {
+        title = 'Payment Failed';
+        subtitle = 'There was an issue processing your payment. Please try again.';
+      } else if (isPending) {
+        title = 'Processing Payment\u2026';
+        subtitle = 'We\u2019re waiting for payment confirmation.';
+      }
+
+      return h('div', { className: bannerCls },
+        h('div', { className: 'order-success-icon' },
+          isPaid ? h(CheckCircleIcon, null) : h('span', { style: { fontSize: '28px' } }, si.icon)
+        ),
+        h('div', null,
+          h('h1', { className: 'order-success-title' }, title),
+          h('p', { className: 'order-success-sub' },
+            'Thank you, ', h('strong', null, order.contact.name), '. ', subtitle
+          )
         )
-      )
-    ),
+      );
+    })(),
 
     h('div', { className: 'order-details-grid' },
 
@@ -126,7 +222,12 @@ export function OrderConfirmation(props) {
           ),
           h('div', { className: 'order-info-row' },
             h('span', { className: 'order-info-label' }, 'Status'),
-            h('span', { className: 'order-status-badge' }, '\uD83D\uDD12 Reserved')
+            (function() {
+              var si = getStatusInfo(order.status);
+              return h('span', { className: 'order-status-badge ' + si.cls },
+                si.icon + ' ' + si.label
+              );
+            })()
           )
         )
       ),
@@ -239,7 +340,12 @@ export function OrderConfirmation(props) {
             h('span', null, 'Shipping'), h('span', null, formatUSD(order.shipping))
           ),
           h('div', { className: 'order-total-row order-grand-total' },
-            h('span', null, 'Total Due at Pickup'), h('span', null, formatUSD(order.total))
+            h('span', null,
+              (order.status === 'confirmed' || order.paymentStatus === 'paid')
+                ? 'Total Paid'
+                : 'Total Due'
+            ),
+            h('span', null, formatUSD(order.total))
           )
         )
       )

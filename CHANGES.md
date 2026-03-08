@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-09: D1 schema migration + order payment status (SW v33)
+
+- **worker/worker.js** — Added `payment_status`, `checkout_id`, `sumup_txn_id` columns to orders table (CREATE TABLE + ALTER TABLE migration for existing tables). Checkout creation now stores `checkout_id` on the order and sets `payment_status: 'pending'`. New route: `GET /api/orders/:id/payment-status` polls SumUp API for real-time checkout status, maps PAID/FAILED/PENDING/EXPIRED to internal statuses, and updates D1 on change. Webhook handler now writes to the migrated columns.
+- **OrderConfirmation.js** — Added real-time payment status polling (5s intervals for up to 5 minutes) on SumUp orders. Status-aware banner: shows "Payment Confirmed" (green), "Processing Payment" (amber), or "Payment Failed" (red) based on live status. Dynamic status badge with color-coded variants. "Total Due" label changes to "Total Paid" on confirmation.
+- **style.css** — Added `.order-status--reserved`, `.order-status--pending`, `.order-status--paid`, `.order-status--failed`, `.order-status--expired`, `.order-status--fulfilled` badge variants. Added `.order-success-banner--pending` and `.order-success-banner--failed` banner color variants.
+- **worker/schema.sql** — Added `orders` and `order_counters` table definitions (previously inline-only in worker.js).
+- SW bumped to v33.
+
+---
+
 ## 2026-03-09: Cart enhancements + SumUp upgrades (SW v32)
 
 - **CartView.js** — Added price savings display on condition buttons ("Save $X.XX" badge comparing to Near Mint price). Added trust & security badges in cart summary sidebar (secure checkout, buyer protection, accepted cards). Added package count indicator showing number of seller packages. New inline SVG icons: LockIcon, ShieldIcon, CardPayIcon.

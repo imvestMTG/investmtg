@@ -108,6 +108,37 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at INTEGER NOT NULL
 );
 
+-- Orders: created at checkout
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  items TEXT NOT NULL,
+  subtotal REAL NOT NULL,
+  tax REAL NOT NULL,
+  shipping REAL DEFAULT 0,
+  total REAL NOT NULL,
+  fulfillment TEXT DEFAULT 'pickup',
+  pickup_store TEXT,
+  contact_name TEXT,
+  contact_email TEXT,
+  contact_phone TEXT,
+  payment_method TEXT DEFAULT 'reserve',
+  status TEXT DEFAULT 'reserved',
+  payment_status TEXT DEFAULT NULL,
+  checkout_id TEXT DEFAULT NULL,
+  sumup_txn_id TEXT DEFAULT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+-- Monthly sequential counter for GUM-YYYYMM-XXXXX order IDs
+CREATE TABLE IF NOT EXISTS order_counters (
+  month_key TEXT PRIMARY KEY,
+  last_seq INTEGER NOT NULL DEFAULT 1
+);
+
 -- Cart items (persistent across sessions)
 CREATE TABLE IF NOT EXISTS cart_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

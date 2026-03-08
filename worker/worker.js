@@ -1031,6 +1031,9 @@ async function handleCart(request, env) {
     contact_phone TEXT,
     payment_method TEXT DEFAULT 'reserve',
     status TEXT DEFAULT 'reserved',
+    payment_status TEXT DEFAULT NULL,
+    checkout_id TEXT DEFAULT NULL,
+    sumup_txn_id TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -1158,10 +1161,18 @@ async function handleOrders(request, env, orderId) {
         contact_phone TEXT,
         payment_method TEXT DEFAULT 'reserve',
         status TEXT DEFAULT 'reserved',
+        payment_status TEXT DEFAULT NULL,
+        checkout_id TEXT DEFAULT NULL,
+        sumup_txn_id TEXT DEFAULT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       )`
     ).run().catch(() => {});
+
+    // v33 migration: add new columns to existing orders tables
+    await env.DB.prepare('ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT NULL').run().catch(() => {});
+    await env.DB.prepare('ALTER TABLE orders ADD COLUMN checkout_id TEXT DEFAULT NULL').run().catch(() => {});
+    await env.DB.prepare('ALTER TABLE orders ADD COLUMN sumup_txn_id TEXT DEFAULT NULL').run().catch(() => {});
 
     const id = await generateOrderId(env.DB);
     const nowStr = new Date().toISOString();
@@ -1280,6 +1291,15 @@ async function handleSumUpCheckout(request, env) {
       }, resp.status >= 500 ? 502 : resp.status, request);
     }
 
+    // Store checkout_id on the order for status lookups
+    if (data.id && body.order_id) {
+      await env.DB.prepare(
+        'UPDATE orders SET checkout_id = ?, payment_status = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(data.id, 'pending', body.order_id).run().catch(function(e) {
+        console.error('Failed to store checkout_id on order:', e.message);
+      });
+    }
+
     return json({
       ok: true,
       checkout_id: data.id,
@@ -1347,6 +1367,93 @@ async function handleSumUpWebhook(request, env) {
   }
 
   return json({ ok: true }, 200, request);
+}
+
+/* ══════════════════════════════════════
+   ORDER PAYMENT STATUS
+   ══════════════════════════════════════
+
+   GET /api/orders/:id/payment-status
+   Returns the current payment status for an order.
+   If a checkout_id is stored, polls SumUp for real-time status.
+   Auth required — only the order owner can check.
+*/
+
+async function handleOrderPaymentStatus(request, env, orderId) {
+  if (request.method !== 'GET') {
+    return json({ error: 'Method not allowed' }, 405, request);
+  }
+
+  const auth = await getAuthUser(request, env);
+  if (!auth || !auth.userId) {
+    return json({ error: 'Authentication required' }, 401, request);
+  }
+
+  // Fetch the order
+  const row = await env.DB.prepare(
+    'SELECT id, status, payment_status, checkout_id, sumup_txn_id, payment_method FROM orders WHERE id = ? AND user_id = ?'
+  ).bind(orderId, auth.userId).first().catch(() => null);
+
+  if (!row) {
+    return json({ error: 'Order not found' }, 404, request);
+  }
+
+  // If there's a checkout_id and payment isn't finalized, poll SumUp
+  if (row.checkout_id && row.payment_status !== 'paid' && row.payment_status !== 'failed' && env.SUMUP_SECRET_KEY) {
+    try {
+      const checkoutResp = await fetch('https://api.sumup.com/v0.1/checkouts/' + row.checkout_id, {
+        headers: { 'Authorization': 'Bearer ' + env.SUMUP_SECRET_KEY }
+      });
+      const checkout = await checkoutResp.json();
+
+      // Map SumUp status to our status
+      let newPaymentStatus = row.payment_status;
+      let newStatus = row.status;
+      let txnId = row.sumup_txn_id;
+
+      if (checkout.status === 'PAID') {
+        newPaymentStatus = 'paid';
+        newStatus = 'confirmed';
+        txnId = (checkout.transactions && checkout.transactions[0]) ? checkout.transactions[0].id : txnId;
+      } else if (checkout.status === 'FAILED') {
+        newPaymentStatus = 'failed';
+        newStatus = 'payment_failed';
+      } else if (checkout.status === 'PENDING') {
+        newPaymentStatus = 'pending';
+      } else if (checkout.status === 'EXPIRED') {
+        newPaymentStatus = 'expired';
+        newStatus = 'expired';
+      }
+
+      // Update D1 if status changed
+      if (newPaymentStatus !== row.payment_status || newStatus !== row.status) {
+        await env.DB.prepare(
+          'UPDATE orders SET status = ?, payment_status = ?, sumup_txn_id = ?, updated_at = datetime("now") WHERE id = ?'
+        ).bind(newStatus, newPaymentStatus, txnId || '', orderId).run().catch(() => {});
+      }
+
+      return json({
+        order_id: row.id,
+        status: newStatus,
+        payment_status: newPaymentStatus,
+        payment_method: row.payment_method,
+        sumup_status: checkout.status,
+        sumup_txn_id: txnId || null,
+      }, 200, request);
+    } catch (e) {
+      console.error('Status poll error:', e.message);
+      // Fall through to return stored status
+    }
+  }
+
+  // Return stored status (no SumUp poll or poll failed)
+  return json({
+    order_id: row.id,
+    status: row.status,
+    payment_status: row.payment_status || null,
+    payment_method: row.payment_method,
+    sumup_txn_id: row.sumup_txn_id || null,
+  }, 200, request);
 }
 
 /* ══════════════════════════════════════
@@ -1496,6 +1603,10 @@ export default {
       if (path === '/api/stores')                           return handleStores(request, env);
       if (path === '/api/events')                           return handleEvents(request, env);
       if (path.startsWith('/api/cart'))                     return handleCart(request, env);
+      if (path.match(/^\/api\/orders\/[^/]+\/payment-status$/)) {
+        const psOrderId = path.split('/')[3];
+        return handleOrderPaymentStatus(request, env, psOrderId);
+      }
       if (path.startsWith('/api/orders')) {
         const orderId = path.replace(/^\/api\/orders\/?/, '') || null;
         return handleOrders(request, env, orderId || undefined);

@@ -64,6 +64,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/orders/:id` | GET | get single order by ID (owner-only) |
 | `/api/sumup/checkout` | POST | Create a SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code, returns `{ checkout_id, hosted_checkout_url }`. Sets `return_url` for webhook and `redirect_url` for post-payment redirect. Frontend mounts SumUp Card Widget with the returned checkout ID. |
 | `/api/sumup-webhook` | POST | SumUp payment webhook. Receives `CHECKOUT_STATUS_CHANGED` events from SumUp. Validates by polling SumUp API with `SUMUP_SECRET_KEY`, then updates D1 order status to `confirmed` / `paid`. No auth required (validated server-side). |
+| `/api/orders/:id/payment-status` | GET | Payment status polling (auth required, owner-only). If order has a `checkout_id`, polls SumUp API for real-time status (PENDING/PAID/FAILED/EXPIRED), maps to internal statuses, updates D1 on change. Used by OrderConfirmation.js for live payment tracking. |
 
 ### Auth routes
 | Route | Method | Purpose |
@@ -93,7 +94,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users
-- `orders` — order records with items (JSON), totals, contact info, fulfillment, status. Has `user_email` index. Auto-created by worker if missing.
+- `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Has `user_id` index. Auto-created by worker if missing. v33 adds ALTER TABLE migration for new payment columns on existing tables.
 - `order_counters` — monthly sequential counter for `GUM-YYYYMM-XXXXX` order IDs. Atomic upsert via `ON CONFLICT DO UPDATE`.
 
 ## Security

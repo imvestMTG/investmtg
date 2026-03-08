@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v33** — D1 schema migration (payment_status, checkout_id, sumup_txn_id on orders), payment status polling route, OrderConfirmation real-time status updates, status badge color variants |
 | 2026-03-09 | **v32** — Cart enhancements: condition price savings badges, trust indicators, package count, SumUp widget dark theme + email/amount display, webhook handler, redirect_url for 3DS |
 | 2026-03-09 | **v31** — Service worker cache strategy fix: changed CSS from cache-first to network-first, preventing stale style.css from being served after deployments. Cloudflare zone cache purged. |
 | 2026-03-09 | **v30** — Cart page complete redesign from scratch. New CartView.js with CartItem/ConditionOption components, BEM class naming (.cart-card, .cond-option, .cart-summary, .cart-group), horizontal flex-wrap condition grid, consolidated ~560 fragmented CSS lines into single clean block, removed all teal accent fallbacks, 899px tablet breakpoint |

@@ -99,7 +99,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (card-style layout: colored dot + abbreviation + full name + price per condition), all conditions displayed, checkout gated until all conditions chosen |
 | `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
-| `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. |
+| `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. Real-time payment status polling for SumUp orders (5s intervals, 5min max). Status-aware banner and badge (reserved/pending/paid/failed/expired). |
 | `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
 | `components/DecklistView.js` | `#decklist` | Decklist import |
 | `components/MetaView.js` | `#meta` | Meta/tournament data |
@@ -182,6 +182,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/orders/:id` | GET | Get single order by ID (owner-only) |
 | `/api/sumup/checkout` | POST | Create SumUp checkout (auth required). Accepts `{ amount, order_id }`. Calls SumUp Checkouts API with merchant code `M55T01IN`, returns `{ checkout_id, hosted_checkout_url }`. Includes `return_url` (webhook) and `redirect_url` (3DS redirect). Frontend mounts SumUp Card Widget with the returned ID for PCI/3DS-compliant card entry. |
 | `/api/sumup-webhook` | POST | SumUp webhook handler. Receives `CHECKOUT_STATUS_CHANGED` events, validates via SumUp API poll, updates D1 order status to `confirmed`/`paid`. Returns 200 immediately per SumUp requirements. |
+| `/api/orders/:id/payment-status` | GET | Payment status polling (auth required, owner-only). If order has a `checkout_id`, polls SumUp API for real-time status (PENDING/PAID/FAILED/EXPIRED), maps to internal statuses, and updates D1 on change. Returns `{ order_id, status, payment_status, payment_method, sumup_txn_id }`. |
 | `/justtcg` | proxy | Condition pricing |
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |
