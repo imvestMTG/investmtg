@@ -1,5 +1,48 @@
 # investMTG — Changelog
 
+## 2026-03-08: Card detail button hardening & SW auto-reload — SW v9
+
+### Issue Reported
+User reported all 4 card detail buttons (Add to Cart, Track, Watch, Create Guam Listing) not responding to clicks on the card detail page. Buttons rendered visually but click handlers did not fire. The issue could not be reproduced in clean browser sessions, strongly suggesting stale-cache / service worker transition as the root cause.
+
+### Root Cause Analysis
+The service worker upgrade from v7 → v8 could leave a window where the old SW serves stale cached JS while the new SW waits to activate. During this transition, old JS code that predates the storage.js migration may try to call APIs or access state in ways that silently fail. Additionally, button click handlers had no error trapping — if any handler threw (e.g., `state.cart` was unexpectedly not an array), the error was silently swallowed with no user feedback.
+
+### Fixes Applied
+
+**CardDetailView.js — Defensive button handlers with toast feedback:**
+- All 4 button handlers (`addToCart`, `addToPortfolio`, `toggleWatchlist`, `onOpenListing`) now wrapped in try-catch
+- Each handler validates its prop is a function before calling (`typeof updateCart !== 'function'`)
+- Each handler uses `Array.isArray()` guard on state arrays before calling `.find()` / `.some()` / `.filter()`
+- Success actions show toast feedback ("Added to cart", "Added to portfolio", etc.)
+- Failures show user-facing error toast with "try refreshing" guidance
+- All errors logged to console with `[investMTG]` prefix for debugging
+- Added `showToast` import from `shared/Toast.js`
+
+**CardDetailView.js — Diagnostic prop validation:**
+- Added `useEffect` on mount that logs a console warning if any handler prop is not a function
+- Logs the actual types received — helps diagnose if props are missing due to stale cached JS
+
+**sw.js — Bumped to v9 with client notification:**
+- Bumped `CACHE_NAME` to `investmtg-v9`
+- On activate, after claiming clients, sends `postMessage({ type: 'SW_UPDATED' })` to all open tabs
+- This triggers automatic page reload so users never run stale JS after an SW update
+
+**app.js — SW update auto-reload listener:**
+- Added `navigator.serviceWorker.addEventListener('message', ...)` that listens for `SW_UPDATED` messages
+- Automatically reloads the page when a new SW version activates
+- Eliminates the stale-cache window that caused the original bug
+
+### Files Modified
+- `components/CardDetailView.js` — try-catch handlers, toast feedback, prop diagnostics
+- `sw.js` — v9, client postMessage on activate
+- `app.js` — SW message listener for auto-reload
+
+### Prevention
+The SW auto-reload mechanism ensures that any future SW version bump will automatically refresh all open tabs, preventing stale-cache issues from ever reaching users again.
+
+---
+
 ## 2026-03-08: Centralized safe localStorage wrapper (storage.js) — SW v8
 
 ### Root Cause

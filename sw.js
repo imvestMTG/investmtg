@@ -1,6 +1,6 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v8';
+var CACHE_NAME = 'investmtg-v9';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
@@ -28,6 +28,13 @@ self.addEventListener('activate', function(event) {
       );
     }).then(function() {
       return self.clients.claim();
+    }).then(function() {
+      /* Notify all open tabs to reload for fresh JS */
+      return self.clients.matchAll({ type: 'window' }).then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+      });
     })
   );
 });

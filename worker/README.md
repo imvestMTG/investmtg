@@ -154,3 +154,4 @@ When the worker changes:
 - confirm route documentation still matches behavior
 - confirm no secret values appear in tracked files
 - confirm front-end docs still describe the worker as a separate deployment surface
+- confirm the frontend service worker version was bumped if any API response shapes changed (stale-cache prevention)

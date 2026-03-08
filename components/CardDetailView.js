@@ -4,6 +4,7 @@ import { backendGetCard, getCardPrintings } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
+import { showToast } from './shared/Toast.js';
 var h = React.createElement;
 
 var SCRYFALL_BASE = 'https://api.scryfall.com';
@@ -26,6 +27,18 @@ export function CardDetailView(props) {
   var printings = ref4[0], setPrintings = ref4[1];
   var ref5 = React.useState(false);
   var showAllPrintings = ref5[0], setShowAllPrintings = ref5[1];
+
+  /* ── Diagnostic: verify props on mount ── */
+  React.useEffect(function() {
+    if (typeof updateCart !== 'function' || typeof updatePortfolio !== 'function' || typeof updateWatchlist !== 'function') {
+      console.warn('[investMTG] CardDetailView missing handler props:', {
+        updateCart: typeof updateCart,
+        updatePortfolio: typeof updatePortfolio,
+        updateWatchlist: typeof updateWatchlist,
+        onOpenListing: typeof onOpenListing
+      });
+    }
+  }, []);
 
   React.useEffect(function() {
     if (!cardId) return;
@@ -80,43 +93,70 @@ export function CardDetailView(props) {
   }, [cardId]);
 
   function addToCart() {
-    if (!card) return;
-    var price = getCardPrice(card);
-    var existing = state.cart.find(function(item) { return item.id === card.id; });
-    if (existing) {
-      updateCart(state.cart.map(function(item) {
-        return item.id === card.id ? Object.assign({}, item, { qty: (item.qty || 1) + 1 }) : item;
-      }));
-    } else {
-      updateCart(state.cart.concat([{
-        id: card.id,
-        name: card.name,
-        set: card.set_name,
-        setCode: card.set,
-        price: price,
-        qty: 1,
-        image: getScryfallImageUrl(card, 'small'),
-        tcgplayerId: card.tcgplayer_id || null
-      }]));
+    try {
+      if (!card) return;
+      if (typeof updateCart !== 'function') { showToast('Error: cart handler unavailable. Try refreshing.', 'error'); return; }
+      var cart = Array.isArray(state.cart) ? state.cart : [];
+      var price = getCardPrice(card);
+      var existing = cart.find(function(item) { return item.id === card.id; });
+      if (existing) {
+        updateCart(cart.map(function(item) {
+          return item.id === card.id ? Object.assign({}, item, { qty: (item.qty || 1) + 1 }) : item;
+        }));
+      } else {
+        updateCart(cart.concat([{
+          id: card.id,
+          name: card.name,
+          set: card.set_name,
+          setCode: card.set,
+          price: price,
+          qty: 1,
+          image: getScryfallImageUrl(card, 'small'),
+          tcgplayerId: card.tcgplayer_id || null
+        }]));
+      }
+      showToast('Added to cart', 'success');
+    } catch (err) {
+      console.error('[investMTG] addToCart error:', err);
+      showToast('Failed to add to cart — try refreshing.', 'error');
     }
   }
 
   function addToPortfolio() {
-    if (!card) return;
-    var price = getCardPrice(card);
-    var existing = state.portfolio.find(function(item) { return item.id === card.id; });
-    if (!existing) {
-      updatePortfolio(state.portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+    try {
+      if (!card) return;
+      if (typeof updatePortfolio !== 'function') { showToast('Error: portfolio handler unavailable. Try refreshing.', 'error'); return; }
+      var portfolio = Array.isArray(state.portfolio) ? state.portfolio : [];
+      var price = getCardPrice(card);
+      var existing = portfolio.find(function(item) { return item.id === card.id; });
+      if (!existing) {
+        updatePortfolio(portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+        showToast('Added to portfolio', 'success');
+      } else {
+        showToast('Already in portfolio', 'default');
+      }
+    } catch (err) {
+      console.error('[investMTG] addToPortfolio error:', err);
+      showToast('Failed to track — try refreshing.', 'error');
     }
   }
 
   function toggleWatchlist() {
-    if (!card) return;
-    var inList = state.watchlist.some(function(item) { return item.id === card.id; });
-    if (inList) {
-      updateWatchlist(state.watchlist.filter(function(item) { return item.id !== card.id; }));
-    } else {
-      updateWatchlist(state.watchlist.concat([{ id: card.id, name: card.name, set: card.set_name }]));
+    try {
+      if (!card) return;
+      if (typeof updateWatchlist !== 'function') { showToast('Error: watchlist handler unavailable. Try refreshing.', 'error'); return; }
+      var watchlist = Array.isArray(state.watchlist) ? state.watchlist : [];
+      var inList = watchlist.some(function(item) { return item.id === card.id; });
+      if (inList) {
+        updateWatchlist(watchlist.filter(function(item) { return item.id !== card.id; }));
+        showToast('Removed from watchlist', 'default');
+      } else {
+        updateWatchlist(watchlist.concat([{ id: card.id, name: card.name, set: card.set_name }]));
+        showToast('Added to watchlist', 'success');
+      }
+    } catch (err) {
+      console.error('[investMTG] toggleWatchlist error:', err);
+      showToast('Failed to update watchlist — try refreshing.', 'error');
     }
   }
 
@@ -221,7 +261,15 @@ export function CardDetailView(props) {
           ),
           onOpenListing && h('button', {
             className: 'btn btn-secondary',
-            onClick: function() { onOpenListing(card); }
+            onClick: function() {
+              try {
+                if (typeof onOpenListing !== 'function') { showToast('Error: listing handler unavailable. Try refreshing.', 'error'); return; }
+                onOpenListing(card);
+              } catch (err) {
+                console.error('[investMTG] onOpenListing error:', err);
+                showToast('Failed to open listing form \u2014 try refreshing.', 'error');
+              }
+            }
           }, 'Create Guam Listing')
         ),
 

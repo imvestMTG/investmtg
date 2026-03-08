@@ -137,7 +137,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v8 (PWA offline support)
+├── sw.js                           # service worker v9 (PWA offline support + auto-reload)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md

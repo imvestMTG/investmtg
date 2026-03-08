@@ -47,12 +47,13 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v8`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v9`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
 - **Cross-origin requests** (backend Worker, Scryfall, etc.): skipped entirely — the service worker does not intercept them
 - On activation, all previous cache versions are purged
+- On activation, sends `postMessage({ type: 'SW_UPDATED' })` to all open tabs, which triggers an automatic page reload via a listener in `app.js`. This eliminates stale-cache bugs during SW version transitions.
 
 ### Coding rules
 These rules apply to all root-level `.js` files and must not be violated:
@@ -235,7 +236,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v8
+├── sw.js                           # service worker v9
 ├── manifest.json
 ├── 404.html
 ├── CNAME
@@ -260,7 +261,7 @@ No install step. No build step. The root SPA uses native ES modules and import m
 ### Static hosting constraints
 - routes work from hash fragments — no server-side routing needed
 - no browser storage assumptions for core data
-- service worker (`sw.js`) provides basic PWA offline support
+- service worker (`sw.js`) provides PWA offline support + auto-reload on version change
 
 ### Worker
 The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact.

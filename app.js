@@ -421,4 +421,12 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(function() {
     // Service worker registration failed — non-critical
   });
+
+  // Listen for SW update messages — auto-reload when new version activates
+  navigator.serviceWorker.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'SW_UPDATED') {
+      console.log('[investMTG] Service worker updated to ' + event.data.version + ', reloading...');
+      window.location.reload();
+    }
+  });
 }
