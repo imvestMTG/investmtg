@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-09: Fix selling cards not in stock (SW v37)
+
+- **CardDetailView.js** — Removed direct "Add to Cart" button that allowed any Scryfall card to be purchased without seller inventory. Replaced with "Find Sellers" button that navigates to the Guam Marketplace (#store). Cards can now only be purchased through community listings that have a real seller, condition, and price. Portfolio tracking and watchlist features remain unchanged.
+- **BuyLocalModal.js** — Restructured the Buy Local flow to require selecting a community listing before adding to cart. Previously added items using Scryfall reference price with no seller field. Now: (1) if no listings exist for the card, shows "No sellers" empty state with CTA to list the card; (2) if listings exist, user must select a specific listing (seller + condition + price) AND a pickup store before confirming. Cart items now include `seller`, `condition`, and listing price instead of Scryfall reference price.
+- **worker/worker.js** — Added server-side guard on `POST /api/orders`: rejects orders containing items without a `seller` field. Returns 400 with descriptive error naming the invalid items. This is a defense-in-depth measure — the frontend now prevents adding seller-less items, but the backend validates independently.
+- SW bumped to v37.
+
+---
+
 ## 2026-03-09: Fix SumUp checkout + guest orders (SW v36)
 
 - **worker/worker.js** — Fixed critical SumUp checkout validation error. Root cause: merchant code was `M55T01IN` (letter I) but the actual SumUp merchant code is `M55T011N` (digit 1). Also fixed D1 schema mismatch: all order SQL queries referenced `user_id` column but D1 `orders` table uses `user_email`. Fixed all order handlers (GET list, GET /:id, POST create, payment-status) to use `user_email`. Enabled guest checkout: removed hard auth requirement from `/api/orders` POST and `/api/sumup/checkout`. Guest orders use `contact_email` as `user_email`. Improved SumUp error handling to parse both array and object error formats from SumUp API. Removed deprecated `pay_to_email` field from checkout body (using `merchant_code` only per SumUp recommendation). Amount is now rounded to 2 decimal places before sending to SumUp.

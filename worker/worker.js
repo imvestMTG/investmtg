@@ -1143,6 +1143,13 @@ async function handleOrders(request, env, orderId) {
       return json({ error: 'subtotal and total required' }, 400, request);
     }
 
+    // v37: Reject items without a seller — prevents purchasing cards not in stock
+    const invalidItems = body.items.filter(item => !item.seller || !item.seller.trim());
+    if (invalidItems.length > 0) {
+      const names = invalidItems.map(item => item.name || 'Unknown').join(', ');
+      return json({ error: 'Items must come from a seller listing: ' + names }, 400, request);
+    }
+
     // Ensure orders table exists
     await env.DB.prepare(
       `CREATE TABLE IF NOT EXISTS orders (

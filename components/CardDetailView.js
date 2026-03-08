@@ -3,7 +3,7 @@ import React from 'react';
 import { backendGetCard, getCardPrintings } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
-import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
+import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
 var h = React.createElement;
 
@@ -92,34 +92,8 @@ export function CardDetailView(props) {
     });
   }, [cardId]);
 
-  function addToCart() {
-    try {
-      if (!card) return;
-      if (typeof updateCart !== 'function') { showToast('Error: cart handler unavailable. Try refreshing.', 'error'); return; }
-      var cart = Array.isArray(state.cart) ? state.cart : [];
-      var price = getCardPrice(card);
-      var existing = cart.find(function(item) { return item.id === card.id; });
-      if (existing) {
-        updateCart(cart.map(function(item) {
-          return item.id === card.id ? Object.assign({}, item, { qty: (item.qty || 1) + 1 }) : item;
-        }));
-      } else {
-        updateCart(cart.concat([{
-          id: card.id,
-          name: card.name,
-          set: card.set_name,
-          setCode: card.set,
-          price: price,
-          qty: 1,
-          image: getScryfallImageUrl(card, 'small'),
-          tcgplayerId: card.tcgplayer_id || null
-        }]));
-      }
-      showToast('Added to cart', 'success');
-    } catch (err) {
-      console.error('[investMTG] addToCart error:', err);
-      showToast('Failed to add to cart — try refreshing.', 'error');
-    }
+  function goToMarketplace() {
+    window.location.hash = 'store';
   }
 
   function addToPortfolio() {
@@ -247,8 +221,8 @@ export function CardDetailView(props) {
         ),
 
         h('div', { className: 'card-actions' },
-          h('button', { className: 'btn btn-primary', onClick: addToCart },
-            h(CartIcon, null), ' Add to Cart'
+          h('button', { className: 'btn btn-primary', onClick: goToMarketplace },
+            h(ShoppingCartIcon, null), ' Find Sellers'
           ),
           h('button', { className: 'btn btn-secondary', onClick: addToPortfolio },
             h(PortfolioIcon, null), ' Track'

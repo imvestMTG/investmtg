@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v37** — Fix selling cards not in stock: removed CardDetailView direct Add to Cart (now Find Sellers → marketplace), BuyLocalModal requires selecting a real listing with seller, worker rejects orders without seller field |
 | 2026-03-09 | **v36** — Fix SumUp checkout: corrected merchant code typo (M55T01IN → M55T011N), fixed D1 schema mismatch (user_id → user_email in all order queries), enabled guest checkout, improved SumUp error handling, removed deprecated pay_to_email |
 | 2026-03-09 | **v35** — Restore cart to pre-v30 structure: reverted CartView.js and cart CSS to v29 layout (vertical condition cards, seller groups, sticky order summary) while retaining v32 trust badges, savings badges, and package count |
 | 2026-03-09 | **v34** — Fix listing modal condition pricing: fetchConditionPrices now uses tcgplayerId (native JustTCG key) instead of scryfallId, enabling real-time condition-specific price updates in the listing form |
