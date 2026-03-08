@@ -28,4 +28,4 @@ export var RESERVE_PROCESSING_DELAY = 1500; // ms
 export var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
 
 // Proxy
-export var PROXY_BASE = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+export var PROXY_BASE = 'https://api.investmtg.com';

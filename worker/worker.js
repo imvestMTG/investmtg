@@ -42,9 +42,13 @@
  *   /?target=             — Generic CORS proxy (existing)
  */
 
+/* OAuth redirect uses the custom domain so Google consent screen shows investmtg.com */
+const OAUTH_REDIRECT_URI = 'https://api.investmtg.com/auth/callback';
+
 const ALLOWED_ORIGINS = [
   'https://www.investmtg.com',
   'https://investmtg.com',
+  'https://api.investmtg.com',
   'https://imvestmtg.github.io',
   'http://localhost:3000',
   'http://localhost:5500',
@@ -455,11 +459,10 @@ async function handleGoogleAuth(request, env) {
   }
 
   const url = new URL(request.url);
-  const redirectUri = `${url.origin}/auth/callback`;
   const state = await createOAuthState(env);
   const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   googleUrl.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
-  googleUrl.searchParams.set('redirect_uri', redirectUri);
+  googleUrl.searchParams.set('redirect_uri', OAUTH_REDIRECT_URI);
   googleUrl.searchParams.set('response_type', 'code');
   googleUrl.searchParams.set('scope', 'openid email profile');
   googleUrl.searchParams.set('access_type', 'offline');
@@ -481,7 +484,6 @@ async function handleAuthCallback(request, env) {
   if (!code) return json({ error: 'Missing code' }, 400, request);
   if (!(await verifyOAuthState(env, state))) return json({ error: 'Invalid state' }, 400, request);
 
-  const redirectUri = `${url.origin}/auth/callback`;
   const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -489,7 +491,7 @@ async function handleAuthCallback(request, env) {
       code,
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: redirectUri,
+      redirect_uri: OAUTH_REDIRECT_URI,
       grant_type: 'authorization_code',
     }).toString(),
   });

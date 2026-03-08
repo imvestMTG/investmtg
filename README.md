@@ -10,7 +10,7 @@ investMTG is a Guam-first Magic: The Gathering marketplace and pricing experienc
 
 The live site at www.investmtg.com is served from the **root-level SPA** — a vanilla JavaScript application using React 18.3.1 via import maps with self-hosted vendor bundles. There is no build step. The repository root is published directly to GitHub Pages.
 
-All API data flows through the Cloudflare Worker v3 backend at `https://investmtg-proxy.bloodshutdawn.workers.dev`.
+All API data flows through the Cloudflare Worker v3 backend at `https://api.investmtg.com` (custom domain; legacy URL `https://investmtg-proxy.bloodshutdawn.workers.dev` still active).
 
 ### Front end
 The root-level SPA (`app.js`, `components/`, `utils/`) is the production frontend.
@@ -37,7 +37,7 @@ Key characteristics:
 - Cloudflare Worker API gateway and proxy
 - Cloudflare D1 database for server-side data (users, auth sessions, portfolios, listings, sellers, stores, events, cart, orders, order counters)
 - Cloudflare KV cache for market and discovery responses (ticker, featured, trending, budget, movers)
-- Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1
+- Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1; OAuth redirect uses `api.investmtg.com` custom domain so Google consent screen shows `investmtg.com`
 - Encrypted secrets for protected third-party APIs and auth credentials
 - Bearer token auth via localStorage (cross-site cookie fallback)
 - Anonymous session cookie support for server-side user state

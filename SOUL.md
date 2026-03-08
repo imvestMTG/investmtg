@@ -82,12 +82,12 @@ Coding rules (must be followed in all root-level JS files):
 Key characteristics:
 - hash-based routing
 - static-hosting friendly (no server-side rendering)
-- all API data flows through the Worker v3 backend
-- Google OAuth 2.0 for persistent user accounts (sellers and buyers)
+- all API data flows through the Worker v3 backend at `api.investmtg.com`
+- Google OAuth 2.0 for persistent user accounts (sellers and buyers); OAuth redirect uses the custom domain so Google consent screen shows `investmtg.com`
 - `frontend-v2/` exists in the repository as an experimental TypeScript/Vite rewrite but is **not deployed** and is not the production source of truth
 
 ### Worker
-The Cloudflare Worker (v3) remains a separate gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture plus Google OAuth authentication.
+The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom domain) with the legacy `.workers.dev` URL still active. It serves as the gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture plus Google OAuth authentication.
 
 ## Data sources
 
@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | Custom domain `api.investmtg.com` for worker (Cloudflare custom domain route), OAuth redirect hardcoded to custom domain so Google consent screen shows `investmtg.com` instead of `bloodshutdawn.workers.dev`, PROXY_BASE updated in frontend config; SW v18 |
 | 2026-03-08 | Cart condition selector UX overhaul: two-tier cart item layout with full-width condition section, animated "Select a condition" prompt with warning icon, red border on items missing condition, checkout button gated until all conditions chosen, scroll-to-first-missing on disabled click; SW v17 |
 | 2026-03-08 | SumUp payment processor restored: Card Widget integration with lazy SDK loading, Pay Online + Reserve & Pay at Pickup dual payment methods, `POST /api/sumup/checkout` worker endpoint, admin bypass layer on worker `getAuthUser()` via `ADMIN_TOKEN` secret for testing, removed all Guam GRT tax references site-wide (config, CartView, CheckoutView, OrderConfirmation, TermsView); SW v16 |
 | 2026-03-08 | Order workflow overhaul: 4-step checkout wizard with confirmation modal, reserve & pay at pickup, server-generated `GUM-YYYYMM-XXXXX` order IDs, D1 order persistence, My Orders page (`#orders`), Order Confirmation server-first loading, removed dead SumUp code; SW v15 |

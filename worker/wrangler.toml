@@ -2,6 +2,13 @@ name = "investmtg-proxy"
 main = "worker.js"
 compatibility_date = "2025-03-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Custom domain — worker accessible at api.investmtg.com
+# (also still available at investmtg-proxy.bloodshutdawn.workers.dev)
+routes = [
+  { pattern = "api.investmtg.com", custom_domain = true }
+]
 
 [observability]
 enabled = true

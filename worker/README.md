@@ -67,8 +67,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 ### Auth routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/auth/google` | GET | Start Google OAuth flow (redirect to Google consent screen) |
-| `/auth/callback` | GET | Google OAuth callback — exchange code for tokens, create/update user, redirect with `?auth_token=` (Bearer token via localStorage; cookie fallback) |
+| `/auth/google` | GET | Start Google OAuth flow (redirect to Google consent screen). Uses hardcoded `OAUTH_REDIRECT_URI` (`https://api.investmtg.com/auth/callback`) so consent screen shows `investmtg.com` branding. |
+| `/auth/callback` | GET | Google OAuth callback — exchange code for tokens, create/update user, redirect with `?auth_token=` (Bearer token via localStorage; cookie fallback). Redirect URI must match the one registered in Google Cloud Console. |
 | `/auth/me` | GET | Return current authenticated user via Bearer token or cookie (or `{ authenticated: false }`) |
 | `/auth/logout` | DELETE | Destroy auth session, clear cookie |
 
@@ -158,9 +158,10 @@ npx wrangler secret list
 | `schema.sql` | D1 database schema |
 | `seed.sql` | Guam store and event seed data |
 
-## Live URL
+## Live URLs
 
-`https://investmtg-proxy.bloodshutdawn.workers.dev`
+- **Primary (custom domain):** `https://api.investmtg.com`
+- **Legacy:** `https://investmtg-proxy.bloodshutdawn.workers.dev`
 
 ## Release checklist
 

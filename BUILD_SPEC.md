@@ -47,7 +47,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v17`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v18`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -137,7 +137,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 The Worker remains separate from the front-end deployment and handles API gateway behavior, protected integrations, and server-side persistence.
 
 ### Backend URL
-`https://investmtg-proxy.bloodshutdawn.workers.dev`
+`https://api.investmtg.com` (custom domain; legacy `https://investmtg-proxy.bloodshutdawn.workers.dev` still active)
 
 ### Backend services
 | Service | Resource | Purpose |

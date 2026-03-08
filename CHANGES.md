@@ -1,5 +1,22 @@
 # investMTG — Changelog
 
+## 2026-03-09: Custom domain & OAuth branding fix — SW v18
+
+### Custom API Domain
+
+- **Worker custom domain** — Added `api.investmtg.com` as a Cloudflare custom domain route for the `investmtg-proxy` worker. The worker is now accessible at both `https://api.investmtg.com` and the legacy `https://investmtg-proxy.bloodshutdawn.workers.dev` URL.
+- **wrangler.toml** — Added `routes` with `custom_domain = true` for `api.investmtg.com`; added `workers_dev = true` to keep legacy URL active during transition.
+- **PROXY_BASE updated** — `utils/config.js` now points to `https://api.investmtg.com` instead of the `.workers.dev` URL.
+
+### OAuth Consent Screen Branding
+
+- **Problem** — Google OAuth consent screen displayed "You're signing back in to bloodshutdawn.workers.dev" because the `redirect_uri` was built from `url.origin` (the worker's `.workers.dev` URL).
+- **Fix** — Replaced dynamic `${url.origin}/auth/callback` with a hardcoded constant `OAUTH_REDIRECT_URI = 'https://api.investmtg.com/auth/callback'` used in both `handleGoogleAuth()` and `handleAuthCallback()`. Google consent screen will now show `investmtg.com`.
+- **ALLOWED_ORIGINS** — Added `https://api.investmtg.com` to the worker's allowed origins list.
+- **Google Cloud Console** — User must update OAuth credentials: add `https://api.investmtg.com/auth/callback` as an authorized redirect URI, add `api.investmtg.com` as an authorized JavaScript origin, and add `investmtg.com` as an authorized domain.
+
+---
+
 ## 2026-03-08: Cart condition selector UX overhaul — SW v17
 
 ### Condition Selector Redesign
