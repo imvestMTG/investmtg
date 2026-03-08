@@ -1,5 +1,19 @@
 # investMTG — Changelog
 
+## 2026-03-09: 5th card condition — Damaged (DMG) (SW v25)
+
+- Added **Damaged (DMG)** as the 5th supported card condition across the entire platform.
+- **ListingModal**: Condition dropdown now includes Damaged (DMG) with real-time JustTCG pricing.
+- **SellerDashboard**: CONDITIONS array updated, condition label map includes DMG, step-based wizard shows Damaged option.
+- **CSV/Manabox bulk import**: Now recognizes "DMG" and "DAMAGED" in the condition column (previously mapped Damaged to HP).
+- **api.js `fetchConditionPrices()`**: JustTCG query now includes DMG; response mapping handles the "Damaged" condition name.
+- **CartView**: Already supported DMG (ConditionChip color, sort order, abbreviation mapping) — no changes needed.
+- **PricingView**: Updated conditions list to include Damaged (DMG).
+- **CSS**: Added `.cond-dmg` badge style (red, `#ef4444`).
+- SW bumped to v25.
+
+---
+
 ## 2026-03-09: Site-wide pricing transparency (SW v24)
 
 - **New page: Pricing & Data Sources** (`#pricing`) — A full methodology page explaining every data source, update frequency, data flow, and limitation. Covers Scryfall (card data & reference prices), JustTCG (condition-specific pricing), TCGplayer (underlying market data), tournament/meta sources (EDH Top 16, TopDeck.gg, Moxfield), and the Cloudflare Worker pipeline. Includes a "What We Don’t Do" section linked to SOUL.md’s Data Integrity Policy.

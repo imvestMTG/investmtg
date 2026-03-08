@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v25** — Added Damaged (DMG) as 5th card condition across all listing, cart, seller, and pricing flows. JustTCG API query includes DMG. CSV import maps "DAMAGED" to DMG (was HP). CSS badge added. |
 | 2026-03-09 | **v24** — Site-wide pricing transparency: added PricingView.js (`#pricing`) with full methodology page, inline "How we source prices" links on CardDetailView and MarketMoversView, Footer "Pricing & Sources" link, new SOUL.md product principle (Rule 4: Pricing transparency is non-negotiable), rules renumbered 4–9 |
 | 2026-03-09 | **v19** — Fixed CSP `connect-src` (root cause of sign-in failure), auth.js race condition fix, centralized 4 stale `.workers.dev` URLs to `config.js`, removed debug artifacts. Added SOUL.md Rules 6–8: pre-push QA checklist, security posture, QC audit triggers — all derived from real failures in v14–v19; **v18** — Custom domain `api.investmtg.com` for worker, OAuth redirect hardcoded to custom domain, PROXY_BASE updated in frontend config |
 | 2026-03-08 | Cart condition selector UX overhaul: two-tier cart item layout with full-width condition section, animated "Select a condition" prompt with warning icon, red border on items missing condition, checkout button gated until all conditions chosen, scroll-to-first-missing on disabled click; SW v17 |

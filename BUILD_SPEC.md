@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v24`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v25`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -106,7 +106,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/PricingView.js` | `#pricing` | Pricing & Data Sources methodology page — explains all data sources (Scryfall, JustTCG, TCGplayer), update frequencies, data flow pipeline, limitations, and links to SOUL.md Data Integrity Policy |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
 | `components/Ticker.js` | persistent | Live price ticker via `/api/ticker` |
-| `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. On open, fetches all condition prices from JustTCG API via `fetchConditionPrices()`. Condition dropdown change auto-populates the real-time market price for that condition. Price remains editable; "Reset to market price" link restores JustTCG price. |
+| `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. On open, fetches all 5 condition prices (NM/LP/MP/HP/DMG) from JustTCG API via `fetchConditionPrices()`. Condition dropdown change auto-populates the real-time market price for that condition. Price remains editable; "Reset to market price" link restores JustTCG price. |
 | `components/BuyLocalModal.js` | modal overlay | Buy-local modal from Store view |
 
 ### Shared components

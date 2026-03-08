@@ -10,7 +10,7 @@ import { fetchSeller, registerSeller, createListing, deleteListing, fetchListing
 import { storageGet } from '../utils/storage.js';
 var h = React.createElement;
 
-var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
+var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
 var LISTING_TYPES = ['sale', 'trade'];
 
 // Scryfall autocomplete — debounced fetch
@@ -597,7 +597,7 @@ function ListingForm(props) {
             onChange: function(e) { update('condition', e.target.value); }
           },
             CONDITIONS.map(function(c) {
-              return h('option', { key: c, value: c }, c + ' \u2014 ' + ({ NM: 'Near Mint', LP: 'Light Play', MP: 'Moderate Play', HP: 'Heavy Play' }[c] || c));
+              return h('option', { key: c, value: c }, c + ' \u2014 ' + ({ NM: 'Near Mint', LP: 'Light Play', MP: 'Moderate Play', HP: 'Heavy Play', DMG: 'Damaged' }[c] || c));
             })
           )
         ),
@@ -718,7 +718,7 @@ function parseManaboxCSV(csvText) {
     var condition = 'NM';
     if (condIdx !== -1 && cols[condIdx]) {
       var rawCond = cols[condIdx].trim().toUpperCase();
-      if (['NM', 'LP', 'MP', 'HP'].indexOf(rawCond) !== -1) {
+      if (['NM', 'LP', 'MP', 'HP', 'DMG'].indexOf(rawCond) !== -1) {
         condition = rawCond;
       } else if (rawCond === 'NEAR MINT' || rawCond === 'MINT') {
         condition = 'NM';
@@ -726,8 +726,10 @@ function parseManaboxCSV(csvText) {
         condition = 'LP';
       } else if (rawCond === 'MODERATELY PLAYED' || rawCond === 'MODERATE PLAY') {
         condition = 'MP';
-      } else if (rawCond === 'HEAVILY PLAYED' || rawCond === 'HEAVY PLAY' || rawCond === 'DAMAGED') {
+      } else if (rawCond === 'HEAVILY PLAYED' || rawCond === 'HEAVY PLAY') {
         condition = 'HP';
+      } else if (rawCond === 'DAMAGED') {
+        condition = 'DMG';
       }
     }
 

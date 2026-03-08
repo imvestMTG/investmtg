@@ -372,7 +372,7 @@ export function clearCartAPI() {
 
 /**
  * Fetch real-time condition-specific prices from JustTCG via the proxy.
- * Returns a map: { NM: 918.31, LP: 796.27, MP: 724.39, HP: 631.95 }
+ * Returns a map: { NM: 918.31, LP: 796.27, MP: 724.39, HP: 631.95, DMG: 450.00 }
  * or {} if the card isn't found or the API errors.
  *
  * @param {string} scryfallId — Scryfall UUID (e.g. "1f35877c-e66c-...")
@@ -381,7 +381,7 @@ export function fetchConditionPrices(scryfallId) {
   if (!scryfallId) return Promise.resolve({});
   var qs = '?path=/v1/cards'
     + '&scryfallId=' + encodeURIComponent(scryfallId)
-    + '&condition=NM,LP,MP,HP'
+    + '&condition=NM,LP,MP,HP,DMG'
     + '&include_price_history=false'
     + '&include_statistics=';
   return fetch(PROXY_BASE + '/justtcg' + qs)
@@ -397,10 +397,11 @@ export function fetchConditionPrices(scryfallId) {
       variants.forEach(function(v) {
         if (typeof v.price !== 'number') return;
         /* Map JustTCG condition names to our short codes */
-        if (v.condition === 'Near Mint')          prices.NM = v.price;
-        else if (v.condition === 'Lightly Played')  prices.LP = v.price;
+        if (v.condition === 'Near Mint')            prices.NM  = v.price;
+        else if (v.condition === 'Lightly Played')  prices.LP  = v.price;
         else if (v.condition === 'Moderately Played') prices.MP = v.price;
-        else if (v.condition === 'Heavily Played')  prices.HP = v.price;
+        else if (v.condition === 'Heavily Played')  prices.HP  = v.price;
+        else if (v.condition === 'Damaged')          prices.DMG = v.price;
       });
       return prices;
     })

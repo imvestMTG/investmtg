@@ -339,7 +339,8 @@ export function ListingModal(props) {
               h('option', { value: 'NM' }, 'Near Mint (NM)'),
               h('option', { value: 'LP' }, 'Lightly Played (LP)'),
               h('option', { value: 'MP' }, 'Moderately Played (MP)'),
-              h('option', { value: 'HP' }, 'Heavily Played (HP)')
+              h('option', { value: 'HP' }, 'Heavily Played (HP)'),
+              h('option', { value: 'DMG' }, 'Damaged (DMG)')
             )
           ),
           h('div', { className: 'mp-form-row' },

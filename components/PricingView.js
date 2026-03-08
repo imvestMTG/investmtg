@@ -74,7 +74,7 @@ export function PricingView() {
         ),
         h('li', null, 'What the price represents: The lowest available listing price on TCGplayer for each condition and printing'),
         h('li', null, 'Update frequency: JustTCG syncs prices approximately every 6 hours'),
-        h('li', null, 'Conditions supported: Near Mint (NM), Lightly Played (LP), Moderately Played (MP), Heavily Played (HP)'),
+        h('li', null, 'Conditions supported: Near Mint (NM), Lightly Played (LP), Moderately Played (MP), Heavily Played (HP), Damaged (DMG)'),
         h('li', null, h('strong', null, 'Important: '), 'Suggested prices are not binding. You are always free to set any asking price you choose. These are market reference values to help you price competitively.')
       )
     ),
