@@ -1,5 +1,49 @@
 # investMTG — Changelog
 
+## 2026-03-08: Seller registration fix + ListingModal CSS — SW v10
+
+### Issues Reported
+1. **"Create Guam Listing" button did nothing** — clicking the button on card detail pages produced no visible result. The ListingModal component rendered into the DOM but was completely invisible because no CSS existed for its `mp-modal-overlay`, `mp-modal`, `mp-form-row`, etc. class names.
+2. **Seller registration failed** — clicking "Create Seller Account" on the Sell page returned "Registration failed. Please try again." The root cause was a D1 database constraint violation: the `sellers` table has `session_token TEXT UNIQUE NOT NULL`, but the worker's POST /api/sellers handler was binding `null` for `session_token` when the user is authenticated via Google OAuth (auth-based flow doesn't use anonymous session tokens).
+
+### Fixes Applied
+
+**style.css — ListingModal CSS (entirely missing):**
+- Added `.mp-modal-overlay` — fixed fullscreen overlay, z-index 10000, backdrop blur, opacity transition
+- Added `.mp-modal-overlay.open` — visible state with pointer-events
+- Added `.mp-modal` — centered card with max-width 520px, scroll overflow, slide-up animation
+- Added `.mp-modal-header` — flex header with title + close button
+- Added `.mp-modal-close` — icon button with hover state
+- Added `.mp-listing-form` — form padding
+- Added `.mp-form-row` — label + input styling with focus state
+- Added `.mp-form-grid-2` — 2-column grid for condition/price and seller/contact
+- Added `.mp-radio-group` / `.mp-radio-label` — radio button layout
+- Added responsive breakpoint at 480px — single-column on mobile
+
+**components/ListingModal.js — Coding rules compliance:**
+- Replaced destructured props `{ isOpen, onClose, onSubmit, prefillCardName }` with `props.*` pattern
+
+**worker/worker.js — Seller registration constraint fix:**
+- Changed `session_token` binding from `null` to `'auth_' + auth.userId` — satisfies NOT NULL + UNIQUE constraints
+- Added seller object fetch after INSERT — POST response now returns `{ success: true, seller: {...} }` so frontend can hydrate the dashboard immediately
+- Worker redeployed via Cloudflare API
+
+**sw.js — Bumped to v10:**
+- Forces cache bust for style.css (CSS is cache-first in SW)
+- Triggers auto-reload via postMessage to pick up new modal styles
+
+### Files Modified
+- `style.css` — ListingModal CSS classes
+- `components/ListingModal.js` — props destructuring fix
+- `worker/worker.js` — seller registration NOT NULL fix + seller response
+- `sw.js` — v10 cache bump
+
+### Commits
+- `d39e6af` — fix: add ListingModal CSS + fix destructuring
+- `6493d1a` — fix: seller registration NOT NULL constraint on session_token
+
+---
+
 ## 2026-03-08: Card detail button hardening & SW auto-reload — SW v9
 
 ### Issue Reported

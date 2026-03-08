@@ -50,7 +50,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/movers/:cat` | GET | market movers by category |
 | `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
 | `/api/listings` | GET/POST/PUT/DELETE | marketplace listings |
-| `/api/sellers` | GET/POST | seller profiles |
+| `/api/sellers` | GET/POST | seller profiles (POST requires auth; returns `{ seller }` on success) |
 | `/api/stores` | GET | verified Guam stores |
 | `/api/events` | GET | community events |
 | `/api/cart` | GET/POST/DELETE | shopping cart |
@@ -79,7 +79,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `prices`
 - `portfolios` — has `user_id` FK to users
 - `listings` — has `user_id` FK to users
-- `sellers` — has `user_id` FK to users
+- `sellers` — has `user_id` FK to users. Note: `session_token` column has NOT NULL + UNIQUE constraint; auth-based registrations use `'auth_<userId>'` as placeholder.
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users

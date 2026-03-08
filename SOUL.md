@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Seller registration fix + ListingModal CSS: fixed D1 NOT NULL constraint on session_token for auth-based seller registration; added all missing mp-modal CSS for ListingModal; SW v10 |
 | 2026-03-08 | Card detail button hardening & SW auto-reload: try-catch + toast feedback on all button handlers, SW v9 with postMessage auto-reload to eliminate stale-cache bugs |
 | 2026-03-08 | Centralized safe localStorage wrapper (`utils/storage.js`): prevents JSON.parse crashes from corrupted values, migrated all 10 files to use it, SW v8 |
 | 2026-03-08 | Full site debug: Bearer token auth (cookie-based failed in modern browsers), Featured card pricing fix (physical-only fallback), SW v7 |
