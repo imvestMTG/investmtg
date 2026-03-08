@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-09: Fix listing modal condition pricing (SW v34)
+
+- **utils/api.js** — `fetchConditionPrices()` now accepts `{ tcgplayerId, scryfallId }` object and prefers `tcgplayerId` (the native JustTCG key) over `scryfallId`. This was the root cause: JustTCG’s API resolves cards by TCGplayer ID, not Scryfall UUID, so condition-specific prices were never returned.
+- **ListingModal.js** — Now extracts `tcgplayer_id` from the card object and passes it to `fetchConditionPrices`. Condition dropdown now correctly updates the price field with real-time JustTCG market prices per condition (NM/LP/MP/HP/DMG).
+- SW bumped to v34.
+
+---
+
 ## 2026-03-09: D1 schema migration + order payment status (SW v33)
 
 - **worker/worker.js** — Added `payment_status`, `checkout_id`, `sumup_txn_id` columns to orders table (CREATE TABLE + ALTER TABLE migration for existing tables). Checkout creation now stores `checkout_id` on the order and sets `payment_status: 'pending'`. New route: `GET /api/orders/:id/payment-status` polls SumUp API for real-time checkout status, maps PAID/FAILED/PENDING/EXPIRED to internal statuses, and updates D1 on change. Webhook handler now writes to the migrated columns.

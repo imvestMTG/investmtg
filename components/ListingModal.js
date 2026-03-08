@@ -39,6 +39,7 @@ export function ListingModal(props) {
       nmPrice: nmPrice,
       price: nmPrice > 0 ? nmPrice.toFixed(2) : '',
       cardId: prefillCard.id || null,
+      tcgplayerId: prefillCard.tcgplayer_id || null,
       setCode: prefillCard.set || '',
       image: getScryfallImageUrl(prefillCard, 'small') || '',
       imageNormal: getScryfallImageUrl(prefillCard, 'normal') || ''
@@ -86,9 +87,9 @@ export function ListingModal(props) {
 
   /* Fetch all condition prices from JustTCG when modal opens with card data */
   React.useEffect(function() {
-    if (!cardData || !cardData.cardId) return;
+    if (!cardData || (!cardData.tcgplayerId && !cardData.cardId)) return;
     setPricesLoading(true);
-    fetchConditionPrices(cardData.cardId).then(function(prices) {
+    fetchConditionPrices({ tcgplayerId: cardData.tcgplayerId, scryfallId: cardData.cardId }).then(function(prices) {
       setConditionPrices(prices);
       /* If NM price came back from JustTCG and user hasn't edited, use it */
       if (prices.NM && !priceManuallyEdited) {

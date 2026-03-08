@@ -375,12 +375,19 @@ export function clearCartAPI() {
  * Returns a map: { NM: 918.31, LP: 796.27, MP: 724.39, HP: 631.95, DMG: 450.00 }
  * or {} if the card isn't found or the API errors.
  *
- * @param {string} scryfallId — Scryfall UUID (e.g. "1f35877c-e66c-...")
+ * Prefers tcgplayerId (TCGplayer numeric ID) which is the native JustTCG key.
+ * Falls back to scryfallId if tcgplayerId is not available.
+ *
+ * @param {object} ids — { tcgplayerId, scryfallId }
  */
-export function fetchConditionPrices(scryfallId) {
-  if (!scryfallId) return Promise.resolve({});
+export function fetchConditionPrices(ids) {
+  var tcgId = ids && ids.tcgplayerId;
+  var sfId  = ids && ids.scryfallId;
+  /* Legacy: if a bare string is passed, treat it as scryfallId */
+  if (typeof ids === 'string') { sfId = ids; tcgId = null; }
+  if (!tcgId && !sfId) return Promise.resolve({});
   var qs = '?path=/v1/cards'
-    + '&scryfallId=' + encodeURIComponent(scryfallId)
+    + (tcgId ? '&tcgplayerId=' + encodeURIComponent(tcgId) : '&scryfallId=' + encodeURIComponent(sfId))
     + '&condition=NM,LP,MP,HP,DMG'
     + '&include_price_history=false'
     + '&include_statistics=';

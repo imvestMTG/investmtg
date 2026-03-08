@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v34** — Fix listing modal condition pricing: fetchConditionPrices now uses tcgplayerId (native JustTCG key) instead of scryfallId, enabling real-time condition-specific price updates in the listing form |
 | 2026-03-09 | **v33** — D1 schema migration (payment_status, checkout_id, sumup_txn_id on orders), payment status polling route, OrderConfirmation real-time status updates, status badge color variants |
 | 2026-03-09 | **v32** — Cart enhancements: condition price savings badges, trust indicators, package count, SumUp widget dark theme + email/amount display, webhook handler, redirect_url for 3DS |
 | 2026-03-09 | **v31** — Service worker cache strategy fix: changed CSS from cache-first to network-first, preventing stale style.css from being served after deployments. Cloudflare zone cache purged. |

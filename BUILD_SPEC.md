@@ -129,7 +129,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 
 | File | Purpose |
 |------|---------|
-| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices(scryfallId)` for JustTCG condition pricing, and 20+ backend proxy functions for all API endpoints |
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), and 20+ backend proxy functions for all API endpoints |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
