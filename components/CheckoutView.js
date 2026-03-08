@@ -6,6 +6,7 @@ import { CreditCardIcon, TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from
 import { SUMUP_PUBLIC_KEY, GUAM_GRT_RATE, SHIPPING_FLAT_RATE, RESERVE_PROCESSING_DELAY } from '../utils/config.js';
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
+import { storageGet, storageSet } from '../utils/storage.js';
 var h = React.createElement;
 
 // merchant code moved server-side to Cloudflare Worker
@@ -171,10 +172,10 @@ export function CheckoutView(props) {
       date: new Date().toISOString(),
       paymentMethod: paymentMethod
     };
-    var raw = localStorage.getItem('investmtg-orders');
-    var orders = (raw && raw !== 'undefined' && raw !== 'null') ? (function() { try { return JSON.parse(raw); } catch(e) { return []; } })() : [];
+    var orders = storageGet('investmtg-orders', []);
+    if (!Array.isArray(orders)) orders = [];
     orders.unshift(order);
-    localStorage.setItem('investmtg-orders', JSON.stringify(orders));
+    storageSet('investmtg-orders', orders);
     updateCart([]);
     setPaymentProcessing(false);
     setCompletedOrder(order);

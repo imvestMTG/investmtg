@@ -1,19 +1,20 @@
 /* CookieNotice.js — Minimal cookie notice for third-party services */
 import React from 'react';
+import { storageGetRaw, storageSetRaw } from '../utils/storage.js';
 var h = React.createElement;
 
 var COOKIE_KEY = 'investmtg-cookie-ok';
 
 export function CookieNotice() {
   var ref = React.useState(function() {
-    return localStorage.getItem(COOKIE_KEY) === '1';
+    return storageGetRaw(COOKIE_KEY, '') === '1';
   });
   var dismissed = ref[0], setDismissed = ref[1];
 
   if (dismissed) return null;
 
   function handleDismiss() {
-    localStorage.setItem(COOKIE_KEY, '1');
+    storageSetRaw(COOKIE_KEY, '1');
     setDismissed(true);
   }
 

@@ -1,5 +1,48 @@
 # investMTG — Changelog
 
+## 2026-03-08: Centralized safe localStorage wrapper (storage.js) — SW v8
+
+### Root Cause
+Corrupted localStorage values (the string `"undefined"` stored in `investmtg-cart`) caused `JSON.parse("undefined")` to throw, crashing the app before React could mount. The global error handler in `index.html` displayed the "investMTG failed to load" screen.
+
+### Fix: Centralized Storage Wrapper
+Created `utils/storage.js` — a safe localStorage abstraction that every file must use instead of raw `localStorage.getItem` / `JSON.parse` / `JSON.stringify` / `localStorage.setItem`.
+
+The wrapper guards against:
+- corrupted values (the strings `"undefined"`, `"null"`, empty strings, invalid JSON)
+- localStorage being unavailable (private browsing, storage full)
+- `JSON.stringify(undefined)` silently producing `undefined`
+- any `JSON.parse` throw — catches and returns a fallback, then removes the corrupted key
+
+Four exported functions:
+- `storageGet(key, fallback)` — read + JSON.parse with safe fallback
+- `storageSet(key, value)` — JSON.stringify + write; refuses to write undefined/null
+- `storageGetRaw(key, fallback)` — read a plain string
+- `storageSetRaw(key, value)` — write a plain string
+- `storageRemove(key)` — remove a key
+
+### Migration
+Every file that previously used raw `localStorage` or inline `safeParseJSON` was migrated to import from `utils/storage.js`. Zero raw `localStorage` calls remain outside `storage.js` itself.
+
+### Files Added
+- `utils/storage.js` — centralized safe localStorage wrapper
+
+### Files Modified (10)
+- `app.js` — uses `storageGet`/`storageSet` for cart, portfolio, watchlist; removed inline `safeParseJSON`; added `Array.isArray` guards
+- `utils/api.js` — uses `storageGetRaw` for auth token; fixed unguarded `JSON.parse(card.colors)` with try/catch
+- `utils/auth.js` — uses `storageGetRaw`/`storageSetRaw`/`storageRemove` for auth token
+- `components/Ticker.js` — uses `storageGet`/`storageSet` for ticker cache
+- `components/PortfolioView.js` — uses `storageGet`/`storageSet` for price cache
+- `components/CheckoutView.js` — uses `storageGet`/`storageSet` for orders
+- `components/OrderConfirmation.js` — uses `storageGet` for orders
+- `components/SellerDashboard.js` — uses `storageGet` for orders
+- `components/CookieNotice.js` — uses `storageGetRaw`/`storageSetRaw`
+- `components/Header.js` — uses `storageGetRaw`/`storageSetRaw` for theme
+- `index.html` — improved global error handler (ignores IMG/LINK errors, waits 8s, auto-unregisters SW on fatal)
+- `sw.js` — bumped to v8
+
+---
+
 ## 2026-03-08: Full site debug — Bearer token auth, featured card pricing, SW v7
 
 ### What Changed

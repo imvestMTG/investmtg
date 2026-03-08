@@ -3,25 +3,20 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PortfolioIcon } from './shared/Icons.js';
 import { fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI } from '../utils/api.js';
+import { storageGet, storageSet } from '../utils/storage.js';
 var h = React.createElement;
 
 var PRICE_CACHE_KEY = 'investmtg-portfolio-prices';
 var PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function loadPriceCache() {
-  try {
-    var raw = localStorage.getItem(PRICE_CACHE_KEY);
-    if (!raw) return null;
-    var cached = JSON.parse(raw);
-    if (Date.now() - cached.ts > PRICE_CACHE_TTL) return null;
-    return cached.data;
-  } catch (e) { return null; }
+  var cached = storageGet(PRICE_CACHE_KEY, null);
+  if (!cached || !cached.ts || Date.now() - cached.ts > PRICE_CACHE_TTL) return null;
+  return cached.data || null;
 }
 
 function savePriceCache(data) {
-  try {
-    localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
-  } catch (e) { /* ignore */ }
+  storageSet(PRICE_CACHE_KEY, { ts: Date.now(), data: data });
 }
 
 export function PortfolioView(props) {

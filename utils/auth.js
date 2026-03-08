@@ -1,6 +1,7 @@
 /* auth.js — Authentication state management */
 import React from 'react';
 import { PROXY_BASE } from './config.js';
+import { storageGetRaw, storageSetRaw, storageRemove } from './storage.js';
 
 /* ── Auth state (singleton) ── */
 var _user = null;
@@ -25,18 +26,16 @@ export function getUser() {
 
 /** Get stored auth token */
 function getToken() {
-  try { return localStorage.getItem(AUTH_TOKEN_KEY); } catch(e) { return null; }
+  return storageGetRaw(AUTH_TOKEN_KEY, null);
 }
 
 /** Store auth token */
 function setToken(token) {
-  try {
-    if (token) {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-    }
-  } catch(e) { /* ignore */ }
+  if (token) {
+    storageSetRaw(AUTH_TOKEN_KEY, token);
+  } else {
+    storageRemove(AUTH_TOKEN_KEY);
+  }
 }
 
 /** Fetch with auth token header */

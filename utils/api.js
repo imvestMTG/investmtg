@@ -1,5 +1,6 @@
 /* api.js — Scryfall API wrapper with rate limiting + backend proxy functions */
 import { SCRYFALL_RATE_LIMIT_MS, PROXY_BASE } from './config.js';
+import { storageGetRaw } from './storage.js';
 
 var lastRequestTime = 0;
 var MIN_INTERVAL = SCRYFALL_RATE_LIMIT_MS;
@@ -105,7 +106,7 @@ export function normalizeCard(card) {
     mana_cost: card.mana_cost,
     type_line: card.type_line,
     oracle_text: card.oracle_text || '',
-    colors: typeof card.colors === 'string' ? JSON.parse(card.colors || '[]') : (card.colors || []),
+    colors: typeof card.colors === 'string' ? (function() { try { return JSON.parse(card.colors); } catch(e) { return []; } })() : (card.colors || []),
     prices: {
       usd: card.price_usd != null ? String(card.price_usd) : null,
       usd_foil: card.price_usd_foil != null ? String(card.price_usd_foil) : null,
@@ -128,9 +129,8 @@ export function normalizeCard(card) {
 export function backendFetch(path, options) {
   var opts = options || {};
   opts.credentials = 'include';
-  // Include auth token from localStorage for cross-site requests
-  var token = null;
-  try { token = localStorage.getItem('investmtg_auth_token'); } catch(e) { /* ignore */ }
+  // Include auth token from storage for cross-site requests
+  var token = storageGetRaw('investmtg_auth_token', null);
   if (token) {
     opts.headers = opts.headers || {};
     if (!opts.headers['Authorization']) {

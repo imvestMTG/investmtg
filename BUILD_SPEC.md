@@ -47,7 +47,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v7`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v8`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -74,6 +74,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 - all data loaded from the Worker v3 backend via `utils/api.js`
 - async state init in `app.js` via `Promise.all` with a loading gate
 - `normalizeCard()` in `utils/api.js` converts D1 flat shape (`price_usd`, `image_small`) to Scryfall shape (`prices.usd`, `image_uris`) so all components use one consistent shape
+- localStorage access exclusively through `utils/storage.js` — no raw `localStorage` calls anywhere else
 - localStorage fallback for portfolio and session recovery only
 
 ## Components
@@ -111,7 +112,8 @@ These rules apply to all root-level `.js` files and must not be violated:
 | File | Purpose |
 |------|---------|
 | `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, and 20+ backend proxy functions for all API endpoints |
-| `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via localStorage |
+| `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js |
+| `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (tax rate, shipping, cart limits, API intervals, `PROXY_BASE`) |
 | `utils/helpers.js` | Shared formatting and utility functions |
 | `utils/sanitize.js` | `sanitizeInput()`, `isValidEmail()`, `isValidPhone()` |
@@ -213,6 +215,7 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── marketplace-data.js
 │   ├── moxfield-api.js
 │   ├── sanitize.js
+│   ├── storage.js                 # centralized safe localStorage wrapper
 │   ├── stores.js
 │   └── topdeck-api.js
 ├── worker/
@@ -232,7 +235,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker
+├── sw.js                           # service worker v8
 ├── manifest.json
 ├── 404.html
 ├── CNAME

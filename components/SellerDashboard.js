@@ -7,6 +7,7 @@ import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 import { fetchSeller, registerSeller, createListing, deleteListing, fetchListings } from '../utils/api.js';
+import { storageGet } from '../utils/storage.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
@@ -534,9 +535,9 @@ export function SellerDashboard(props) {
   }
 
   var listings = sellerListings;
-  // Sales history from localStorage orders (kept as-is)
-  var rawOrders = localStorage.getItem('investmtg-orders');
-  var allOrders = (rawOrders && rawOrders !== 'undefined' && rawOrders !== 'null') ? (function() { try { return JSON.parse(rawOrders); } catch(e) { return []; } })() : [];
+  // Sales history from localStorage orders
+  var allOrders = storageGet('investmtg-orders', []);
+  if (!Array.isArray(allOrders)) allOrders = [];
   var sellerSales = allOrders.filter(function(o) {
     return o.items && o.items.some(function(i) { return i.seller === seller.name; });
   });

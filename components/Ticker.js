@@ -2,25 +2,20 @@
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { fetchTicker } from '../utils/api.js';
+import { storageGet, storageSet } from '../utils/storage.js';
 var h = React.createElement;
 
 var CACHE_KEY = 'investmtg-ticker-cache';
 var CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function loadCache() {
-  try {
-    var raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    var cached = JSON.parse(raw);
-    if (Date.now() - cached.ts > CACHE_TTL) return null;
-    return cached.data;
-  } catch (e) { return null; }
+  var cached = storageGet(CACHE_KEY, null);
+  if (!cached || !cached.ts || Date.now() - cached.ts > CACHE_TTL) return null;
+  return cached.data || null;
 }
 
 function saveCache(data) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
-  } catch (e) { /* ignore */ }
+  storageSet(CACHE_KEY, { ts: Date.now(), data: data });
 }
 
 export function Ticker() {

@@ -2,6 +2,7 @@
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { CheckCircleIcon, StorePickupIcon, TruckIcon, MapPinIcon, PhoneIcon, OrderIcon } from './shared/Icons.js';
+import { storageGet } from '../utils/storage.js';
 var h = React.createElement;
 
 export function OrderConfirmation({ orderId }) {
@@ -13,8 +14,8 @@ export function OrderConfirmation({ orderId }) {
 
   React.useEffect(function() {
     // Load the order from localStorage
-    var raw = localStorage.getItem('investmtg-orders');
-    var orders = (raw && raw !== 'undefined' && raw !== 'null') ? (function() { try { return JSON.parse(raw); } catch(e) { return []; } })() : [];
+    var orders = storageGet('investmtg-orders', []);
+    if (!Array.isArray(orders)) orders = [];
     var found = orders.find(function(o) { return o.id === orderId; });
     setOrder(found || null);
     setLoaded(true);

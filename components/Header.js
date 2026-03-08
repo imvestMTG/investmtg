@@ -1,6 +1,7 @@
 /* Header.js */
 import React from 'react';
 import { SearchIcon, PortfolioIcon, ShoppingCartIcon, MoonIcon, SunIcon, MenuIcon, XIcon, SellerIcon } from './shared/Icons.js';
+import { storageGetRaw, storageSetRaw } from '../utils/storage.js';
 var h = React.createElement;
 
 export function Header(props) {
@@ -17,13 +18,13 @@ export function Header(props) {
   var userMenuOpen = ref2[0], setUserMenuOpen = ref2[1];
 
   var ref3 = React.useState(function() {
-    return localStorage.getItem('investmtg-theme') || 'dark';
+    return storageGetRaw('investmtg-theme', 'dark');
   });
   var theme = ref3[0], setTheme = ref3[1];
 
   React.useEffect(function() {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('investmtg-theme', theme);
+    storageSetRaw('investmtg-theme', theme);
   }, [theme]);
 
   // Close user menu on outside click

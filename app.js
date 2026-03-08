@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { getInitialMarketplaceData } from './utils/marketplace-data.js';
 import { fetchPortfolio, fetchListings, fetchCart, createListing } from './utils/api.js';
 import { checkAuth, signIn, signOut, onAuthChange } from './utils/auth.js';
+import { storageGet, storageSet } from './utils/storage.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
@@ -14,12 +15,6 @@ import { CookieNotice } from './components/CookieNotice.js';
 import { ErrorBoundary } from './components/shared/ErrorBoundary.js';
 
 var h = React.createElement;
-
-// Safe JSON parse for localStorage — guards against corrupted values like the string "undefined"
-function safeParseJSON(raw, fallback) {
-  if (!raw || raw === 'undefined' || raw === 'null') return fallback;
-  try { return JSON.parse(raw); } catch(e) { return fallback; }
-}
 
 // ===== LAZY COMPONENT LOADER =====
 function lazyComponent(importFn, exportName) {
@@ -114,7 +109,7 @@ function parseHash() {
 var globalState = {
   cart: [],
   portfolio: [],
-  watchlist: safeParseJSON(localStorage.getItem('investmtg-watchlist'), []),
+  watchlist: storageGet('investmtg-watchlist', []),
   listings: [],
   priceCache: {},
   loading: true
@@ -133,19 +128,19 @@ function notify() {
 
 function updateCart(newCart) {
   globalState.cart = Array.isArray(newCart) ? newCart : [];
-  localStorage.setItem('investmtg-cart', JSON.stringify(globalState.cart));
+  storageSet('investmtg-cart', globalState.cart);
   notify();
 }
 
 function updatePortfolio(newPortfolio) {
   globalState.portfolio = Array.isArray(newPortfolio) ? newPortfolio : [];
-  localStorage.setItem('investmtg-portfolio', JSON.stringify(globalState.portfolio));
+  storageSet('investmtg-portfolio', globalState.portfolio);
   notify();
 }
 
 function updateWatchlist(newWatchlist) {
   globalState.watchlist = Array.isArray(newWatchlist) ? newWatchlist : [];
-  localStorage.setItem('investmtg-watchlist', JSON.stringify(globalState.watchlist));
+  storageSet('investmtg-watchlist', globalState.watchlist);
   notify();
 }
 
@@ -213,8 +208,8 @@ function App() {
 
   // ===== ASYNC STATE INITIALIZATION =====
   React.useEffect(function() {
-    var portfolioFallback = safeParseJSON(localStorage.getItem('investmtg-portfolio'), []);
-    var cartFallback = safeParseJSON(localStorage.getItem('investmtg-cart'), []);
+    var portfolioFallback = storageGet('investmtg-portfolio', []);
+    var cartFallback = storageGet('investmtg-cart', []);
 
     // Fetch portfolio from backend; fall back to localStorage
     var portfolioPromise = fetchPortfolio().then(function(data) {
