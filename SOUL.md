@@ -1,277 +1,123 @@
 # SOUL.md — The Fair Play Economy
 
----
-
 ## About
 
-investMTG is a free Magic: The Gathering marketplace and price intelligence platform built for the Guam community. We give island players the same pricing transparency, portfolio tools, and market data that mainland players take for granted — without the markup, without the guesswork, and without the games.
+investMTG is a Guam-first Magic: The Gathering marketplace and pricing experience built to reduce information gaps for island players.
 
-Every price on our platform comes from verified public sources. Every store we list is a real business you can walk into. Every feature we ship is built on real data or not built at all. We don't simulate activity, fabricate trends, or manufacture urgency. What you see is what the market actually says.
+The modern direction is straightforward:
+- real reference pricing
+- local seller trust
+- cleaner buying and selling flows
+- Guam-only fulfillment framing
 
-investMTG was created by a Guam-based player who got tired of the information gap — where island collectors overpay because they can't easily compare prices, and local trades happen in the dark without fair market context. This platform exists to close that gap.
-
----
+If we cannot support a claim with real data, we do not present it as fact.
 
 ## Vision
 
-To be Guam's trusted home for Magic: The Gathering — the place every island player checks before they buy, sell, or trade a card.
-
----
+To become the most trusted place for Guam players to check card value, compare local opportunities, and list cards with confidence.
 
 ## Mission
 
-To prove that a trading card marketplace can run on honesty. investMTG exists to give Guam's MTG community free access to real market data, fair pricing tools, and a local marketplace built without fake data, dark patterns, or hidden agendas.
-
----
+Build a cleaner, more honest local MTG experience for Guam players using transparent pricing, simpler workflows, and product decisions that favor trust over noise.
 
 ## Brand
 
-**Name:** investMTG
+**Name:** investMTG  
 **Tagline:** Real cards. Real data. Fair play.
-**Brand Promise:** Every piece of data on this platform is real, verifiable, and transparent.
 
-### The Fair Play Economy
+### Brand voice
+- direct
+- calm
+- local-first
+- transparent
+- confident without hype
 
-investMTG operates under a governing philosophy called The Fair Play Economy — a set of principles that guide every decision on the platform. It's built on five pillars:
+## Product principles
 
-1. **Transparency** — All prices, sources, and methods are visible. Nothing is hidden.
-2. **Equity of Access** — Every player gets the same data, the same tools, the same information — free, forever.
-3. **Honesty Rewarded** — The platform is designed to reward accurate grading, fair pricing, and good-faith trading.
-4. **Sportsmanship Over Greed** — Systems are built to discourage hoarding, price gouging, and market manipulation.
-5. **Diversity & Inclusion** — The platform welcomes every player regardless of budget, experience level, or background.
+### 1. Guam-first by design
+- marketplace language is for Guam only
+- pickup and island delivery come before any broader commerce framing
+- seller flows should make meetup zones, response expectations, and local delivery rules explicit
 
-### Brand Voice
+### 2. No fake market signals
+- no fabricated trend data
+- no fake price history
+- no fake seller activity
+- no invented liquidity signals
 
-- Direct and honest — say what's true, skip what isn't
-- Community-first — we build for Guam players, not for metrics
-- Confident but never arrogant — we earn trust, we don't claim it
-- Island-local — we speak like the community we serve
+### 3. Reference pricing must stay clear
+- Scryfall is the primary reference layer for card data, images, and live prices
+- external market reference links may point to TCGplayer when available through Scryfall purchase URIs
+- Cardmarket is not part of the modern Guam-first buyer flow
 
----
+### 4. Trust beats clutter
+- every main screen should have a clear primary action
+- feedback must be explicit, especially on seller actions
+- local trade expectations should be visible, not implied
 
-## Core Principles
+### 5. Ship code and docs together
+A release is not complete until the docs and release notes are updated in the same session.
 
-### 1. No Fake Data
-- All card prices come from **Scryfall's public API** — the most respected free MTG data source
-- Condition-specific pricing comes from **JustTCG** — real market data for NM, LP, MP, HP, and DMG conditions
-- cEDH metagame data comes from **EDH Top 16** and **TopDeck.gg** — real tournament results and commander statistics
-- Decklist data comes from **Moxfield** — real community-built decklists
-- We never fabricate price changes, trends, or statistics
-- If we can't show real data, we show nothing — no mock charts, no random percentages, no simulated metrics
+Required updates after release-impacting work:
+- `README.md`
+- `BUILD_SPEC.md`
+- `CHANGES.md`
+- `SOUL.md`
+- `worker/README.md` when worker behavior changes
+- a security check for secrets and sensitive credentials
 
-### 2. Real Stores Only
-The local stores listed on investMTG are real, verified businesses on Guam:
-- **The Inventory** — Hagåtña (verified, WPN-authorized)
-- **Geek Out Next Level** — Micronesia Mall, Dededo (verified, WPN-authorized, 671-477-4335)
-- **My Wife Told Me To Sell It** — Compadres Mall, Dededo (verified, 5.0★, mywifetcg.com, @mywifetoldmetosellit)
-- **Fraim's Collectibles** — Mangilao, across Mobil (verified, @fraimscollectibles)
-- **Poke Violet 671** — DNA Building, Hagåtña (verified, pokeviolet671.com, @pokeviolet671)
+## Architecture principles
 
-We do not list fictional stores or fabricate store data. Stores are periodically re-verified — unverifiable listings are removed (e.g., Fokai Guam, The Grid GU, and Expensive Dreams were removed after failing verification).
+### Front end
+The intended production front end is the React + TypeScript app in `frontend-v2/`.
 
-**Important:** These stores are listed as community resources for Guam MTG players. investMTG does **not** have formal partnership agreements with any of these stores. Their inclusion does not imply endorsement, affiliation, or inventory integration. Store information is publicly available and manually verified.
+Rules for the rewrite:
+- static-hosting friendly
+- hash-routed
+- no dependency on browser storage in the core shell
+- clear separation between remote reference data and local UX scaffolding
 
-### 3. Real Sellers Only
-The marketplace listings must come from real people. Seller identities on the platform are either:
-- Registered users who created accounts via the Seller Dashboard
-- Pre-verified listings tied to known community members
+### Worker
+The Cloudflare Worker remains a separate gateway for protected or proxied API access, and now also carries the D1 + KV-backed server-side architecture.
 
-We never populate the marketplace with fake sellers or fabricated listings to make it "look active."
+## Data sources
 
-### 4. Transparent Pricing — USD Only
-- **All prices are displayed in US Dollars (USD) only** — no EUR, GBP, tix, or other currencies
-- **Market prices** are sourced from Scryfall, which aggregates from TCGplayer, Cardmarket, and Cardhoarder
-- **Condition prices** are sourced from JustTCG when viewing the cart — showing real market values for each condition grade (DMG, HP, MP, LP, NM)
-- **Seller prices** are set by individual sellers and may differ from market price
-- We clearly label where every price comes from
-- Price data refreshes on every page visit (with 5-minute caching to respect API limits)
-- JustTCG condition data is only fetched in cart view to minimize API usage (paid tier)
+| Data | Source | Notes |
+|------|--------|-------|
+| Card search and reference prices | [Scryfall API](https://scryfall.com/docs/api) | Primary reference layer |
+| External market reference links | [TCGplayer](https://www.tcgplayer.com) | Only when surfaced by Scryfall purchase URIs |
+| Condition pricing | [JustTCG](https://justtcg.com) | Worker-backed integration |
+| Tournament and meta data | [TopDeck.gg](https://topdeck.gg), [EDH Top 16](https://edhtop16.com) | Worker-backed integrations |
+| Decklist imports | [Moxfield](https://moxfield.com) | Integrated as needed |
+| Proxy / gateway | Cloudflare Worker | Secret-backed API routing |
+| Server-side persistence | Cloudflare D1 | Listings, sellers, stores, events, cart, portfolio |
+| Edge cache | Cloudflare KV | Cached market and discovery responses |
 
-### 5. Physical Cards Only
-- investMTG is a marketplace for real, printed Magic cards — not digital versions
-- We filter out all digital-only cards (MTGO, MTG Arena) from search results, the price ticker, and the homepage
-- We do not display MTGO ticket prices or link to MTGO retailers
-- All API queries include `-is:digital` to exclude digital printings
+## What we do not do
 
-### 6. No Dark Patterns
-- No fake urgency ("Only 2 left!" when we don't track inventory)
-- No fabricated reviews or ratings
-- No simulated activity feeds
-- No misleading statistics
+- show Cardmarket as part of the modern Guam-first buyer flow
+- rely on fake listing activity to make the market look alive
+- imply global-shipping capability in a Guam-only product mode
+- treat copied build artifacts as the real source of truth when source-folder builds are available
 
----
+## Release discipline
 
-## Data Sources
-
-| Data | Source | Update Frequency |
-|------|--------|-----------------|
-| Card prices (USD, foil) | [Scryfall API](https://scryfall.com/docs/api) | Live on each visit (5-min cache) |
-| Card images | [Scryfall](https://scryfall.com) | Live |
-| Card legality, oracle text, set info | [Scryfall](https://scryfall.com) | Live |
-| Condition pricing (NM/LP/MP/HP/DMG) | [JustTCG API](https://justtcg.com) | On cart view (10-min cache) |
-| cEDH commanders, tournaments, staples | [EDH Top 16 API](https://edhtop16.com) | On meta page visit (15-min cache) |
-| cEDH tournament data | [TopDeck.gg API](https://topdeck.gg) | On meta page visit (10-min cache) |
-| Decklist imports | [Moxfield API](https://moxfield.com) | On demand |
-| AI chatbot | [Pollinations AI](https://pollinations.ai) via Worker proxy | Real-time (free, rate-limited) |
-| Local store info | D1 database (manually verified) | Updated as needed |
-| Marketplace listings | User-submitted (D1 database) | Real-time (server-side) |
-| Portfolio data | D1 database (session cookies) | Real-time (server-side) |
-| Payment processing | [SumUp](https://sumup.com) | Real-time |
-
----
-
-## API Architecture
-
-investMTG uses a **unified Cloudflare Worker** (`investmtg-proxy` v2) as its backend, combining API gateway, CORS proxy, D1 database, and KV edge caching.
-
-### Backend Services (Cloudflare Free Tier)
-| Service | Resource | Purpose |
-|---------|----------|---------|
-| D1 Database | `investmtg-db` | 7-table SQLite database for prices, portfolios, listings, sellers, stores, events, cart |
-| KV Namespace | `INVESTMTG_CACHE` | Edge cache for ticker, featured, trending, budget, movers data |
-| Worker | `investmtg-proxy` | Unified API backend + CORS proxy (790+ lines) |
-
-### API Routes
-
-**Data endpoints** (D1 + KV backed):
-
-| Route | Method | Cache | Purpose |
-|-------|--------|-------|---------|
-| `/api/health` | GET | — | Health check |
-| `/api/ticker` | GET | KV 5min | 16 tracked card prices |
-| `/api/featured` | GET | KV 1hr | High-value featured cards |
-| `/api/trending` | GET | KV 30min | Trending cards |
-| `/api/budget` | GET | KV 1hr | Budget staples |
-| `/api/search?q=` | GET | — | Card search (Scryfall proxy) |
-| `/api/card/:id` | GET | D1 10min | Card detail |
-| `/api/movers/:cat` | GET | KV 30min | Market movers by category |
-| `/api/portfolio` | GET/POST/DELETE | — | Portfolio CRUD (session) |
-| `/api/listings` | GET/POST/PUT/DELETE | — | Marketplace listings |
-| `/api/sellers` | GET/POST | — | Seller profiles |
-| `/api/stores` | GET | — | Verified Guam stores |
-| `/api/events` | GET | — | Community events |
-| `/api/cart` | GET/POST/DELETE | — | Shopping cart |
-
-**Proxy routes** (preserved from v1):
-
-| Route | Target | Purpose |
-|-------|--------|---------|
-| `/justtcg` | api.justtcg.com | Card condition pricing (API key injected server-side) |
-| `/topdeck` | topdeck.gg API | Tournament data (API key injected server-side) |
-| `/chatbot` | text.pollinations.ai | AI chat advisor (rate-limited: 12 req/min per IP) |
-| `/?target=` | Allowlisted hosts | Generic CORS proxy (edhtop16.com, scryfall, moxfield) |
-
-Security measures:
-- Only allows requests from whitelisted origins (investmtg.com, localhost dev)
-- API keys are stored as **encrypted Cloudflare secrets** — never in source code or environment variables
-- Rate limiting: 120 req/min general, 12 req/min chatbot (per IP)
-- Session cookies: HttpOnly, Secure, SameSite=Lax, 1-year expiry
-- Scryfall rate limiting: 100ms between calls with proper User-Agent
-- Input sanitization on all user-facing endpoints
-- Worker source code is version-controlled in the repo under `worker/`
-- Smart KV caching: empty results are not cached to prevent stale failures
-
----
-
-## What We Don't Do
-
-- **No price history charts** — Scryfall's free API doesn't provide historical price data. Rather than show fabricated charts with random numbers, we simply show the current live price and link to Scryfall/TCGplayer for historical data.
-- **No percentage change indicators** — Without real historical data, we cannot calculate real % changes. We show current prices only.
-- **No "trending" algorithms** — Our "Trending Now" section rotates daily through popular cards, but we don't claim these are trending based on actual trade volume data we don't have.
-
----
-
-## Technology
-
-investMTG is a React 18 single-page application hosted on GitHub Pages with a Cloudflare Worker backend (v2) providing D1 database storage and KV edge caching. This means:
-- User data (portfolios, listings, cart) is stored server-side in D1, keyed by anonymous session cookies
-- No user accounts, no passwords, no PII collected
-- No analytics tracking
-- Session cookies are HttpOnly, Secure, and used only for data association
-- Complete privacy — no tracking, no fingerprinting
-- Payments are processed directly by SumUp — card details never touch our servers
-
-### Tech Stack
-- **Frontend:** React 18 via esm.sh import maps (no build tools, no JSX)
-- **Hosting:** GitHub Pages (www.investmtg.com)
-- **Backend:** Cloudflare Worker v2 (D1 database + KV cache + API proxy)
-- **Database:** Cloudflare D1 (`investmtg-db`) — 7 tables
-- **Cache:** Cloudflare KV (`INVESTMTG_CACHE`) — edge-cached market data
-- **APIs:** Scryfall, JustTCG, EDH Top 16, TopDeck.gg, Moxfield, Pollinations AI
-- **Payments:** SumUp Swift Checkout
-- **Fonts:** Clash Display + Satoshi (FontShare)
-
----
-
-## For Developers
-
-If you're contributing to investMTG, follow these rules:
-1. Never use `Math.random()` to generate any data shown to users as if it were real
-2. Always cite data sources
-3. If a feature requires data we don't have, say so honestly — don't fake it
-4. Test with real API responses, not mocked data
-5. Backend changes go through the Worker (`worker/worker.js`) — frontend remains static on GitHub Pages
-6. Respect API rate limits: Scryfall (100ms between calls), JustTCG (paid tier limits), TopDeck (200/min)
-7. Never embed sensitive API keys in client-side code — use CORS proxy for key-protected APIs where possible
-8. **Post-Deployment Documentation Rule:** After every successful deployment, all project documentation must be securely updated before the work is considered complete. This includes:
-   - **CHANGES.md** — Add a dated entry describing what changed, what was fixed, and what was added
-   - **SOUL.md** — Update the changelog table and any sections affected by the deployment (e.g., new data sources, new stores, new API routes, architecture changes)
-   - **README.md** — Update the project tree, feature list, or external services table if the deployment added or removed files, features, or integrations
-   - **BUILD_SPEC.md** — Update component descriptions, utility references, or architecture diagrams if the deployment changed the codebase structure
-   - **worker/README.md** — Update if any Worker routes, secrets, or proxy behavior changed
-   - **Security check** — Verify no API keys, tokens, or secrets were exposed in any committed file. All sensitive values must remain in encrypted Cloudflare Worker secrets or environment-appropriate secure storage — never in source code, documentation, or commit history
-   - Documentation updates must be committed and pushed in the same session as the deployment — not deferred to a later date
-   - No deployment is "done" until the docs are updated. Ship code + ship docs = one unit of work
-
----
-
-## Messaging Reference
-
-### Hero / Homepage
-- **Headline:** "Know What Your Cards Are Worth"
-- **Subtitle:** "Guam's MTG marketplace with live market pricing, portfolio tracking, and zero markup. Real cards. Real data. Fair play."
-- **Stats bar:** Real Prices / No Guesswork | Guam Built / For The Island | Live Data / Every Visit | 100% Free / Always
-
-### Tone Guidelines
-- Speak directly to the user — value propositions, not feature labels
-- Lead with transparency and honesty
-- Use "Guam" and island-local language to reinforce community identity
-- Never claim partnerships, endorsements, or affiliations that don't exist
-- Never use "only" or "#1" without verifiable proof
-- The tagline "Real cards. Real data. Fair play." is the brand's core promise
-
----
-
-## Social Media & Connected Services
-
-| Platform | Status | Handle / URL |
-|----------|--------|--------------|
-| YouTube | Connected (Data + Analytics) | Channel pending creation |
-| Facebook Pages | Pending connection | Page pending creation |
-| LinkedIn | Pending connection | Profile pending creation |
-| X (Twitter) | No connector available | Account pending creation |
-| Instagram | No connector available | Account pending creation |
-
-**Email domain:** investmtg.com (Google Workspace — MX records active, SPF configured for Google + iCloud)
-
-Social handles should use **@investMTG** or **investMTG** consistently across all platforms.
-
----
+Before any go-live push:
+1. build the rewrite app
+2. lint the rewrite app
+3. verify no secrets were committed
+4. verify the Pages workflow still publishes `frontend-v2/dist`
+5. verify worker docs and bindings still match the deployed backend
+6. update the required docs in the same session
 
 ## Changelog
 
 | Date | Change |
 |------|--------|
-| 2026-03-08 | Marketplace workflow fix: seller listings now appear in marketplace (data aggregation from all sellers' localStorage), SellerDashboard connected to global state, "List a Card" button fixed, ListingModal props corrected, marketplace data persisted, empty state CTA added, post-listing marketplace link added. Post-Deployment Documentation Rule added to SOUL.md |
-| 2026-03-08 | Comprehensive code review: all 39 findings resolved (security, accessibility, config centralization, error boundaries, input sanitization, Worker chatbot proxy). API keys migrated to encrypted Cloudflare secrets. Worker source added to repo under `worker/` |
-| 2026-03-07 | Performance optimization: lazy-loaded components (262KB → 47KB initial JS), minified CSS (127KB → 105KB), deleted unused 5MB og-image.png, hero preload, Scryfall preconnect, deferred Ticker fetch, removed unused font weights |
-| 2026-03-07 | Major visual redesign: AI-generated hero background, cinematic event artwork, scroll-driven animations, glass-morphism stats bar, golden accent bars on section headers |
-| 2026-03-07 | Store directory updated: removed Fokai Guam, The Grid GU, and Expensive Dreams (not a TCG store). Added My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671. Renamed Geek Out Guam → Geek Out Next Level, Inventory Guam → The Inventory. Total: 5 verified stores |
-| 2026-03-07 | Added About, Vision, Mission, and Brand sections; clarified store listings are not partnerships; updated hero copy for brand voice; documented social media status; JustTCG upgraded to paid tier |
-| 2026-03-07 | Repo cleanup: .gitignore added, redundant docs removed, store addresses corrected, stale references cleaned from README/BUILD_SPEC/CHANGES, full data attribution in footer |
-| 2026-03-07 | Audit response: replaced all hardcoded fake store lists in BuyLocalModal, CheckoutView, SellerDashboard with 5 verified stores; added Scryfall attribution to SearchView; expanded footer to credit all 5 data sources |
-| 2026-03-06 | Audit fixes: legal pages, cookie notice, accessibility, fake data removal, SOUL.md EUR fix |
+| 2026-03-08 | Formalized `frontend-v2/` as the source of truth for the modern Guam-only front end while preserving the Cloudflare Worker v2 backend and updating docs to reflect both layers |
+| 2026-03-08 | Established the Cloudflare Worker v2 backend with D1 database and KV cache support |
+| 2026-03-08 | Added release rule that code, docs, and security review ship together |
 
 ---
 
-*This document is the ethical compass of investMTG. When in doubt, choose transparency over appearance.*
+When in doubt, choose the simpler, more honest product behavior.

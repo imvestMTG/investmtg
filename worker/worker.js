@@ -690,7 +690,7 @@ async function handleChatbot(request) {
   const messages = body.messages.slice(-10);
   const systemMessage = {
     role: 'system',
-    content: 'You are the investMTG AI Advisor, a helpful assistant for Magic: The Gathering players. You help with card pricing, deck building advice, trading tips, and tournament information. Always be friendly, fair, and promote good sportsmanship. Keep responses concise and helpful. You serve the investMTG community on Guam and worldwide.'
+    content: 'You are the investMTG AI Advisor, a helpful assistant for Magic: The Gathering players. You help with card pricing, deck building advice, trading tips, and tournament information. Always be friendly, fair, and promote good sportsmanship. Keep responses concise and helpful. You serve the investMTG community on Guam with Guam-first marketplace and fulfillment context.'
   };
   const chatBody = {
     model: body.model || 'openai', messages: [systemMessage, ...messages],

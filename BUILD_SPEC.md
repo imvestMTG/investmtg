@@ -1,188 +1,230 @@
 # investMTG — Build Specification
 
-## Project Context
-investmtg.com is Guam's MTG marketplace and price intelligence platform. Built on The Fair Play Economy — every piece of data must be real, verifiable, and transparent.
+## Project context
 
-It's a React 18 SPA using `React.createElement` (no JSX, no build tools) loaded via esm.sh import maps. Hosted on GitHub Pages at [www.investmtg.com](https://www.investmtg.com).
+investMTG is evolving into a Guam-only Magic: The Gathering marketplace and pricing app with a modern front end centered on search, card detail, portfolio tracking, and seller workflow.
 
-## Architecture Rules (CRITICAL)
-- Use `var h = React.createElement;` pattern — NO JSX
-- Use `var ref = React.useState()` with `ref[0]`/`ref[1]` — no destructuring
-- All imports from `'react'` via esm.sh import maps
-- Frontend is static (GitHub Pages), backend is Cloudflare Worker v2 with D1 + KV
-- User data (portfolios, listings, cart) persists in D1 database via anonymous session cookies
-- All CSS goes into the existing `style.css` file (minified, ~105KB)
-- Keep the existing design system (CSS variables from `:root` and `[data-theme]`)
-- File naming: PascalCase for components, lowercase for utils
-- **Lazy loading**: Non-homepage components use dynamic `import()` via `lazyComponent()` in app.js. Only HomeView, Header, Footer, Ticker, CookieNotice, BackToTop, and Toast load eagerly (~47KB). All other page components load on navigation.
+The current production-target architecture combines:
+- the Vite app in `frontend-v2/`
+- the Cloudflare Worker v2 backend in `worker/`
 
-## Data Integrity (SOUL.md)
-All data must be real and verifiable:
-- Card prices from Scryfall API only — no mock/random data
-- No `Math.random()` for any user-facing metrics
-- All stores verified Guam businesses
-- See SOUL.md for full guidelines
+## Front-end architecture
 
-## Components
+### Source of truth
+- `frontend-v2/` is the primary front-end application
+- legacy root-level SPA files remain in the repository temporarily during migration but are no longer the intended long-term front-end path
 
-### Pages
-| Component | Route | Description |
-|-----------|-------|-------------|
-| HomeView | `#` (home) | Immersive hero, community events with AI artwork, daily-rotating Featured/Trending/Budget cards |
-| SearchView | `#search` | Full card search with color, rarity, price filters |
-| CardDetailView | `#card/{id}` | Live pricing, legality, purchase links from Scryfall |
-| PortfolioView | `#portfolio` | Portfolio tracker with live Scryfall price updates |
-| CartView | `#cart` | Shopping cart with seller grouping |
-| CheckoutView | `#checkout` | 3 payment methods: Reserve & Pay at Pickup, SumUp Card, Apple/Google Pay |
-| StoreView | `#store` | 5 verified Guam stores + community marketplace |
-| SellerDashboard | `#seller` | Seller registration, listing CRUD, sales history |
-| OrderConfirmation | `#order/{id}` | Post-payment confirmation |
-| MarketMoversView | `#movers` | Most valuable cards by category with real pricing |
-| MetaView | `#meta` | cEDH metagame dashboard (EDH Top 16 + TopDeck.gg) |
-| DecklistView | `#decks` | Deck browser with Moxfield import |
-| PrivacyPolicyView | `#privacy` | Privacy policy |
-| TermsView | `#terms` | Terms of service |
+### Stack
+- React 19
+- TypeScript
+- Vite
+- TanStack Query
+- Lucide React
 
-### Shared Components
-| Component | Description |
-|-----------|-------------|
-| Ticker | Live price ticker fetching from Scryfall collection API every 5 min (fetch deferred 2s, cached data instant) |
-| Header | Navigation with cart badge |
-| Footer | Site footer with attribution |
-| Chatbot | AI assistant via Worker proxy (`/chatbot` route) with client-side rate limiting |
-| CardGrid | Reusable card display grid |
-| ConfirmModal | Styled confirmation/alert modal (replaces `window.confirm` and `window.alert`) |
-| ErrorBoundary | React error boundary wrapping all route content with fallback UI |
-| Icons | SVG icon library with `className` forwarding |
-| SkeletonCard | Loading placeholder |
-| Toast | Notification system (memory-leak safe with `mountedRef` guard) |
-| BackToTop | Scroll-to-top button |
-| CookieNotice | Cookie consent banner |
+### Routing
+- hash-based routing only
+- no `react-router-dom`
+- supported routes:
+  - `#/search`
+  - `#/portfolio`
+  - `#/sell`
+  - `#/card/{id}`
 
-### Utils
-| File | Description |
-|------|-------------|
-| api.js | Scryfall API wrapper with centralized rate limiting and `fetchCollection()` |
-| config.js | Centralized constants: tax rate, shipping, cart limits, API intervals, proxy URL |
-| sanitize.js | Input sanitization (`sanitizeInput`), email/phone validation |
-| group-by-seller.js | Shared cart grouping utility (used by CartView and CheckoutView) |
-| events-config.js | Community events data (editable without code changes) |
-| stores.js | Verified Guam store directory data |
-| helpers.js | formatUSD, getCardPrice, image URL helpers, debounce |
-| justtcg-api.js | JustTCG condition pricing API (paid tier, via Worker proxy) |
-| edhtop16-api.js | EDH Top 16 GraphQL API wrapper (via Worker proxy) |
-| topdeck-api.js | TopDeck.gg REST API wrapper (via Worker proxy) |
-| moxfield-api.js | Moxfield decklist API wrapper |
-| marketplace-data.js | Marketplace data management (empty — no mock data per SOUL.md) |
+The hash router was chosen to keep the app stable on static hosting and avoid the blank-screen issues discovered during preview deployment.
 
-## Payment Integration (ACTIVE)
+### State and data rules
+- remote data is loaded through TanStack Query
+- no `localStorage` or `sessionStorage` usage in the rewrite
+- seller and portfolio states in the rewrite are currently modeled with structured seed data while production persistence is designed later
+- all user-facing market references must stay grounded in real external data
 
-### SumUp Card Payments
-- **Merchant code**: Stored in `utils/config.js`
-- **Public key**: Stored in `utils/config.js` (public key — safe for client-side)
-- **SDK**: Swift Checkout SDK loaded from `https://js.sumup.com/swift-checkout.js`
-- Payment flow: Create checkout → Mount widget → Process payment → Confirm
+## Product rules
 
-### Apple Pay / Google Pay
-- Uses SumUp Swift Checkout SDK with wallet payment support
-- Apple Pay domain verification file at `/.well-known/apple-developer-merchantid-domain-association`
-- Domain verified: www.investmtg.com
+### Geography
+- Guam only
+- pickup and island delivery first
+- marketplace messaging should reflect local meetup zones and local trust cues
 
-### Reserve & Pay at Pickup
-- No online payment — buyer contacts seller to arrange pickup at a Guam store
-- Order saved to localStorage with "pending pickup" status
+### Market references
+- Scryfall remains the card-data and reference-pricing layer
+- TCGplayer links may be used as external reference links when surfaced by Scryfall
+- Cardmarket is excluded from the modern buyer flow and should not appear in the rewrite UI
 
-## Design System
-- Gold accent: `#D4A843` (dark) / `#B8912E` (light)
-- Dark surfaces with subtle borders
-- Cards use `var(--color-surface)` background
-- Font: Clash Display (headings), Satoshi (body) via Fontshare
-- Mobile-first responsive design
-- Dark/light theme support via `[data-theme]`
+### Integrity
+- no fabricated market activity presented as real
+- no fake trend lines or fake portfolio performance claims
+- no global-shipping framing in the Guam-first experience
 
-### Visual Redesign (2026-03-07)
-- **Hero background**: AI-generated cinematic image (`images/hero-bg.jpg`) with dark oklch gradient overlay via `::before` pseudo-element
-- **Glass-morphism stats**: Semi-transparent `backdrop-filter: blur()` cards in the hero stats bar
-- **Event cards**: AI-generated artwork per event (`images/event-*.jpg`) with full-bleed backgrounds, dark overlays, date chips, and hover zoom (1.04x) with golden border glow
-- **Section headers**: Golden 4px vertical accent bars (`::before` pseudo-element) on all homepage section headings
-- **Scroll animations**: CSS `animation-timeline: view()` for fade-up section reveals with timed fallback for unsupported browsers
-- **Event layout**: Featured event as large hero card + 2-column sub-grid for recurring events
+## Current app surfaces
 
-## External Services
-| Service | Endpoint | Auth |
-|---------|----------|------|
-| Scryfall | `https://api.scryfall.com` | None (free, 100ms rate limit) |
-| JustTCG | `https://api.justtcg.com` | API key (paid tier) |
-| EDH Top 16 | `https://edhtop16.com` (via CORS proxy) | None |
-| TopDeck.gg | `https://topdeck.gg` (via CORS proxy) | API key |
-| Moxfield | `https://api2.moxfield.com` | None |
-| Pollinations AI | Via Worker `/chatbot` proxy | None (free, rate-limited via Worker) |
-| SumUp | `https://js.sumup.com` / `https://api.sumup.com` | Public key |
-| Fontshare | `https://api.fontshare.com` | None |
+### Search page
+Purpose:
+- card discovery with fast lookup
+- compact result cards
+- clear transition into local listing actions
 
-## Performance
-- **Lazy loading**: 16 components loaded via dynamic `import()` — initial JS reduced from 262KB to 47KB
-- **CSS minified**: 127KB → 105KB (comments/whitespace stripped)
-- **Hero preload**: `<link rel="preload">` with `fetchpriority="high"` for LCP image
-- **Scryfall preconnect**: Full `preconnect` (not just dns-prefetch) for API + image CDN
-- **Font optimization**: Only 6 font weights loaded (removed unused Clash Display 400, Satoshi 300)
-- **Deferred Ticker**: API fetch delayed 2s; cached data shows instantly
-- **Lighthouse**: Desktop 96, Mobile 68 → targeting 85+
+Key files:
+- `frontend-v2/src/pages/SearchPage.tsx`
+- `frontend-v2/src/hooks/useCardSearch.ts`
+- `frontend-v2/src/components/search/*`
 
-## Cloudflare Worker (`investmtg-proxy` v2)
+### Card detail page
+Purpose:
+- show core card identity and reference price
+- show Guam listing rail
+- show other printings
+- keep failure states isolated
 
-The Worker is the unified backend for investmtg.com — combining API gateway, CORS proxy, D1 database, and KV edge caching. Source is in `worker/`.
+Key files:
+- `frontend-v2/src/pages/CardDetailPage.tsx`
+- `frontend-v2/src/hooks/useCardDetail.ts`
+- `frontend-v2/src/components/card/*`
 
-### Backend Services (Cloudflare Free Tier)
+### Portfolio page
+Purpose:
+- display tracked positions in a dashboard-style table
+- compare basis versus current reference value
+- provide a cleaner path to future persistent collection tracking
+
+Key files:
+- `frontend-v2/src/pages/PortfolioPage.tsx`
+- `frontend-v2/src/components/portfolio/*`
+
+### Seller page
+Purpose:
+- replace the old no-feedback listing action with a guided Guam listing workflow
+- make meetup zones and delivery expectations explicit
+- model trust requirements for local fulfillment
+
+Key files:
+- `frontend-v2/src/pages/SellerPage.tsx`
+- `frontend-v2/src/components/seller/*`
+
+### App shell
+Purpose:
+- stable sidebar + topbar navigation
+- dark-mode-first presentation
+- clear product framing around Guam-only trade
+
+Key files:
+- `frontend-v2/src/components/layout/AppShell.tsx`
+- `frontend-v2/src/hooks/useTheme.ts`
+- `frontend-v2/src/app/router.tsx`
+
+## Worker architecture
+
+### Role
+The Worker remains separate from the front-end deployment and handles API gateway behavior, protected integrations, and the evolving server-side persistence model.
+
+### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
 | D1 Database | `investmtg-db` | 7-table SQLite database |
-| KV Namespace | `INVESTMTG_CACHE` | Edge cache with configurable TTLs |
-| Worker | `investmtg-proxy` | 790+ line unified backend |
+| KV Namespace | `INVESTMTG_CACHE` | edge cache for market and discovery responses |
+| Worker | `investmtg-proxy` | unified backend + proxy |
 
-### API Routes
-| Route | Method | Cache | Purpose |
-|-------|--------|-------|---------|
-| `/api/health` | GET | — | Health check |
-| `/api/ticker` | GET | KV 5min | 16 tracked card prices |
-| `/api/featured` | GET | KV 1hr | High-value featured cards |
-| `/api/trending` | GET | KV 30min | Trending cards |
-| `/api/budget` | GET | KV 1hr | Budget staples |
-| `/api/search?q=` | GET | — | Card search (Scryfall proxy) |
-| `/api/card/:id` | GET | D1 10min | Card detail |
-| `/api/movers/:cat` | GET | KV 30min | Market movers by category |
-| `/api/portfolio` | GET/POST/DELETE | — | Portfolio CRUD (session) |
-| `/api/listings` | GET/POST/PUT/DELETE | — | Marketplace listings |
-| `/api/sellers` | GET/POST | — | Seller profiles |
-| `/api/stores` | GET | — | Verified Guam stores |
-| `/api/events` | GET | — | Community events |
-| `/api/cart` | GET/POST/DELETE | — | Shopping cart |
+### Worker routes
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/health` | GET | health check |
+| `/api/ticker` | GET | tracked card prices |
+| `/api/featured` | GET | featured cards |
+| `/api/trending` | GET | trending cards |
+| `/api/budget` | GET | budget staples |
+| `/api/search` | GET | card search proxy |
+| `/api/card/:id` | GET | card detail proxy/cache |
+| `/api/movers/:cat` | GET | category movers |
+| `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
+| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings |
+| `/api/sellers` | GET/POST | seller profiles |
+| `/api/stores` | GET | verified Guam stores |
+| `/api/events` | GET | community events |
+| `/api/cart` | GET/POST/DELETE | shopping cart |
+| `/justtcg` | proxy | condition pricing |
+| `/topdeck` | proxy | tournament data |
+| `/chatbot` | proxy | chat relay |
+| `/?target=` | proxy | allowlisted generic proxy |
 
-### Proxy Routes (preserved from v1)
-| Route | Target | Auth |
-|-------|--------|------|
-| `/justtcg` | api.justtcg.com | `X-Api-Key` header (encrypted secret) |
-| `/topdeck` | topdeck.gg API | `Authorization` header (encrypted secret) |
-| `/chatbot` | text.pollinations.ai | None (rate-limited: 12 req/min per IP) |
-| `/?target=` | Allowlisted hosts | None |
+### Worker files
+- `worker/worker.js`
+- `worker/wrangler.toml`
+- `worker/schema.sql`
+- `worker/seed.sql`
+- `worker/README.md`
 
-### Database Schema (`schema.sql`)
-- `prices` — Scryfall card price cache
-- `portfolios` — User portfolio entries (session-keyed)
-- `listings` — Marketplace listings
-- `sellers` — Registered seller profiles
-- `events` — Community events
-- `stores` — Verified local stores
-- `cart_items` — Shopping cart items
+## File structure
 
-**API keys are stored as encrypted Cloudflare Worker secrets, not in source code.**
+```text
+frontend-v2/
+├── public/
+│   ├── 404.html
+│   ├── apple-touch-icon.png
+│   ├── CNAME
+│   ├── favicon.png
+│   ├── favicon.svg
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   ├── manifest.json
+│   ├── og-image.jpg
+│   ├── robots.txt
+│   └── sitemap.xml
+├── src/
+│   ├── app/
+│   ├── components/
+│   ├── data/
+│   ├── hooks/
+│   ├── lib/
+│   └── pages/
+├── index.html
+├── package.json
+├── package-lock.json
+└── vite.config.ts
+```
 
-Deploy: `cd worker/ && npx wrangler deploy` (requires Cloudflare API token with Workers + D1 + KV permissions)
+## Deployment spec
 
-## Deployment
-- GitHub repo: `imvestMTG/investmtg` (branch: `main`)
-- Hosted on GitHub Pages
-- Domain: www.investmtg.com via Cloudflare DNS
-- HTTPS certificate managed by GitHub Pages
-- Push to `main` branch to deploy (GitHub Pages auto-builds)
-- Worker deployed separately via `wrangler deploy`
+### Front end
+The GitHub Pages workflow must:
+1. check out the repository
+2. install dependencies in `frontend-v2/`
+3. run `npm run build` in `frontend-v2/`
+4. upload `frontend-v2/dist`
+5. deploy the artifact to GitHub Pages
+
+### Static hosting constraints
+- Vite must use `base: './'`
+- routes must work from hash fragments
+- public assets must be emitted from `public/`
+- no browser storage assumptions
+
+### Worker
+The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact.
+
+## Development commands
+
+### Front end
+```bash
+cd frontend-v2
+npm ci
+npm run build
+npm run lint
+npm run preview
+```
+
+### Worker
+```bash
+cd worker
+npx wrangler deploy
+```
+
+## Release checklist
+
+Before considering a release complete:
+- update `README.md`
+- update `BUILD_SPEC.md`
+- update `CHANGES.md`
+- update `SOUL.md`
+- update `worker/README.md` if worker behavior changed
+- verify no secrets or sensitive tokens were committed
+- confirm the GitHub Pages workflow still publishes from `frontend-v2/dist`
+- confirm the Worker documentation still matches the live route and binding model

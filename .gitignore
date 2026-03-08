@@ -9,9 +9,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Node (dev tooling only)
+# Node / frontend tooling
 node_modules/
-package-lock.json
+frontend-v2/node_modules/
+frontend-v2/dist/
 
 # Dev tooling
 eslint.config.mjs

@@ -1,0 +1,24 @@
+{
+  "name": "investMTG",
+  "short_name": "investMTG",
+  "description": "Modern Guam-only MTG marketplace and price intelligence app with local search, portfolio tracking, and seller tools.",
+  "start_url": "./index.html#/search",
+  "display": "standalone",
+  "background_color": "#0d0f12",
+  "theme_color": "#0d0f12",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

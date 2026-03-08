@@ -190,26 +190,20 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
           onOpenListing && h('button', {
             className: 'btn btn-secondary',
             onClick: function() { onOpenListing(card); }
-          }, 'List on Market')
+          }, 'Create Guam Listing')
         ),
 
         /* ── Purchase Links ── */
-        (purchaseLinks.tcgplayer || purchaseLinks.cardmarket)
+        purchaseLinks.tcgplayer
           ? h('div', { className: 'purchase-links' },
-              h('h3', null, 'Buy This Card'),
+              h('h3', null, 'Market Reference'),
               h('div', { className: 'purchase-links-row' },
-                purchaseLinks.tcgplayer && h('a', {
+                h('a', {
                   href: purchaseLinks.tcgplayer,
                   target: '_blank',
                   rel: 'noopener noreferrer',
                   className: 'btn btn-sm btn-ghost'
-                }, 'TCGplayer'),
-                purchaseLinks.cardmarket && h('a', {
-                  href: purchaseLinks.cardmarket,
-                  target: '_blank',
-                  rel: 'noopener noreferrer',
-                  className: 'btn btn-sm btn-ghost'
-                }, 'Cardmarket')
+                }, 'TCGplayer')
               )
             )
           : null,

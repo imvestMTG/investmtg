@@ -1,10 +1,16 @@
 # investmtg-proxy Worker (v2)
 
-Cloudflare Worker that serves as the unified backend for investmtg.com — combining API gateway, CORS proxy, D1 database, and KV edge caching.
+Cloudflare Worker that serves as the unified backend for investMTG — combining API gateway, CORS proxy, D1 database, and KV edge caching.
+
+## Role in the stack
+
+- the front end is deployed separately through GitHub Pages from `frontend-v2/dist`
+- the worker remains the secure layer for proxied API access, server-side data, and protected integrations
+- the domain can continue to sit behind Cloudflare while the front-end artifact is served from GitHub Pages
 
 ## Architecture
 
-```
+```text
 Frontend (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  Scryfall API
                                     │                    ──→  JustTCG API
                                     │                    ──→  TopDeck.gg API
@@ -18,84 +24,71 @@ Frontend (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  Scryfal
 | Binding | Type | Resource |
 |---------|------|----------|
 | `DB` | D1 Database | `investmtg-db` — SQLite database with 7 tables |
-| `CACHE` | KV Namespace | `INVESTMTG_CACHE` — Edge key-value cache |
+| `CACHE` | KV Namespace | `INVESTMTG_CACHE` — edge cache |
 | `JUSTTCG_API_KEY` | Secret | JustTCG API key (encrypted) |
 | `TOPDECK_API_KEY` | Secret | TopDeck.gg API key (encrypted) |
 
-## API Routes
+## Routes
 
-### Data Endpoints (D1 + KV backed)
+### Data endpoints
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/health` | GET | health check |
+| `/api/ticker` | GET | tracked card prices |
+| `/api/featured` | GET | featured cards |
+| `/api/trending` | GET | trending cards |
+| `/api/budget` | GET | budget staples |
+| `/api/search` | GET | Scryfall-backed card search |
+| `/api/card/:id` | GET | card detail proxy/cache |
+| `/api/movers/:cat` | GET | market movers by category |
+| `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
+| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings |
+| `/api/sellers` | GET/POST | seller profiles |
+| `/api/stores` | GET | verified Guam stores |
+| `/api/events` | GET | community events |
+| `/api/cart` | GET/POST/DELETE | shopping cart |
 
-| Route | Method | Cache | Description |
-|-------|--------|-------|-------------|
-| `/api/health` | GET | — | Health check (DB connectivity + version) |
-| `/api/ticker` | GET | KV 5min | Live prices for 16 tracked high-value cards |
-| `/api/featured` | GET | KV 1hr | Featured high-value cards (dual lands, Reserved List) |
-| `/api/trending` | GET | KV 30min | Trending popular cards |
-| `/api/budget` | GET | KV 1hr | Budget-friendly staples |
-| `/api/search?q=` | GET | — | Card search proxied to Scryfall (unique prints) |
-| `/api/card/:id` | GET | D1 10min | Card detail with cached pricing |
-| `/api/movers/:cat` | GET | KV 30min | Market movers (valuable/modern/commander/budget) |
+### Proxy routes
+| Route | Target | Purpose | Notes |
+|-------|--------|---------|-------|
+| `/justtcg` | api.justtcg.com | condition pricing | API key injected server-side |
+| `/topdeck` | topdeck.gg API | tournament data | API key injected server-side |
+| `/chatbot` | text.pollinations.ai | chat relay | rate-limited |
+| `/?target=` | allowlisted hosts | generic proxy | use sparingly and keep allowlisted |
 
-### User Data Endpoints (D1 + session cookies)
-
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/api/portfolio` | GET/POST/DELETE | Portfolio CRUD (anonymous session) |
-| `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings with search, filter, sort, pagination |
-| `/api/sellers` | GET/POST | Seller registration and profile management |
-| `/api/stores` | GET | Verified Guam stores |
-| `/api/events` | GET | Community events |
-| `/api/cart` | GET/POST/DELETE | Shopping cart linked to listings |
-
-### Proxy Routes (preserved from v1)
-
-| Route | Target | Auth | Description |
-|-------|--------|------|-------------|
-| `/justtcg` | api.justtcg.com | `X-Api-Key` (encrypted secret) | Card condition pricing |
-| `/topdeck` | topdeck.gg API | `Authorization` (encrypted secret) | Tournament data |
-| `/chatbot` | text.pollinations.ai | None (rate-limited) | AI chat advisor |
-| `/?target=` | Allowlisted hosts only | None | Generic CORS proxy |
-
-## Database Schema
+## Database schema
 
 7 tables in the D1 database (`schema.sql`):
-
-- **prices** — Scryfall card price cache (card_id, name, prices, images, metadata)
-- **portfolios** — User portfolio entries (session_token, card_id, quantity, added_price)
-- **listings** — Marketplace listings (seller info, card, condition, price, status)
-- **sellers** — Registered seller profiles (name, contact, store affiliation)
-- **events** — Community events (title, host, location, date, tags)
-- **stores** — Verified local stores (name, address, hours, tags, verified flag)
-- **cart_items** — Shopping cart (session_token, listing_id, quantity)
+- `prices`
+- `portfolios`
+- `listings`
+- `sellers`
+- `events`
+- `stores`
+- `cart_items`
 
 ## Security
 
-- **Origin validation**: Only requests from `investmtg.com`, `imvestmtg.github.io`, and local dev origins
-- **API keys**: Stored as **encrypted Cloudflare Worker secrets** — never in source code
-- **Rate limiting**: 120 req/min per IP (general), 12 req/min per IP (chatbot)
-- **Scryfall rate limiting**: 100ms between calls, proper User-Agent header
-- **Session cookies**: HttpOnly, Secure, SameSite=Lax, 1-year expiry
-- **Host allowlist**: Generic proxy only forwards to explicitly allowlisted domains
-- **Smart caching**: KV cache skips empty results to prevent caching API failures
+- API keys must remain in encrypted worker secrets
+- do not commit secrets to `wrangler.toml`, docs, or source files
+- restrict origins to known production and development hosts
+- rate-limit abuse-prone endpoints
+- keep Guam-first marketplace messaging consistent in backend-generated copy where applicable
 
 ## Deployment
 
-### Prerequisites
+### Wrangler CLI
 
 ```bash
-export CLOUDFLARE_API_TOKEN="<your-token>"    # Needs Workers Scripts + D1 + KV permissions
-export CLOUDFLARE_ACCOUNT_ID="12360b71beb495952bc5bdcd1b3eab27"
-```
-
-### Deploy Worker
-
-```bash
-cd worker/
+cd worker
 npx wrangler deploy
 ```
 
-### Database Management
+Environment requirements:
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+### Database management
 
 Apply schema:
 ```bash
@@ -112,34 +105,35 @@ Query database:
 npx wrangler d1 execute investmtg-db --command="SELECT COUNT(*) FROM stores" --remote
 ```
 
-### Secrets Management
-
-API keys are stored as encrypted secrets:
+## Secrets management
 
 ```bash
 echo "your-key-here" | npx wrangler secret put JUSTTCG_API_KEY
 echo "your-key-here" | npx wrangler secret put TOPDECK_API_KEY
 ```
 
-List secrets:
+List configured secrets:
+
 ```bash
 npx wrangler secret list
 ```
-
-| Secret | Service | How to obtain |
-|--------|---------|---------------|
-| `JUSTTCG_API_KEY` | JustTCG card pricing | [justtcg.com](https://justtcg.com) account dashboard |
-| `TOPDECK_API_KEY` | TopDeck.gg tournaments | [topdeck.gg](https://topdeck.gg) API access request |
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `worker.js` | Full v2 Worker source (790+ lines) |
-| `wrangler.toml` | Deployment config with D1 and KV binding IDs |
-| `schema.sql` | D1 database schema (7 tables) |
-| `seed.sql` | Seed data (5 Guam stores, 3 community events) |
+| `worker.js` | Worker v2 source |
+| `wrangler.toml` | deployment config with D1 and KV bindings |
+| `schema.sql` | D1 database schema |
+| `seed.sql` | Guam store and event seed data |
 
 ## Live URL
 
 `https://investmtg-proxy.bloodshutdawn.workers.dev`
+
+## Release checklist
+
+When the worker changes:
+- confirm route documentation still matches behavior
+- confirm no secret values appear in tracked files
+- confirm front-end docs still describe the worker as a separate deployment surface

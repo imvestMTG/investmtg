@@ -1,198 +1,162 @@
-# investMTG — Know What Your Cards Are Worth
+# investMTG
 
-**[www.investmtg.com](https://www.investmtg.com)**
+**Site:** [www.investmtg.com](https://www.investmtg.com)
 
-> Real cards. Real data. Fair play.
+Real cards. Real data. Fair play.
 
-investMTG is a free Magic: The Gathering marketplace and price intelligence platform built for the Guam community. We give island players the same pricing transparency, portfolio tools, and market data that mainland players take for granted — without the markup, without the guesswork, and without the games.
+investMTG is a Guam-first Magic: The Gathering marketplace and pricing experience built around transparent reference pricing, local seller trust, and cleaner buyer flows.
 
-### Vision
-To be Guam's trusted home for Magic: The Gathering — the place every island player checks before they buy, sell, or trade a card.
+## What changed
 
-### Mission
-To prove that a trading card marketplace can run on honesty. investMTG exists to give Guam's MTG community free access to real market data, fair pricing tools, and a local marketplace built without fake data, dark patterns, or hidden agendas.
+The project now has two important layers:
+- a modern React + TypeScript front end in `frontend-v2/`
+- a Cloudflare Worker v2 backend in `worker/` with D1 + KV infrastructure
 
----
+The new product direction is intentionally narrow:
+- Guam-only marketplace language
+- pickup and island delivery first
+- no Cardmarket-facing buyer flow
+- modern search, card detail, portfolio, and seller surfaces
 
-## Features
+## Current stack
 
-- **Real-Time Prices (USD Only)** — Live card pricing from [Scryfall](https://scryfall.com), sourced from TCGplayer and Cardmarket. Physical printed cards only — no MTGO or digital-only cards.
-- **Condition Pricing** — Cart shows condition-specific prices (DMG, HP, MP, LP, NM) via [JustTCG](https://justtcg.com) with interactive chip selectors
-- **Immersive Hero** — AI-generated cinematic background with golden energy trails, glass-morphism stats bar, scroll-driven fade-up animations
-- **Community Events** — Featured events with AI-generated artwork (TCG Con 2026 hero card, Commander Night, Weekend Events), date chips, hover effects with golden border glow
-- **Daily Fresh Content** — Homepage Featured, Trending, and Budget sections rotate daily across 50+ card pools with golden accent bar headers
-- **Live Price Ticker** — Scrolling ticker with real market prices for 15 major cards, refreshing every 5 minutes
-- **Card Search** — Search thousands of printed Magic cards with color, rarity, and price filters
-- **Market Movers** — Most Valuable Cards, Modern Staples, Commander Staples, and Budget Finds with real pricing
-- **cEDH Metagame** — Competitive EDH commander rankings, tournament results, and staple cards from [EDH Top 16](https://edhtop16.com) and [TopDeck.gg](https://topdeck.gg)
-- **Deck Browser** — Import and price decklists from [Moxfield](https://moxfield.com) with popular deck presets
-- **Portfolio Tracker** — Track your collection's value against live market prices
-- **Local Marketplace** — Buy, sell, and trade cards with Guam's MTG community. Listings are real — submitted by registered sellers and persisted in localStorage. No mock data.
-- **Seller Dashboard** — Register as a seller, manage listings with Scryfall autocomplete, track sales. Listings sync to the marketplace in real time.
-- **Local Store Directory** — The Inventory, Geek Out Next Level, My Wife Told Me To Sell It, Fraim's Collectibles, Poke Violet 671 (5 verified Guam stores — listed as community resources, no formal partnerships)
-- **AI Chatbot** — MTG knowledge assistant powered by Pollinations AI (routed through secure Worker proxy with rate limiting)
-- **Payment Integration** — SumUp card payments, Apple Pay / Google Pay via Swift Checkout
-- **Guam GRT** — Automatic 4% Guam Retail Tax calculation at checkout
-- **Legal Pages** — Privacy Policy, Terms of Service, Cookie Notice
-- **PWA Support** — Installable as a mobile app
-- **Performance Optimized** — Lazy-loaded components (82% less initial JS), minified CSS, hero image preload, deferred API calls
+### Front end
+`frontend-v2/` is the source of truth for the modern production front end.
 
-## Tech Stack
+Key characteristics:
+- React 19 + TypeScript + Vite
+- TanStack Query for remote data loading
+- lightweight hash routing for static hosting safety
+- no browser storage dependency in the rewrite shell
+- static deployment through GitHub Pages artifact publishing
 
-- **Frontend**: React 18 SPA (no build tools, no JSX)
-- **Pattern**: `React.createElement` via esm.sh import maps
-- **Hosting**: GitHub Pages at www.investmtg.com
-- **Domain**: Cloudflare DNS with HTTPS
-- **Backend**: Cloudflare Worker v2 (investmtg-proxy.bloodshutdawn.workers.dev)
-- **Database**: Cloudflare D1 (`investmtg-db`) — 7 tables (prices, portfolios, listings, sellers, stores, events, cart)
-- **Cache**: Cloudflare KV (`INVESTMTG_CACHE`) — edge-cached market data with configurable TTLs
-- **Payments**: SumUp (card) + Swift Checkout SDK (Apple Pay / Google Pay)
-- **APIs**: Scryfall, JustTCG, EDH Top 16, TopDeck.gg, Moxfield, Pollinations AI
-- **Storage**: Cloudflare D1 database (server-side) with anonymous session cookies
-- **Fonts**: Clash Display + Satoshi (FontShare)
+### Backend
+`worker/` contains the Cloudflare Worker v2 used as the secure backend layer.
 
-## Project Structure
+Key characteristics:
+- Cloudflare Worker API gateway and proxy
+- Cloudflare D1 database for server-side data
+- Cloudflare KV cache for market and discovery responses
+- encrypted secrets for protected third-party APIs
+- anonymous session cookie support for server-side user state
 
-```
+## Core experience
+
+### Search
+- live card search through [Scryfall](https://scryfall.com/docs/api)
+- compact, responsive card results
+- Guam-first messaging around what happens after discovery
+
+### Card detail
+- live reference pricing from [Scryfall](https://scryfall.com/docs/api)
+- local Guam listing rail
+- printing table for alternate versions
+- TCGplayer-only external market reference link when available
+
+### Portfolio
+- seeded portfolio positions displayed in a cleaner dashboard layout
+- reference values pulled through the [Scryfall collection API](https://scryfall.com/docs/api/cards/collection)
+- architecture ready for future backend persistence through the Worker + D1 stack
+
+### Seller flow
+- guided Guam listing workflow
+- meetup zone and island delivery framing
+- trust prompts for local fulfillment
+- current rewrite uses structured draft data to model the intended UX while the backend path matures
+
+## Architecture
+
+### Front end
+- `frontend-v2/` — modern React + TypeScript rewrite
+- `components/`, `utils/`, `app.js`, `style.css` — legacy app retained during migration
+
+### Hosting
+- GitHub Pages publishes the built output from `frontend-v2/dist`
+- Cloudflare continues to sit in front of the domain for DNS and caching
+
+### Worker
+- `worker/worker.js` — Cloudflare Worker v2 backend and proxy
+- `worker/schema.sql` — D1 schema
+- `worker/seed.sql` — D1 seed data for Guam stores and events
+- the worker remains a separate deployment surface from the GitHub Pages front end
+
+## Project structure
+
+```text
 investmtg/
-├── index.html              # Entry point with import maps, CSP, structured data
-├── app.js                  # Root React app, router, ErrorBoundary, service worker registration
-├── base.css                # CSS custom properties, tokens, modal/error styles
-├── style.css               # All component styles (minified)
-├── sw.js                   # Service worker for PWA offline support
-├── manifest.json           # PWA manifest
-├── robots.txt              # Search engine crawl rules
-├── sitemap.xml             # Sitemap for SEO
-├── 404.html                # GitHub Pages SPA fallback
-├── SOUL.md                 # Ethical guidelines — The Fair Play Economy
-├── BUILD_SPEC.md           # Build specification
-├── CHANGES.md              # Build changelog
-│
-├── images/
-│   ├── hero-bg.jpg          # AI-generated hero background
-│   ├── event-tcgcon.jpg     # AI artwork for TCG Con 2026
-│   ├── event-commander.jpg  # AI artwork for Commander Night
-│   └── event-weekend.jpg    # AI artwork for Weekend Events
-│
-├── components/
-│   ├── HomeView.js         # Homepage with daily-rotating card sections
-│   ├── SearchView.js       # Card search with filters
-│   ├── CardDetailView.js   # Card detail with live USD pricing + purchase links
-│   ├── PortfolioView.js    # Portfolio tracker with live price updates
-│   ├── CartView.js         # Shopping cart with condition pricing + quantity limits
-│   ├── CheckoutView.js     # Full checkout with SumUp + Apple/Google Pay + GRT
-│   ├── StoreView.js        # Local stores + marketplace listings (keyboard accessible)
-│   ├── SellerDashboard.js  # Seller registration and listing management
-│   ├── OrderConfirmation.js# Post-payment confirmation
-│   ├── MarketMoversView.js # Top valued cards by category
-│   ├── MetaView.js         # cEDH metagame dashboard (EDH Top 16 + TopDeck.gg)
-│   ├── DecklistView.js     # Deck browser with Moxfield import
-│   ├── PriceHistoryChart.js# Price display component
-│   ├── ListingModal.js     # Create marketplace listing modal
-│   ├── BuyLocalModal.js    # Buy from local seller modal
-│   ├── Ticker.js           # Live price ticker strip
-│   ├── Header.js           # Navigation header
-│   ├── Footer.js           # Site footer
-│   ├── Chatbot.js          # AI chatbot (proxied through Worker)
-│   ├── PrivacyPolicyView.js # Privacy policy page
-│   ├── TermsView.js        # Terms of service page
-│   ├── CookieNotice.js     # Cookie consent banner
-│   └── shared/
-│       ├── CardGrid.js     # Reusable card grid component
-│       ├── ConfirmModal.js # Styled confirmation/alert modal (replaces window.confirm)
-│       ├── ErrorBoundary.js# React error boundary with fallback UI
-│       ├── Icons.js        # SVG icon components (className forwarding)
-│       ├── SkeletonCard.js # Loading skeleton
-│       ├── Toast.js        # Toast notifications (memory-leak safe)
-│       └── BackToTop.js    # Scroll-to-top button
-│
-├── utils/
-│   ├── api.js              # Scryfall API wrapper with centralized rate limiting
-│   ├── config.js           # Centralized constants (tax, shipping, limits, intervals)
-│   ├── sanitize.js         # Input sanitization and validation (email, phone, XSS)
-│   ├── group-by-seller.js  # Shared cart grouping utility
-│   ├── events-config.js    # Community events data (editable without code changes)
-│   ├── stores.js           # Verified Guam store directory data
-│   ├── helpers.js          # Formatting and utility functions
-│   ├── justtcg-api.js      # JustTCG condition pricing API (via Worker proxy)
-│   ├── edhtop16-api.js     # EDH Top 16 GraphQL API wrapper (via Worker proxy)
-│   ├── topdeck-api.js      # TopDeck.gg REST API wrapper (via Worker proxy)
-│   ├── moxfield-api.js     # Moxfield decklist API wrapper
-│   └── marketplace-data.js # Marketplace data aggregation (loads seller listings from localStorage, persists standalone listings)
-│
+├── .github/workflows/deploy.yml
+├── frontend-v2/
+│   ├── public/
+│   ├── src/
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
 ├── worker/
-│   ├── worker.js           # Cloudflare Worker v2 (D1 + KV backend + CORS proxy, 790+ lines)
-│   ├── wrangler.toml       # Worker deployment config with D1 and KV binding IDs
-│   ├── schema.sql          # D1 database schema (7 tables)
-│   ├── seed.sql            # Seed data (5 Guam stores, 3 community events)
-│   └── README.md           # Worker deployment and database management instructions
-│
-└── .well-known/
-    └── apple-developer-merchantid-domain-association  # Apple Pay verification
+│   ├── worker.js
+│   ├── wrangler.toml
+│   ├── schema.sql
+│   ├── seed.sql
+│   └── README.md
+├── README.md
+├── BUILD_SPEC.md
+├── CHANGES.md
+├── SOUL.md
+└── legacy app files retained during migration
 ```
 
-## Architecture Rules
+## Deployment
 
-- `var h = React.createElement;` — no JSX anywhere
-- `var ref = React.useState(x); var val = ref[0], setVal = ref[1];` — no destructuring
-- All imports use bare specifiers resolved by the import map in index.html
-- Frontend is static on GitHub Pages — backend data stored in Cloudflare D1 via Worker API
-- All CSS in `style.css` (minified) — no CSS-in-JS or modules
-- Mobile-first responsive design with dark/light theme support
-- USD only — no EUR, GBP, tix, or other currencies displayed
-- **Lazy loading**: 16 non-homepage components use dynamic `import()` via a custom `lazyComponent()` wrapper. Only homepage essentials load eagerly (47KB vs 262KB previously).
+### Front end
+The GitHub Actions workflow at `.github/workflows/deploy.yml`:
+1. installs dependencies in `frontend-v2/`
+2. builds the Vite app
+3. publishes `frontend-v2/dist` to GitHub Pages
 
-## The Fair Play Economy (SOUL.md)
+Root-level copied build artifacts are not the intended release path anymore.
 
-This project operates under **The Fair Play Economy** — five pillars that guide every decision:
-
-1. **Transparency** — All prices, sources, and methods are visible
-2. **Equity of Access** — Every player gets the same tools, free forever
-3. **Honesty Rewarded** — Accurate grading, fair pricing, good-faith trading
-4. **Sportsmanship Over Greed** — Anti-hoarding, anti-gouging systems
-5. **Diversity & Inclusion** — Every player welcome regardless of budget or background
-
-Key rules:
-- All price data is real — Scryfall for market prices, JustTCG for condition prices
-- All metagame data is real — EDH Top 16 and TopDeck.gg tournament results
-- No fabricated statistics, fake trends, or mock data shown as real
-- Physical printed cards only — no digital/MTGO cards
-- Store listings are community resources — no formal partnerships claimed
-- See [SOUL.md](SOUL.md) for the full ethical framework, brand voice, and changelog
-
-## External Services
-
-| Service | Purpose | Auth |
-|---------|---------|------|
-| [Scryfall API](https://scryfall.com/docs/api) | Card data, images, and prices | No key required |
-| [JustTCG API](https://justtcg.com) | Condition-specific pricing | API key (paid tier) |
-| [EDH Top 16 API](https://edhtop16.com) | cEDH commander meta data | No key required |
-| [TopDeck.gg API](https://topdeck.gg) | cEDH tournament data | API key (free tier) |
-| [Moxfield API](https://moxfield.com) | Decklist imports | No key required |
-| [Pollinations AI](https://pollinations.ai) | Chatbot responses | No key required |
-| [SumUp](https://developer.sumup.com) | Card payments | Merchant code + public key |
-| [Cloudflare Workers](https://workers.cloudflare.com) | Unified backend: API gateway, CORS proxy, D1 database, KV cache | Encrypted secrets |
-| [Cloudflare D1](https://developers.cloudflare.com/d1/) | SQLite database (prices, portfolios, listings, sellers, stores, events, cart) | Worker binding |
-| [Cloudflare KV](https://developers.cloudflare.com/kv/) | Edge key-value cache (ticker, featured, trending, budget, movers) | Worker binding |
-| [GitHub Pages](https://pages.github.com) | Static frontend hosting | Push to `main` branch |
-| [Cloudflare](https://cloudflare.com) | DNS + CDN + Worker hosting | API tokens (not in repo) |
+### Worker
+Deploy the Worker separately from `worker/` using Wrangler.
 
 ## Development
 
-This is a no-build project:
-
+### Front end
 ```bash
-git clone https://github.com/imvestMTG/investmtg.git
-npx serve .
-# Open http://localhost:3000
+cd frontend-v2
+npm ci
+npm run build
+npm run lint
+npm run preview
 ```
 
-Edit files directly — no compilation step needed. Push to `main` to deploy via GitHub Pages.
+### Worker
+```bash
+cd worker
+npx wrangler deploy
+```
 
-## License
+## Data sources
 
-Private project. All rights reserved.
+- [Scryfall API](https://scryfall.com/docs/api) — card search, images, printings, and reference prices
+- [TCGplayer](https://www.tcgplayer.com) — optional external purchase reference links returned through Scryfall purchase URIs
+- [JustTCG](https://justtcg.com) — condition-pricing integration via the worker
+- [EDH Top 16](https://edhtop16.com) — meta and tournament-related integrations through the worker path where needed
+- [TopDeck.gg](https://topdeck.gg) — tournament data through the worker
+- [Moxfield](https://moxfield.com) — decklist-related integration
+- [Cloudflare Workers](https://workers.cloudflare.com/) — proxy and secret-backed API routing
+- [Cloudflare D1](https://developers.cloudflare.com/d1/) — server-side data storage
+- [Cloudflare KV](https://developers.cloudflare.com/kv/) — cached market/discovery responses
+- [GitHub Pages](https://pages.github.com/) — static site hosting
+
+## Notes
+
+- The rewrite is Guam-only by product intent.
+- Cardmarket is excluded from the modern buyer experience.
+- The old legacy app remains in the repository during migration, but it is no longer the intended long-term front-end architecture.
+- No deployment is considered complete until `README.md`, `BUILD_SPEC.md`, `CHANGES.md`, `SOUL.md`, and `worker/README.md` are updated in the same session.
 
 ---
 
-*Created with [Perplexity Computer](https://www.perplexity.ai/computer)*
+Created with [Perplexity Computer](https://www.perplexity.ai/computer)
