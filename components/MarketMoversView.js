@@ -1,38 +1,41 @@
-/* MarketMoversView.js — Trending cards using Scryfall data (no JustTCG) */
+/* MarketMoversView.js — Trending cards using backend market data */
 import React from 'react';
-import { searchCards } from '../utils/api.js';
+import { fetchMovers } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { TrendingIcon } from './shared/Icons.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 var h = React.createElement;
 
-/* Curated card pools for different market categories — Scryfall searches */
+/* Map frontend category keys to backend category names */
+var CATEGORY_KEY_MAP = {
+  'expensive': 'valuable',
+  'staples': 'modern',
+  'commander': 'commander',
+  'budget': 'budget'
+};
+
 var CATEGORIES = [
   {
     key: 'expensive',
     title: 'Most Valuable Cards',
-    query: 'usd>50 has:usd',
     icon: '\u2B50',
     description: 'Highest-value physical MTG cards on the market right now.'
   },
   {
     key: 'staples',
     title: 'Modern Staples',
-    query: 'f:modern usd>5 has:usd',
     icon: '\u2694\uFE0F',
     description: 'Top-priced cards legal in Modern format.'
   },
   {
     key: 'commander',
     title: 'Commander Staples',
-    query: 'f:commander usd>10 has:usd',
     icon: '\uD83D\uDC51',
     description: 'Most valuable cards for the Commander format.'
   },
   {
     key: 'budget',
     title: 'Budget Finds',
-    query: 'usd<2 usd>0.10 has:usd r:rare',
     icon: '\uD83D\uDCB0',
     description: 'Affordable rares — great for building on a budget.'
   }
@@ -79,22 +82,19 @@ export function MarketMoversView() {
   React.useEffect(function() {
     setLoading(true);
     setError(null);
-    var category = CATEGORIES.find(function(c) { return c.key === activeCategory; });
-    if (!category) return;
+    var backendCategory = CATEGORY_KEY_MAP[activeCategory] || activeCategory;
 
-    searchCards(category.query).then(function(result) {
-      if (result && result.data) {
-        // Take first 10, filter to unique names
-        var seen = {};
-        var unique = [];
-        result.data.forEach(function(card) {
-          if (!seen[card.name] && unique.length < 10) {
-            seen[card.name] = true;
-            unique.push(card);
-          }
-        });
-        setCards(unique);
-      }
+    fetchMovers(backendCategory).then(function(result) {
+      // Take first 10, filter to unique names
+      var seen = {};
+      var unique = [];
+      result.forEach(function(card) {
+        if (!seen[card.name] && unique.length < 10) {
+          seen[card.name] = true;
+          unique.push(card);
+        }
+      });
+      setCards(unique);
       setLoading(false);
     }).catch(function(err) {
       setError('Could not load market data. Please try again.');

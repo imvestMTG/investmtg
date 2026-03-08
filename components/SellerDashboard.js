@@ -2,36 +2,15 @@
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { STORE_OPTIONS } from '../utils/stores.js';
+import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
+import { fetchSeller, registerSeller, createListing, deleteListing, fetchListings } from '../utils/api.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP'];
 var LISTING_TYPES = ['sale', 'trade'];
-
-
-
-function generateSellerId() {
-  return 'seller-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
-}
-
-function loadSellerData(sellerId) {
-  if (!sellerId) return null;
-  return JSON.parse(localStorage.getItem('investmtg-seller-' + sellerId) || 'null');
-}
-
-function saveSellerData(sellerId, data) {
-  localStorage.setItem('investmtg-seller-' + sellerId, JSON.stringify(data));
-}
-
-function getActiveSellerId() {
-  return localStorage.getItem('investmtg-active-seller') || null;
-}
-
-function setActiveSellerId(id) {
-  localStorage.setItem('investmtg-active-seller', id);
-}
 
 // Scryfall autocomplete — debounced fetch
 function useScryfallAutocomplete(query) {
@@ -69,11 +48,18 @@ function useScryfallAutocomplete(query) {
 }
 
 // ===== REGISTRATION FORM =====
-function RegistrationForm({ onRegister }) {
+function RegistrationForm(props) {
+  var onRegister = props.onRegister;
+  var storeOptions = props.storeOptions || STORE_OPTIONS;
+
   var ref1 = React.useState({ name: '', contact: '', storeId: '', bio: '' });
   var form = ref1[0], setForm = ref1[1];
   var ref2 = React.useState({});
   var errors = ref2[0], setErrors = ref2[1];
+  var ref3 = React.useState(false);
+  var submitting = ref3[0], setSubmitting = ref3[1];
+  var ref4 = React.useState(null);
+  var submitError = ref4[0], setSubmitError = ref4[1];
 
   function update(key, val) {
     setForm(function(p) { return Object.assign({}, p, { [key]: val }); });
@@ -91,20 +77,22 @@ function RegistrationForm({ onRegister }) {
   function handleSubmit(evt) {
     evt.preventDefault();
     if (!validate()) return;
-    var id = generateSellerId();
-    var seller = {
-      id: id,
+    setSubmitting(true);
+    setSubmitError(null);
+    var data = {
       name: sanitizeInput(form.name.trim(), 100),
       contact: sanitizeInput(form.contact.trim(), 200),
-      storeId: form.storeId,
-      bio: sanitizeInput(form.bio.trim(), 500),
-      joinDate: new Date().toISOString(),
-      listings: [],
-      reputationScore: 100
+      store_affiliation: form.storeId || null,
+      bio: sanitizeInput(form.bio.trim(), 500) || null
     };
-    saveSellerData(id, seller);
-    setActiveSellerId(id);
-    onRegister(seller);
+    registerSeller(data).then(function(response) {
+      setSubmitting(false);
+      var seller = response && response.seller ? response.seller : response;
+      onRegister(seller);
+    }).catch(function(err) {
+      setSubmitting(false);
+      setSubmitError('Registration failed. Please try again.');
+    });
   }
 
   return h('div', { className: 'container seller-registration' },
@@ -114,6 +102,7 @@ function RegistrationForm({ onRegister }) {
       h('p', { className: 'seller-reg-sub' },
         'Join Guam\'s MTG community marketplace. List your cards, connect with local buyers, and grow your collection.'
       ),
+      submitError && h('p', { className: 'form-error', style: { marginBottom: 'var(--space-4)' } }, submitError),
       h('form', { onSubmit: handleSubmit, className: 'checkout-form' },
         h('div', { className: 'form-group' },
           h('label', { className: 'form-label', htmlFor: 'reg-name' }, 'Seller Name'),
@@ -147,7 +136,7 @@ function RegistrationForm({ onRegister }) {
             value: form.storeId,
             onChange: function(e) { update('storeId', e.target.value); }
           },
-            STORE_OPTIONS.map(function(s) {
+            storeOptions.map(function(s) {
               return h('option', { key: s.id, value: s.id }, s.name);
             })
           )
@@ -163,20 +152,24 @@ function RegistrationForm({ onRegister }) {
             onChange: function(e) { update('bio', e.target.value); }
           })
         ),
-        h('button', { type: 'submit', className: 'btn btn-primary btn-lg' },
-          'Create Seller Account'
+        h('button', { type: 'submit', className: 'btn btn-primary btn-lg', disabled: submitting },
+          submitting ? 'Creating...' : 'Create Seller Account'
         )
       ),
       h('div', { className: 'seller-trust-row' },
         h(ShieldIcon, null),
-        h('span', null, 'Your data is stored locally in your browser. No account or password required.')
+        h('span', null, 'Your seller account is session-based. No password required.')
       )
     )
   );
 }
 
 // ===== ADD/EDIT LISTING FORM =====
-function ListingForm({ initial, onSave, onCancel }) {
+function ListingForm(props) {
+  var initial = props.initial;
+  var onSave = props.onSave;
+  var onCancel = props.onCancel;
+
   var defaultForm = {
     cardName: '',
     setName: '',
@@ -197,6 +190,9 @@ function ListingForm({ initial, onSave, onCancel }) {
 
   var ref4 = React.useState({});
   var errors = ref4[0], setErrors = ref4[1];
+
+  var ref5 = React.useState(false);
+  var submitting = ref5[0], setSubmitting = ref5[1];
 
   var ac = useScryfallAutocomplete(autocompleteQuery);
 
@@ -232,12 +228,13 @@ function ListingForm({ initial, onSave, onCancel }) {
   function handleSubmit(evt) {
     evt.preventDefault();
     if (!validate()) return;
+    setSubmitting(true);
     onSave(Object.assign({}, form, {
-      id: (initial && initial.id) || ('listing-' + Date.now()),
+      id: (initial && initial.id) || null,
       price: parseFloat(form.price) || 0,
       image: null,
       createdAt: (initial && initial.createdAt) || new Date().toISOString()
-    }));
+    }), function() { setSubmitting(false); });
   }
 
   return h('form', { onSubmit: handleSubmit, className: 'listing-form' },
@@ -356,8 +353,8 @@ function ListingForm({ initial, onSave, onCancel }) {
 
     h('div', { className: 'listing-form-actions' },
       h('button', { type: 'button', className: 'btn btn-secondary', onClick: onCancel }, 'Cancel'),
-      h('button', { type: 'submit', className: 'btn btn-primary' },
-        initial && initial.id ? 'Save Changes' : 'Add Listing'
+      h('button', { type: 'submit', className: 'btn btn-primary', disabled: submitting },
+        submitting ? 'Saving...' : (initial && initial.id ? 'Save Changes' : 'Add Listing')
       )
     )
   );
@@ -366,10 +363,12 @@ function ListingForm({ initial, onSave, onCancel }) {
 // ===== MAIN SELLER DASHBOARD =====
 export function SellerDashboard(props) {
   var refreshMarketplace = props && props.refreshMarketplace;
-  var activeSellerId = getActiveSellerId();
 
-  var ref1 = React.useState(activeSellerId ? loadSellerData(activeSellerId) : null);
+  var ref1 = React.useState(null);
   var seller = ref1[0], setSeller = ref1[1];
+
+  var ref1b = React.useState(true); // loading seller check on mount
+  var sellerLoading = ref1b[0], setSellerLoading = ref1b[1];
 
   var ref2 = React.useState('listings'); // 'listings' | 'add' | 'history' | 'profile'
   var activeTab = ref2[0], setActiveTab = ref2[1];
@@ -383,6 +382,33 @@ export function SellerDashboard(props) {
   var ref5 = React.useState(null);
   var confirmAction = ref5[0], setConfirmAction = ref5[1];
 
+  // Dynamic seller listings from backend
+  var ref6 = React.useState([]);
+  var sellerListings = ref6[0], setSellerListings = ref6[1];
+
+  // Dynamic store options
+  var ref7 = React.useState(STORE_OPTIONS);
+  var storeOptions = ref7[0], setStoreOptions = ref7[1];
+
+  // On mount: check if user is already registered via session cookie
+  React.useEffect(function() {
+    // Fetch store options async
+    getStoreOptionsAsync().then(function(opts) {
+      setStoreOptions(opts);
+    });
+
+    // Check seller session
+    fetchSeller().then(function(data) {
+      if (data && data.registered && data.seller) {
+        setSeller(data.seller);
+        setSellerListings(data.listings || []);
+      }
+      setSellerLoading(false);
+    }).catch(function() {
+      setSellerLoading(false);
+    });
+  }, []);
+
   function flash(msg) {
     setFlashMsg(msg);
     setTimeout(function() { setFlashMsg(null); }, 3000);
@@ -390,37 +416,44 @@ export function SellerDashboard(props) {
 
   function handleRegister(newSeller) {
     setSeller(newSeller);
-    flash('Seller account created! Welcome, ' + newSeller.name + '.');
+    flash('Seller account created! Welcome, ' + (newSeller.name || 'seller') + '.');
     if (refreshMarketplace) refreshMarketplace();
   }
 
-  function refreshSeller() {
-    if (seller) {
-      var updated = loadSellerData(seller.id);
-      setSeller(updated);
-    }
+  function refreshSellerListings() {
+    fetchSeller().then(function(data) {
+      if (data && data.listings) {
+        setSellerListings(data.listings);
+      }
+    }).catch(function() {
+      // silently ignore
+    });
   }
 
-  function handleAddListing(listingData) {
-    var updatedSeller = Object.assign({}, seller);
-    var listings = (updatedSeller.listings || []).slice();
-    var idx = listings.findIndex(function(l) { return l.id === listingData.id; });
-    if (idx >= 0) {
-      listings[idx] = listingData;
-      flash('Listing updated successfully!');
-    } else {
-      listingData.seller = seller.name;
-      listingData.contact = listingData.contact || seller.contact;
-      listings.unshift(listingData);
+  function handleAddListing(listingData, doneCallback) {
+    var isEdit = !!(listingData.id);
+    var backendData = {
+      card_name: listingData.cardName || '',
+      price: listingData.price || 0,
+      condition: listingData.condition || 'NM',
+      seller_name: seller.name || '',
+      seller_contact: listingData.contact || seller.contact || '',
+      set_name: listingData.setName || '',
+      notes: listingData.notes || '',
+      image_uri: listingData.image || null
+    };
+
+    createListing(backendData).then(function() {
+      if (doneCallback) doneCallback();
       flash('Listing added to marketplace!');
-    }
-    updatedSeller.listings = listings;
-    saveSellerData(seller.id, updatedSeller);
-    setSeller(updatedSeller);
-    setEditingListing(null);
-    setActiveTab('listings');
-    /* Sync to global marketplace so StoreView sees the new listing */
-    if (refreshMarketplace) refreshMarketplace();
+      setEditingListing(null);
+      setActiveTab('listings');
+      refreshSellerListings();
+      if (refreshMarketplace) refreshMarketplace();
+    }).catch(function() {
+      if (doneCallback) doneCallback();
+      flash('Failed to add listing. Please try again.');
+    });
   }
 
   function handleDeleteListing(id) {
@@ -428,13 +461,15 @@ export function SellerDashboard(props) {
       title: 'Delete Listing',
       message: 'Are you sure you want to delete this listing?',
       onConfirm: function() {
-        var updatedSeller = Object.assign({}, seller);
-        updatedSeller.listings = (updatedSeller.listings || []).filter(function(l) { return l.id !== id; });
-        saveSellerData(seller.id, updatedSeller);
-        setSeller(updatedSeller);
-        flash('Listing deleted.');
-        setConfirmAction(null);
-        if (refreshMarketplace) refreshMarketplace();
+        deleteListing(id).then(function() {
+          flash('Listing deleted.');
+          setConfirmAction(null);
+          refreshSellerListings();
+          if (refreshMarketplace) refreshMarketplace();
+        }).catch(function() {
+          flash('Failed to delete listing.');
+          setConfirmAction(null);
+        });
       }
     });
   }
@@ -444,19 +479,29 @@ export function SellerDashboard(props) {
       title: 'Log Out',
       message: 'Are you sure you want to log out from your seller account?',
       onConfirm: function() {
-        localStorage.removeItem('investmtg-active-seller');
         setSeller(null);
+        setSellerListings([]);
         setConfirmAction(null);
+        // Session cookie cleared on backend — nothing to do client-side
       }
     });
   }
 
-  if (!seller) {
-    return h(RegistrationForm, { onRegister: handleRegister });
+  // Show loading while checking session
+  if (sellerLoading) {
+    return h('div', { className: 'container seller-dashboard' },
+      h('p', { style: { textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-text-muted)' } },
+        'Loading...'
+      )
+    );
   }
 
-  var listings = seller.listings || [];
-  // Real sales loaded from localStorage orders
+  if (!seller) {
+    return h(RegistrationForm, { onRegister: handleRegister, storeOptions: storeOptions });
+  }
+
+  var listings = sellerListings;
+  // Sales history from localStorage orders (kept as-is)
   var allOrders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
   var sellerSales = allOrders.filter(function(o) {
     return o.items && o.items.some(function(i) { return i.seller === seller.name; });
@@ -465,8 +510,10 @@ export function SellerDashboard(props) {
     return s + o.items.filter(function(i) { return i.seller === seller.name; })
       .reduce(function(sum, i) { return sum + (i.price || 0) * (i.qty || 1); }, 0);
   }, 0);
-  var storeLabel = STORE_OPTIONS.find(function(s) { return s.id === seller.storeId; });
+  var storeLabel = storeOptions.find(function(s) { return s.id === (seller.store_affiliation || seller.storeId); });
   storeLabel = storeLabel ? storeLabel.name : 'No affiliation';
+  var joinDate = seller.created_at || seller.joinDate || new Date().toISOString();
+  var reputationScore = seller.reputation_score || seller.reputationScore || 100;
 
   return h('div', { className: 'container seller-dashboard' },
 
@@ -481,19 +528,19 @@ export function SellerDashboard(props) {
     // Profile header
     h('div', { className: 'seller-profile-header' },
       h('div', { className: 'seller-profile-left' },
-        h('div', { className: 'seller-avatar' }, seller.name.charAt(0).toUpperCase()),
+        h('div', { className: 'seller-avatar' }, (seller.name || '?').charAt(0).toUpperCase()),
         h('div', null,
           h('h1', { className: 'seller-name-heading' }, seller.name),
           h('div', { className: 'seller-meta' },
             h('span', { className: 'seller-store-tag' }, storeLabel),
-            h('span', { className: 'seller-since' }, 'Member since ' + new Date(seller.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }))
+            h('span', { className: 'seller-since' }, 'Member since ' + new Date(joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }))
           )
         )
       ),
       h('div', { className: 'seller-rep-badge' },
         h(ShieldIcon, null),
         h('div', null,
-          h('div', { className: 'seller-rep-score' }, seller.reputationScore),
+          h('div', { className: 'seller-rep-score' }, reputationScore),
           h('div', { className: 'seller-rep-label' }, 'Rep Score')
         )
       )
@@ -559,35 +606,40 @@ export function SellerDashboard(props) {
           )
         : h('div', { className: 'seller-listings-grid' },
             listings.map(function(listing) {
-              return h('div', { key: listing.id, className: 'seller-listing-card' },
+              // Normalize backend listing field names
+              var cardName = listing.card_name || listing.cardName || '';
+              var setName = listing.set_name || listing.setName || '';
+              var listingType = listing.type || 'sale';
+              var listingId = listing.id;
+              var listingPrice = listing.price || 0;
+              var listingCondition = listing.condition || 'NM';
+              var listingNotes = listing.notes || '';
+
+              return h('div', { key: listingId, className: 'seller-listing-card' },
                 h('div', { className: 'seller-listing-top' },
                   h('div', null,
-                    h('div', { className: 'seller-listing-name' }, listing.cardName),
-                    h('div', { className: 'seller-listing-set' }, listing.setName)
+                    h('div', { className: 'seller-listing-name' }, cardName),
+                    h('div', { className: 'seller-listing-set' }, setName)
                   ),
                   h('div', { className: 'seller-listing-badges' },
                     h('span', {
-                      className: 'mp-badge-condition cond-' + listing.condition.toLowerCase()
-                    }, listing.condition),
-                    h('span', { className: 'mp-badge-type type-' + listing.type },
-                      listing.type === 'sale' ? 'Sale' : 'Trade'
+                      className: 'mp-badge-condition cond-' + listingCondition.toLowerCase()
+                    }, listingCondition),
+                    h('span', { className: 'mp-badge-type type-' + listingType },
+                      listingType === 'sale' ? 'Sale' : 'Trade'
                     )
                   )
                 ),
-                listing.type === 'sale' && h('div', { className: 'seller-listing-price' },
-                  formatUSD(listing.price)
+                listingType === 'sale' && h('div', { className: 'seller-listing-price' },
+                  formatUSD(listingPrice)
                 ),
-                listing.notes && h('p', {
+                listingNotes && h('p', {
                   style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 'var(--space-2) 0' }
-                }, listing.notes),
+                }, listingNotes),
                 h('div', { className: 'seller-listing-actions' },
                   h('button', {
-                    className: 'btn btn-secondary btn-sm',
-                    onClick: function() { setEditingListing(listing); setActiveTab('add'); }
-                  }, h(EditIcon, null), ' Edit'),
-                  h('button', {
                     className: 'btn btn-sm seller-delete-btn',
-                    onClick: function() { handleDeleteListing(listing.id); }
+                    onClick: function() { handleDeleteListing(listingId); }
                   }, h(TrashIcon, null), ' Delete')
                 )
               );
@@ -673,7 +725,7 @@ export function SellerDashboard(props) {
             h('span', { className: 'order-info-label' }, 'Store'),
             h('span', { className: 'order-info-value' }, storeLabel)
           ),
-          seller.bio && h('div', { className: 'order-info-row' },
+          (seller.bio) && h('div', { className: 'order-info-row' },
             h('span', { className: 'order-info-label' }, 'Bio'),
             h('span', { className: 'order-info-value' }, seller.bio)
           ),
@@ -681,7 +733,7 @@ export function SellerDashboard(props) {
             h('span', { className: 'order-info-label' }, 'Reputation Score'),
             h('span', { className: 'order-info-value' },
               h('span', { className: 'seller-rep-inline' },
-                h(ShieldIcon, null), ' ', seller.reputationScore, ' / 100'
+                h(ShieldIcon, null), ' ', reputationScore, ' / 100'
               )
             )
           ),

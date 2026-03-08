@@ -1,12 +1,21 @@
-/* CardDetailView.js — Card detail with Scryfall pricing + other printings */
+/* CardDetailView.js — Card detail with backend pricing + other printings */
 import React from 'react';
-import { getCard, getCardPrintings } from '../utils/api.js';
+import { backendGetCard, getCardPrintings } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { CartIcon, PortfolioIcon, StarIcon, ChevronLeftIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-export function CardDetailView({ cardId, state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
+var SCRYFALL_BASE = 'https://api.scryfall.com';
+
+export function CardDetailView(props) {
+  var cardId = props.cardId;
+  var state = props.state;
+  var updateCart = props.updateCart;
+  var updatePortfolio = props.updatePortfolio;
+  var updateWatchlist = props.updateWatchlist;
+  var onOpenListing = props.onOpenListing;
+
   var ref1 = React.useState(null);
   var card = ref1[0], setCard = ref1[1];
   var ref2 = React.useState(true);
@@ -25,7 +34,30 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
     setCard(null);
     setPrintings([]);
     setShowAllPrintings(false);
-    getCard(cardId).then(function(data) {
+
+    backendGetCard(cardId).then(function(data) {
+      /* For cached D1 cards, oracle_id/purchase_uris/legalities may be absent.
+       * Fall back to a direct Scryfall call to get the full card data. */
+      if (data && !data.oracle_id) {
+        var scryfallId = data.id || cardId;
+        var scryfallUrl;
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scryfallId)) {
+          scryfallUrl = SCRYFALL_BASE + '/cards/' + scryfallId;
+        } else {
+          scryfallUrl = SCRYFALL_BASE + '/cards/named?fuzzy=' + encodeURIComponent(decodeURIComponent(scryfallId));
+        }
+        return fetch(scryfallUrl).then(function(res) {
+          if (!res.ok) return data; // fall back to backend data if Scryfall fails
+          return res.json().then(function(fullCard) {
+            /* Merge: prefer full Scryfall data but keep backend prices if present */
+            return fullCard;
+          });
+        }).catch(function() {
+          return data; // fall back to backend data on network error
+        });
+      }
+      return data;
+    }).then(function(data) {
       setCard(data);
       setLoading(false);
 
@@ -33,7 +65,7 @@ export function CardDetailView({ cardId, state, updateCart, updatePortfolio, upd
       if (data && data.oracle_id) {
         getCardPrintings(data.oracle_id).then(function(result) {
           if (result && result.data) {
-            // Filter out the current card and digital-only
+            // Filter out digital-only printings
             var others = result.data.filter(function(c) {
               return !c.digital;
             });

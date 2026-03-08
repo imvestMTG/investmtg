@@ -1,15 +1,8 @@
-/* Ticker.js — Live price ticker using Scryfall API */
+/* Ticker.js — Live price ticker using backend API */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
+import { fetchTicker } from '../utils/api.js';
 var h = React.createElement;
-
-var TICKER_CARDS = [
-  'Black Lotus', 'Mox Pearl', 'Ancestral Recall', 'Time Walk',
-  'Jace, the Mind Sculptor', 'Force of Will', 'Liliana of the Veil',
-  'Snapcaster Mage', 'Dark Confidant', 'Tarmogoyf',
-  'Ragavan, Nimble Pilferer', 'The One Ring', 'Doubling Season',
-  'Mana Crypt', 'Wrenn and Six'
-];
 
 var CACHE_KEY = 'investmtg-ticker-cache';
 var CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -30,31 +23,6 @@ function saveCache(data) {
   } catch (e) { /* ignore */ }
 }
 
-function fetchTickerPrices() {
-  var identifiers = TICKER_CARDS.map(function(name) { return { name: name }; });
-  return fetch('https://api.scryfall.com/cards/collection', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifiers: identifiers })
-  }).then(function(res) {
-    if (!res.ok) throw new Error('Scryfall error: ' + res.status);
-    return res.json();
-  }).then(function(json) {
-    if (!json.data) return [];
-    return json.data.filter(function(card) {
-      // Exclude digital-only cards (MTGO, Arena)
-      return !card.digital;
-    }).map(function(card) {
-      // Only use physical card USD prices, not MTGO tix
-      var price = parseFloat(card.prices && card.prices.usd) || parseFloat(card.prices && card.prices.usd_foil) || 0;
-      return {
-        name: card.name,
-        price: price
-      };
-    }).filter(function(item) { return item.price > 0; });
-  });
-}
-
 export function Ticker() {
   var ref1 = React.useState([]);
   var items = ref1[0], setItems = ref1[1];
@@ -73,7 +41,7 @@ export function Ticker() {
       if (cancelled) return;
 
       // Fetch fresh data after delay
-      fetchTickerPrices().then(function(data) {
+      fetchTicker().then(function(data) {
         if (!cancelled && data.length > 0) {
           setItems(data);
           saveCache(data);
@@ -84,7 +52,7 @@ export function Ticker() {
 
       // Refresh every 5 minutes
       interval = setInterval(function() {
-        fetchTickerPrices().then(function(data) {
+        fetchTicker().then(function(data) {
           if (!cancelled && data.length > 0) {
             setItems(data);
             saveCache(data);

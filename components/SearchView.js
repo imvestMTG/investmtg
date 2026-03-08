@@ -1,6 +1,6 @@
 /* SearchView.js */
 import React from 'react';
-import { searchCards, autocomplete } from '../utils/api.js';
+import { backendSearch, autocomplete } from '../utils/api.js';
 import { formatUSD, getCardPrice, debounce } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -17,7 +17,13 @@ var COLORS = [
 
 var RARITIES = ['common', 'uncommon', 'rare', 'mythic'];
 
-export function SearchView({ state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
+export function SearchView(props) {
+  var state = props.state;
+  var updateCart = props.updateCart;
+  var updatePortfolio = props.updatePortfolio;
+  var updateWatchlist = props.updateWatchlist;
+  var onOpenListing = props.onOpenListing;
+
   var ref1 = React.useState('');
   var query = ref1[0], setQuery = ref1[1];
   var ref2 = React.useState([]);
@@ -67,7 +73,7 @@ export function SearchView({ state, updateCart, updatePortfolio, updateWatchlist
     setLoading(true);
     setError(null);
     setShowSuggestions(false);
-    searchCards(q).then(function(data) {
+    backendSearch(q, { order: sortBy, dir: 'desc' }).then(function(data) {
       setResults(data && data.data ? data.data : []);
       setLoading(false);
     }).catch(function(err) {

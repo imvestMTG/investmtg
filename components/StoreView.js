@@ -2,7 +2,7 @@
 import React from 'react';
 import { filterMarketplace } from '../utils/marketplace-data.js';
 import { formatUSD } from '../utils/helpers.js';
-import { GUAM_STORES } from '../utils/stores.js';
+import { GUAM_STORES, getStoresAsync } from '../utils/stores.js';
 import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon } from './shared/Icons.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 var h = React.createElement;
@@ -23,6 +23,16 @@ export function StoreView(props) {
 
   var ref4 = React.useState(null);
   var contactModal = ref4[0], setContactModal = ref4[1];
+
+  // Dynamic stores state — start with static fallback, fetch from backend
+  var ref5 = React.useState(GUAM_STORES);
+  var stores = ref5[0], setStores = ref5[1];
+
+  React.useEffect(function() {
+    getStoresAsync().then(function(backendStores) {
+      setStores(backendStores);
+    });
+  }, []);
 
   var filtered = filterMarketplace(listings, filter);
 
@@ -209,7 +219,7 @@ export function StoreView(props) {
     // Stores tab
     activeTab === 'stores' && h('div', null,
       h('div', { className: 'stores-grid', style: { marginBottom: 'var(--space-8)' } },
-        GUAM_STORES.map(function(store) {
+        stores.map(function(store) {
           return h(StoreCard, { key: store.id, store: store });
         })
       ),
@@ -304,6 +314,7 @@ function ListingCard(props) {
 
 function StoreCard(props) {
   var store = props.store;
+  var tags = Array.isArray(store.tags) ? store.tags : [];
   return h('div', { className: 'store-card-detailed' },
     h('div', { className: 'store-card-header' },
       h('div', null,
@@ -331,7 +342,7 @@ function StoreCard(props) {
       )
     ),
     h('div', { className: 'store-card-footer' },
-      store.tags.map(function(tag) {
+      tags.map(function(tag) {
         return h('span', { key: tag, className: 'store-tag' }, tag);
       })
     )

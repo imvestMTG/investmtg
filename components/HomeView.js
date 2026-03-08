@@ -1,119 +1,20 @@
-/* HomeView.js — Daily-rotating homepage with live Scryfall prices */
+/* HomeView.js — Homepage with live backend prices */
 import React from 'react';
-import { searchCards, searchCardsCheapest } from '../utils/api.js';
+import { fetchFeatured, fetchTrending, fetchBudget } from '../utils/api.js';
+import { getEventsAsync } from '../utils/events-config.js';
 import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon, MapPinIcon, ClockIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-/* ── Community Events ── */
-/* Real, verified events only — per SOUL.md */
-var COMMUNITY_EVENTS = [
-  {
-    title: 'TCG Con 2026',
-    date: '2026-03-21',
-    dateLabel: 'Sat, March 21',
-    time: '11:00 AM \u2014 7:00 PM',
-    location: 'Don Don Donki, Guam',
-    host: 'Littleroot Collectables',
-    description: 'The ultimate trading card showdown \u2014 vendors, community vibes, and exciting finds. Pokemon, MTG, One Piece, and more.',
-    admission: 'Pre-sold $10 / Door $15 / Kids 12 & under FREE',
-    link: 'https://theguamguide.com/tcg-con-2026',
-    tags: ['TCG', 'Convention', 'All Ages'],
-    image: './images/event-tcgcon.jpg',
-    featured: true
-  },
-  {
-    title: 'MTG Commander Night',
-    date: 'recurring',
-    dateLabel: 'Every Thursday',
-    time: 'Evening',
-    location: 'The Inventory, Hag\u00e5t\u00f1a',
-    host: 'The Inventory',
-    description: 'Weekly Commander night. Bring your deck and play with the local community.',
-    admission: 'Free',
-    link: 'https://www.instagram.com/theinventoryguam/',
-    tags: ['MTG', 'Commander', 'Weekly'],
-    image: './images/event-commander.jpg',
-    featured: false
-  },
-  {
-    title: 'MTG Weekend Events',
-    date: 'recurring',
-    dateLabel: 'Saturdays & Sundays',
-    time: 'Check store for times',
-    location: 'Geek Out Next Level, Micronesia Mall',
-    host: 'Geek Out Next Level (WPN Store)',
-    description: 'Saturdays: Commander. Sundays: Limited/Draft. WPN-authorized Magic events.',
-    admission: 'Varies by event',
-    link: 'https://www.instagram.com/geekoutnextlevel/',
-    tags: ['MTG', 'WPN', 'Tournament'],
-    image: './images/event-weekend.jpg',
-    featured: false
-  }
-];
+export function HomeView(props) {
+  var state = props.state;
+  var updateCart = props.updateCart;
+  var updatePortfolio = props.updatePortfolio;
+  var updateWatchlist = props.updateWatchlist;
+  var onOpenListing = props.onOpenListing;
 
-function getUpcomingEvents() {
-  var now = new Date();
-  var todayStr = now.toISOString().slice(0, 10);
-  return COMMUNITY_EVENTS.filter(function(evt) {
-    return evt.date === 'recurring' || evt.date >= todayStr;
-  });
-}
-
-/* ── Card pools for daily rotation ── */
-/* Featured: High-value staples that reliably have Scryfall USD prices */
-var FEATURED_POOL = [
-  'underground sea', 'volcanic island', 'tropical island', 'bayou',
-  'tundra', 'savannah', 'scrubland', 'badlands', 'taiga', 'plateau',
-  'gaea\'s cradle', 'serra\'s sanctum', 'city of traitors', 'ancient tomb',
-  'lion\'s eye diamond', 'mox diamond', 'chrome mox', 'mox opal',
-  'force of negation', 'jeweled lotus'
-];
-
-var TRENDING_POOL = [
-  'ragavan nimble pilferer', 'the one ring', 'wrenn and six',
-  'orcish bowmasters', 'sheoldred the apocalypse', 'atraxa grand unifier',
-  'fury', 'grief', 'solitude', 'endurance', 'subtlety',
-  'bowmasters', 'up the beanstalk', 'not dead after all',
-  'preordain', 'fatal push', 'thoughtseize', 'collected company'
-];
-
-var BUDGET_POOL = [
-  'lightning bolt', 'counterspell', 'path to exile', 'swords to plowshares',
-  'cultivate', 'sol ring', 'arcane signet', 'command tower',
-  'chaos warp', 'beast within', 'nature claim', 'rampant growth',
-  'farseek', 'brainstorm', 'ponder', 'opt', 'consider',
-  'go for the throat', 'doom blade', 'terminate'
-];
-
-/* Simple seeded shuffle so the same day shows the same cards everywhere */
-function seededShuffle(arr, seed) {
-  var shuffled = arr.slice();
-  var s = seed;
-  for (var i = shuffled.length - 1; i > 0; i--) {
-    s = (s * 16807 + 0) % 2147483647;
-    var j = s % (i + 1);
-    var tmp = shuffled[i];
-    shuffled[i] = shuffled[j];
-    shuffled[j] = tmp;
-  }
-  return shuffled;
-}
-
-function getDaySeed() {
-  var d = new Date();
-  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-}
-
-function getDailyPicks(pool, count) {
-  var seed = getDaySeed();
-  var shuffled = seededShuffle(pool, seed);
-  return shuffled.slice(0, count);
-}
-
-export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
   var ref1 = React.useState([]);
   var featured = ref1[0], setFeatured = ref1[1];
   var ref2 = React.useState([]);
@@ -124,44 +25,30 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
   var loading = ref4[0], setLoading = ref4[1];
   var ref5 = React.useState('');
   var heroSearch = ref5[0], setHeroSearch = ref5[1];
+  var ref6 = React.useState([]);
+  var events = ref6[0], setEvents = ref6[1];
 
   React.useEffect(function() {
     var cancelled = false;
 
-    var featuredPicks = getDailyPicks(FEATURED_POOL, 3);
-    var trendingPicks = getDailyPicks(TRENDING_POOL, 3);
-    var budgetPicks = getDailyPicks(BUDGET_POOL, 3);
-
-    var results = {};
-
-    // Featured & Trending: search for the most expensive physical printing
-    var namedSearches = featuredPicks.concat(trendingPicks).map(function(q) {
-      return searchCards(q).then(function(data) {
-        if (!cancelled && data && data.data && data.data.length > 0) {
-          results[q] = data.data[0];
-        }
-      }).catch(function() {});
-    });
-
-    // Budget uses cheapest printing search
-    var budgetSearches = budgetPicks.map(function(q) {
-      return searchCardsCheapest(q).then(function(data) {
-        if (!cancelled && data && data.data && data.data.length > 0) {
-          results[q] = data.data[0];
-        }
-      }).catch(function() {});
-    });
-
-    Promise.all(namedSearches.concat(budgetSearches)).then(function() {
+    Promise.all([fetchFeatured(), fetchTrending(), fetchBudget()]).then(function(results) {
       if (!cancelled) {
-        setFeatured(featuredPicks.map(function(q) { return results[q]; }).filter(Boolean));
-        setTrending(trendingPicks.map(function(q) { return results[q]; }).filter(Boolean));
-        setBudget(budgetPicks.map(function(q) { return results[q]; }).filter(Boolean));
+        setFeatured(results[0].slice(0, 3));
+        setTrending(results[1].slice(0, 3));
+        setBudget(results[2].slice(0, 3));
         setLoading(false);
       }
+    }).catch(function() {
+      if (!cancelled) setLoading(false);
     });
 
     return function() { cancelled = true; };
+  }, []);
+
+  React.useEffect(function() {
+    getEventsAsync().then(function(data) {
+      setEvents(data || []);
+    });
   }, []);
 
   function handleHeroSearch(e) {
@@ -181,6 +68,36 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
     { value: 'Live Data', label: 'Every Visit' },
     { value: '100% Free', label: 'Always' },
   ];
+
+  /* Map backend event shape to render-compatible shape */
+  function normalizeEvent(evt) {
+    return {
+      title: evt.title || '',
+      date: evt.recurring ? 'recurring' : (evt.event_date || ''),
+      dateLabel: evt.event_date || '',
+      time: evt.subtitle || '',
+      location: evt.location || '',
+      host: evt.host || '',
+      description: evt.subtitle || evt.title || '',
+      admission: evt.cost || 'Free',
+      link: null,
+      tags: Array.isArray(evt.tags) ? evt.tags : [],
+      image: evt.image_key || evt.image || '',
+      featured: !evt.recurring
+    };
+  }
+
+  var normalizedEvents = events.map(normalizeEvent);
+
+  function getUpcomingEvents(evtList) {
+    var now = new Date();
+    var todayStr = now.toISOString().slice(0, 10);
+    return evtList.filter(function(evt) {
+      return evt.date === 'recurring' || evt.date >= todayStr || evt.date.length > 10;
+    });
+  }
+
+  var upcomingEvents = getUpcomingEvents(normalizedEvents);
 
   return h('div', null,
     h('section', { className: 'hero' },
@@ -206,18 +123,17 @@ export function HomeView({ state, updateCart, updatePortfolio, updateWatchlist, 
       )
     ),
     h('div', { className: 'container' },
-      getUpcomingEvents().length > 0 && (function() {
-        var events = getUpcomingEvents();
-        var featuredEvt = events.filter(function(e) { return e.featured; })[0] || events[0];
-        var otherEvts = events.filter(function(e) { return e !== featuredEvt; });
+      upcomingEvents.length > 0 && (function() {
+        var featuredEvt = upcomingEvents.filter(function(e) { return e.featured; })[0] || upcomingEvents[0];
+        var otherEvts = upcomingEvents.filter(function(e) { return e !== featuredEvt; });
 
         function renderEventCard(evt, isFeatured) {
           var isSpecial = evt.date !== 'recurring';
           return h('a', {
             key: evt.title,
             className: 'event-card scroll-reveal' + (isFeatured ? ' event-card--featured' : ' event-card--small'),
-            href: evt.link,
-            target: '_blank',
+            href: evt.link || '#',
+            target: evt.link ? '_blank' : undefined,
             rel: 'noopener'
           },
             h('div', { className: 'event-card-bg', style: { backgroundImage: 'url(' + evt.image + ')' } }),

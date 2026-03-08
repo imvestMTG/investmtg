@@ -1,7 +1,8 @@
 /* investMTG — React SPA */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { getInitialMarketplaceData, saveMarketplaceData } from './utils/marketplace-data.js';
+import { getInitialMarketplaceData } from './utils/marketplace-data.js';
+import { fetchPortfolio, fetchListings, fetchCart, createListing } from './utils/api.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
@@ -90,12 +91,14 @@ function parseHash() {
 }
 
 // ===== GLOBAL STATE =====
+// Start with empty state + loading flag; populated async in App useEffect
 var globalState = {
-  cart: JSON.parse(localStorage.getItem('investmtg-cart') || '[]'),
-  portfolio: JSON.parse(localStorage.getItem('investmtg-portfolio') || '[]'),
+  cart: [],
+  portfolio: [],
   watchlist: JSON.parse(localStorage.getItem('investmtg-watchlist') || '[]'),
-  listings: getInitialMarketplaceData(),
-  priceCache: {}
+  listings: [],
+  priceCache: {},
+  loading: true
 };
 
 var stateListeners = [];
@@ -128,15 +131,25 @@ function updateWatchlist(newWatchlist) {
 }
 
 function updateListings(newListings) {
+  // Backend is source of truth for listings — no localStorage write
   globalState.listings = newListings;
-  saveMarketplaceData(newListings);
   notify();
 }
 
-/* Reload marketplace from all sellers' localStorage — called after seller changes */
+/* Reload marketplace from backend — called after seller changes */
 function refreshMarketplace() {
-  globalState.listings = getInitialMarketplaceData();
-  notify();
+  fetchListings({ status: 'active' }).then(function(data) {
+    globalState.listings = data.listings || [];
+    notify();
+  }).catch(function() {
+    // Fall back to getInitialMarketplaceData (also hits backend)
+    getInitialMarketplaceData().then(function(listings) {
+      globalState.listings = listings;
+      notify();
+    }).catch(function() {
+      // silently ignore — keep existing listings
+    });
+  });
 }
 
 // ===== GLOBAL STATE HOOK =====
@@ -169,6 +182,72 @@ function App() {
   var ref3 = React.useState(null);
   var buyLocalCard = ref3[0], setBuyLocalCard = ref3[1];
   var viewCacheRef = React.useRef({});
+
+  // ===== ASYNC STATE INITIALIZATION =====
+  React.useEffect(function() {
+    var portfolioFallback = JSON.parse(localStorage.getItem('investmtg-portfolio') || '[]');
+    var cartFallback = JSON.parse(localStorage.getItem('investmtg-cart') || '[]');
+
+    // Fetch portfolio from backend; fall back to localStorage
+    var portfolioPromise = fetchPortfolio().then(function(data) {
+      var items = (data && data.items) ? data.items : [];
+      // Map backend portfolio shape to frontend shape
+      return items.map(function(item) {
+        return {
+          id: item.card_id,
+          name: item.card_name,
+          set: item.set_name || '',
+          qty: item.quantity || 1,
+          buyPrice: item.added_price || 0,
+          currentPrice: item.price_usd || 0,
+          image: item.image_small || null
+        };
+      });
+    }).catch(function() {
+      return portfolioFallback;
+    });
+
+    // Fetch listings from backend (getInitialMarketplaceData returns Promise)
+    var listingsPromise = getInitialMarketplaceData().catch(function() {
+      return [];
+    });
+
+    // Fetch cart from backend; fall back to localStorage
+    var cartPromise = fetchCart().then(function(data) {
+      var items = (data && data.items) ? data.items : [];
+      if (items.length > 0) {
+        // Map backend cart items to frontend cart shape
+        return items.map(function(item) {
+          return {
+            id: item.listing_id,
+            name: item.card_name || '',
+            set: item.set_name || '',
+            condition: item.condition || '',
+            price: item.price || 0,
+            seller: item.seller_name || '',
+            image: item.image_uri || null,
+            qty: item.quantity || 1
+          };
+        });
+      }
+      return cartFallback;
+    }).catch(function() {
+      return cartFallback;
+    });
+
+    Promise.all([portfolioPromise, listingsPromise, cartPromise]).then(function(results) {
+      globalState.portfolio = results[0];
+      globalState.listings = results[1];
+      globalState.cart = results[2];
+      globalState.loading = false;
+      notify();
+    });
+  }, []);
+
+  // While loading, show nothing (minimal loading state)
+  if (gs.state.loading) {
+    return null;
+  }
 
   var cartCount = gs.state.cart.reduce(function(sum, item) { return sum + (item.qty || 1); }, 0);
 
@@ -243,8 +322,25 @@ function App() {
       isOpen: true,
       prefillCardName: listingModalCard.name || listingModalCard,
       onSubmit: function(newListing) {
-        var updated = gs.state.listings.concat([newListing]);
-        gs.updateListings(updated);
+        // POST to backend via createListing, then refresh marketplace
+        createListing({
+          card_name: newListing.cardName || newListing.name || '',
+          price: newListing.price || 0,
+          condition: newListing.condition || 'NM',
+          seller_name: newListing.seller || newListing.seller_name || '',
+          seller_contact: newListing.contact || newListing.seller_contact || '',
+          card_id: newListing.card_id || newListing.id || null,
+          set_name: newListing.setName || newListing.set_name || '',
+          language: newListing.language || null,
+          image_uri: newListing.image || newListing.image_uri || null,
+          notes: newListing.notes || ''
+        }).then(function() {
+          refreshMarketplace();
+        }).catch(function() {
+          // Fall back: add locally if backend fails
+          var updated = gs.state.listings.concat([newListing]);
+          updateListings(updated);
+        });
       },
       onClose: function() { setListingModalCard(null); }
     }),

@@ -1,5 +1,8 @@
 /* stores.js — Single source of truth for Guam store data.
-   Import from here instead of duplicating store arrays across components. */
+   Import from here instead of duplicating store arrays across components.
+   Static data kept as fallback; use getStoresAsync() for live backend data. */
+
+import { fetchStores } from './api.js';
 
 /**
  * Full store details — used by StoreView for the store directory.
@@ -97,3 +100,27 @@ export var STORE_OPTIONS = [{ id: '', name: 'No affiliation' }].concat(
     return { id: s.id, name: s.name };
   })
 );
+
+/**
+ * Fetch stores from backend, fall back to static GUAM_STORES on error.
+ * Returns a Promise resolving to a stores array.
+ */
+export function getStoresAsync() {
+  return fetchStores().catch(function() {
+    return GUAM_STORES;
+  });
+}
+
+/**
+ * Fetch store dropdown options from backend, fall back to static STORE_OPTIONS.
+ * Returns a Promise resolving to [{ id, name }, ...] with a leading "No affiliation".
+ */
+export function getStoreOptionsAsync() {
+  return getStoresAsync().then(function(stores) {
+    return [{ id: '', name: 'No affiliation' }].concat(
+      stores.map(function(s) {
+        return { id: s.id, name: s.name };
+      })
+    );
+  });
+}

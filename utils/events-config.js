@@ -1,6 +1,7 @@
 /* events-config.js — Community events configuration
- * Edit this file to update events shown on the homepage.
- * No code changes needed — just update the data below. */
+ * Static data kept as fallback; use getEventsAsync() for live backend data. */
+
+import { fetchEvents } from './api.js';
 
 export var COMMUNITY_EVENTS = [
   {
@@ -28,3 +29,14 @@ export var COMMUNITY_EVENTS = [
     link: null
   }
 ];
+
+/**
+ * Fetch events from backend, fall back to static COMMUNITY_EVENTS on error.
+ * The backend returns events with tags as a JSON string (already parsed by fetchEvents).
+ * Returns a Promise resolving to an events array.
+ */
+export function getEventsAsync() {
+  return fetchEvents().catch(function() {
+    return COMMUNITY_EVENTS;
+  });
+}
