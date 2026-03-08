@@ -2,148 +2,145 @@
 
 ## Project context
 
-investMTG is evolving into a Guam-only Magic: The Gathering marketplace and pricing app with a modern front end centered on search, card detail, portfolio tracking, and seller workflow.
+investMTG is a Guam-only Magic: The Gathering marketplace and pricing app. The production frontend is the root-level SPA deployed directly to GitHub Pages from the repository root. All API data flows through the Cloudflare Worker v2 backend.
 
-The current production-target architecture combines:
-- the Vite app in `frontend-v2/`
+The production architecture combines:
+- the root-level SPA (`app.js`, `components/`, `utils/`) — no build step
 - the Cloudflare Worker v2 backend in `worker/`
+
+`frontend-v2/` is an experimental TypeScript/Vite rewrite that exists in the repository but is not deployed.
 
 ## Front-end architecture
 
 ### Source of truth
-- `frontend-v2/` is the primary front-end application
-- legacy root-level SPA files remain in the repository temporarily during migration but are no longer the intended long-term front-end path
+The root directory is the production front end. Files at the repository root are what gets deployed to GitHub Pages.
 
 ### Stack
-- React 19
-- TypeScript
-- Vite
-- TanStack Query
-- Lucide React
+- React 19 (loaded from [esm.sh](https://esm.sh) via import map)
+- ReactDOM 19 (loaded from esm.sh via import map)
+- Vanilla JavaScript — no TypeScript, no bundler, no transpiler
+- Native ES modules via `<script type="module">`
+- No npm dependencies for the frontend — no `package.json` at root level
+
+### Import map
+`index.html` contains the import map that wires React 19 and ReactDOM:
+
+```html
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19",
+    "react-dom/client": "https://esm.sh/react-dom@19/client"
+  }
+}
+</script>
+```
+
+### Coding rules
+These rules apply to all root-level `.js` files and must not be violated:
+
+| Rule | Correct | Wrong |
+|------|---------|-------|
+| Element creation | `var h = React.createElement;` | JSX, Babel, `<Component />` |
+| State | `var ref = React.useState(); ref[0]; ref[1]();` | `const [x, setX] = useState()` |
+| Variable declarations | `var` only | `let`, `const` |
+| Functions | `function myFn() {}` | Arrow functions in component bodies |
+| Modules | `import` / `export` via native ES modules | CommonJS `require()` |
 
 ### Routing
 - hash-based routing only
 - no `react-router-dom`
-- supported routes:
-  - `#/search`
-  - `#/portfolio`
-  - `#/sell`
-  - `#/card/{id}`
-
-The hash router was chosen to keep the app stable on static hosting and avoid the blank-screen issues discovered during preview deployment.
+- supported routes driven by `window.location.hash` in `app.js`
 
 ### State and data rules
-- remote data is loaded through TanStack Query
-- no `localStorage` or `sessionStorage` usage in the rewrite
-- seller and portfolio states in the rewrite are currently modeled with structured seed data while production persistence is designed later
-- all user-facing market references must stay grounded in real external data
+- all data loaded from the Worker v2 backend via `utils/api.js`
+- async state init in `app.js` via `Promise.all` with a loading gate
+- `normalizeCard()` in `utils/api.js` converts D1 flat shape (`price_usd`, `image_small`) to Scryfall shape (`prices.usd`, `image_uris`) so all components use one consistent shape
+- localStorage fallback for portfolio and session recovery only
 
-## Product rules
+## Components
 
-### Geography
-- Guam only
-- pickup and island delivery first
-- marketplace messaging should reflect local meetup zones and local trust cues
+### Views
+| File | Route | Purpose |
+|------|-------|---------|
+| `components/HomeView.js` | `#home` | Featured, trending, budget sections |
+| `components/SearchView.js` | `#search` | Card search via `/api/search` |
+| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id` |
+| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
+| `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
+| `components/SellerDashboard.js` | `#seller` | Seller registration and listing management |
+| `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
+| `components/CartView.js` | `#cart` | Cart (not yet wired to backend) |
+| `components/CheckoutView.js` | `#checkout` | Checkout (not yet wired to backend) |
+| `components/DecklistView.js` | `#decklist` | Decklist import |
+| `components/MetaView.js` | `#meta` | Meta/tournament data |
+| `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
+| `components/Ticker.js` | persistent | Live price ticker via `/api/ticker` |
 
-### Market references
-- Scryfall remains the card-data and reference-pricing layer
-- TCGplayer links may be used as external reference links when surfaced by Scryfall
-- Cardmarket is excluded from the modern buyer flow and should not appear in the rewrite UI
+### Shared components
+| File | Purpose |
+|------|---------|
+| `components/shared/CardGrid.js` | Reusable card grid layout |
+| `components/shared/ConfirmModal.js` | Styled confirmation/alert modal |
+| `components/shared/ErrorBoundary.js` | React error boundary wrapper |
+| `components/shared/Icons.js` | SVG icon components |
+| `components/shared/SkeletonCard.js` | Loading skeleton for cards |
+| `components/shared/Toast.js` | Notification toasts |
+| `components/shared/BackToTop.js` | Scroll-to-top button |
 
-### Integrity
-- no fabricated market activity presented as real
-- no fake trend lines or fake portfolio performance claims
-- no global-shipping framing in the Guam-first experience
+## Utils
 
-## Current app surfaces
-
-### Search page
-Purpose:
-- card discovery with fast lookup
-- compact result cards
-- clear transition into local listing actions
-
-Key files:
-- `frontend-v2/src/pages/SearchPage.tsx`
-- `frontend-v2/src/hooks/useCardSearch.ts`
-- `frontend-v2/src/components/search/*`
-
-### Card detail page
-Purpose:
-- show core card identity and reference price
-- show Guam listing rail
-- show other printings
-- keep failure states isolated
-
-Key files:
-- `frontend-v2/src/pages/CardDetailPage.tsx`
-- `frontend-v2/src/hooks/useCardDetail.ts`
-- `frontend-v2/src/components/card/*`
-
-### Portfolio page
-Purpose:
-- display tracked positions in a dashboard-style table
-- compare basis versus current reference value
-- provide a cleaner path to future persistent collection tracking
-
-Key files:
-- `frontend-v2/src/pages/PortfolioPage.tsx`
-- `frontend-v2/src/components/portfolio/*`
-
-### Seller page
-Purpose:
-- replace the old no-feedback listing action with a guided Guam listing workflow
-- make meetup zones and delivery expectations explicit
-- model trust requirements for local fulfillment
-
-Key files:
-- `frontend-v2/src/pages/SellerPage.tsx`
-- `frontend-v2/src/components/seller/*`
-
-### App shell
-Purpose:
-- stable sidebar + topbar navigation
-- dark-mode-first presentation
-- clear product framing around Guam-only trade
-
-Key files:
-- `frontend-v2/src/components/layout/AppShell.tsx`
-- `frontend-v2/src/hooks/useTheme.ts`
-- `frontend-v2/src/app/router.tsx`
+| File | Purpose |
+|------|---------|
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, and 20+ backend proxy functions for all API endpoints |
+| `utils/config.js` | Centralized constants (tax rate, shipping, cart limits, API intervals, `PROXY_BASE`) |
+| `utils/helpers.js` | Shared formatting and utility functions |
+| `utils/sanitize.js` | `sanitizeInput()`, `isValidEmail()`, `isValidPhone()` |
+| `utils/stores.js` | `getStoresAsync()` — fetches from `/api/stores` with static fallback |
+| `utils/events-config.js` | `getEventsAsync()` — fetches from `/api/events` with static fallback |
+| `utils/marketplace-data.js` | Returns Promise from `/api/listings` |
+| `utils/group-by-seller.js` | Shared cart grouping utility |
+| `utils/edhtop16-api.js` | EDH Top 16 integration |
+| `utils/justtcg-api.js` | JustTCG integration via Worker proxy |
+| `utils/topdeck-api.js` | TopDeck.gg integration via Worker proxy |
+| `utils/moxfield-api.js` | Moxfield decklist integration |
 
 ## Worker architecture
 
 ### Role
-The Worker remains separate from the front-end deployment and handles API gateway behavior, protected integrations, and the evolving server-side persistence model.
+The Worker remains separate from the front-end deployment and handles API gateway behavior, protected integrations, and server-side persistence.
+
+### Backend URL
+`https://investmtg-proxy.bloodshutdawn.workers.dev`
 
 ### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
 | D1 Database | `investmtg-db` | 7-table SQLite database |
-| KV Namespace | `INVESTMTG_CACHE` | edge cache for market and discovery responses |
-| Worker | `investmtg-proxy` | unified backend + proxy |
+| KV Namespace | `INVESTMTG_CACHE` | Edge cache for market and discovery responses |
+| Worker | `investmtg-proxy` | Unified backend + proxy |
 
 ### Worker routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/health` | GET | health check |
-| `/api/ticker` | GET | tracked card prices |
-| `/api/featured` | GET | featured cards |
-| `/api/trending` | GET | trending cards |
-| `/api/budget` | GET | budget staples |
-| `/api/search` | GET | card search proxy |
-| `/api/card/:id` | GET | card detail proxy/cache |
-| `/api/movers/:cat` | GET | category movers |
-| `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
-| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings |
-| `/api/sellers` | GET/POST | seller profiles |
-| `/api/stores` | GET | verified Guam stores |
-| `/api/events` | GET | community events |
-| `/api/cart` | GET/POST/DELETE | shopping cart |
-| `/justtcg` | proxy | condition pricing |
-| `/topdeck` | proxy | tournament data |
-| `/chatbot` | proxy | chat relay |
-| `/?target=` | proxy | allowlisted generic proxy |
+| `/api/health` | GET | Health check |
+| `/api/ticker` | GET | Tracked card prices (KV-cached, 5min TTL) |
+| `/api/featured` | GET | Featured cards (KV-cached, 1hr TTL) |
+| `/api/trending` | GET | Trending cards (KV-cached, 30min TTL) |
+| `/api/budget` | GET | Budget staples (KV-cached, 1hr TTL) |
+| `/api/search` | GET | Card search proxy |
+| `/api/card/:id` | GET | Card detail proxy/cache |
+| `/api/movers/:cat` | GET | Market movers by category |
+| `/api/portfolio` | GET/POST/DELETE | Portfolio CRUD |
+| `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings |
+| `/api/sellers` | GET/POST | Seller profiles |
+| `/api/stores` | GET | Verified Guam stores |
+| `/api/events` | GET | Community events |
+| `/api/cart` | GET/POST/DELETE | Shopping cart |
+| `/justtcg` | proxy | Condition pricing |
+| `/topdeck` | proxy | Tournament data |
+| `/chatbot` | proxy | Chat relay |
+| `/?target=` | proxy | Allowlisted generic proxy |
 
 ### Worker files
 - `worker/worker.js`
@@ -155,30 +152,72 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ## File structure
 
 ```text
-frontend-v2/
-├── public/
-│   ├── 404.html
-│   ├── apple-touch-icon.png
-│   ├── CNAME
-│   ├── favicon.png
-│   ├── favicon.svg
-│   ├── icon-192.png
-│   ├── icon-512.png
-│   ├── manifest.json
-│   ├── og-image.jpg
-│   ├── robots.txt
-│   └── sitemap.xml
-├── src/
-│   ├── app/
-│   ├── components/
-│   ├── data/
-│   ├── hooks/
-│   ├── lib/
-│   └── pages/
-├── index.html
-├── package.json
-├── package-lock.json
-└── vite.config.ts
+investmtg/                          # root = production frontend deployment artifact
+├── .github/workflows/deploy.yml   # uploads root directory to GitHub Pages
+├── components/
+│   ├── CardDetailView.js
+│   ├── CartView.js
+│   ├── CheckoutView.js
+│   ├── Chatbot.js
+│   ├── DecklistView.js
+│   ├── Footer.js
+│   ├── Header.js
+│   ├── HomeView.js
+│   ├── ListingModal.js
+│   ├── MarketMoversView.js
+│   ├── MetaView.js
+│   ├── OrderConfirmation.js
+│   ├── PortfolioView.js
+│   ├── PriceHistoryChart.js
+│   ├── PrivacyPolicyView.js
+│   ├── SearchView.js
+│   ├── SellerDashboard.js
+│   ├── StoreView.js
+│   ├── Ticker.js
+│   ├── TermsView.js
+│   └── shared/
+│       ├── BackToTop.js
+│       ├── CardGrid.js
+│       ├── ConfirmModal.js
+│       ├── ErrorBoundary.js
+│       ├── Icons.js
+│       ├── SkeletonCard.js
+│       └── Toast.js
+├── utils/
+│   ├── api.js
+│   ├── config.js
+│   ├── edhtop16-api.js
+│   ├── events-config.js
+│   ├── group-by-seller.js
+│   ├── helpers.js
+│   ├── justtcg-api.js
+│   ├── marketplace-data.js
+│   ├── moxfield-api.js
+│   ├── sanitize.js
+│   ├── stores.js
+│   └── topdeck-api.js
+├── worker/
+│   ├── worker.js
+│   ├── wrangler.toml
+│   ├── schema.sql
+│   ├── seed.sql
+│   └── README.md
+├── frontend-v2/                    # experimental rewrite — not deployed
+├── images/
+├── app.js                          # root application entry point
+├── index.html                      # import map + app bootstrap
+├── style.css
+├── base.css
+├── sw.js                           # service worker
+├── manifest.json
+├── 404.html
+├── CNAME
+├── robots.txt
+├── sitemap.xml
+├── README.md
+├── BUILD_SPEC.md
+├── CHANGES.md
+└── SOUL.md
 ```
 
 ## Deployment spec
@@ -186,16 +225,15 @@ frontend-v2/
 ### Front end
 The GitHub Pages workflow must:
 1. check out the repository
-2. install dependencies in `frontend-v2/`
-3. run `npm run build` in `frontend-v2/`
-4. upload `frontend-v2/dist`
-5. deploy the artifact to GitHub Pages
+2. upload the root directory (`.`) as the Pages artifact
+3. deploy the artifact to GitHub Pages
+
+No install step. No build step. The root SPA uses native ES modules and import maps — it runs directly in the browser as authored.
 
 ### Static hosting constraints
-- Vite must use `base: './'`
-- routes must work from hash fragments
-- public assets must be emitted from `public/`
-- no browser storage assumptions
+- routes work from hash fragments — no server-side routing needed
+- no browser storage assumptions for core data
+- service worker (`sw.js`) provides basic PWA offline support
 
 ### Worker
 The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact.
@@ -203,18 +241,21 @@ The Worker is deployed independently with Wrangler and must keep its D1, KV, and
 ## Development commands
 
 ### Front end
+No build step required. Serve the root directory:
+
 ```bash
-cd frontend-v2
-npm ci
-npm run build
-npm run lint
-npm run preview
+npx serve .
+# or
+python3 -m http.server 8080
 ```
+
+Then open `http://localhost:8080` (or `http://localhost:3000` for `serve`).
 
 ### Worker
 ```bash
 cd worker
-npx wrangler deploy
+npx wrangler dev       # local dev
+npx wrangler deploy    # deploy to production
 ```
 
 ## Release checklist
@@ -226,5 +267,5 @@ Before considering a release complete:
 - update `SOUL.md`
 - update `worker/README.md` if worker behavior changed
 - verify no secrets or sensitive tokens were committed
-- confirm the GitHub Pages workflow still publishes from `frontend-v2/dist`
+- confirm the GitHub Pages workflow publishes the root directory directly
 - confirm the Worker documentation still matches the live route and binding model

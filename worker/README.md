@@ -4,14 +4,14 @@ Cloudflare Worker that serves as the unified backend for investMTG — combining
 
 ## Role in the stack
 
-- the front end is deployed separately through GitHub Pages from `frontend-v2/dist`
+- the front end is the root-level SPA (vanilla JS, React 19 via import maps) deployed directly to GitHub Pages from the repository root — no build step
 - the worker remains the secure layer for proxied API access, server-side data, and protected integrations
-- the domain can continue to sit behind Cloudflare while the front-end artifact is served from GitHub Pages
+- the domain can continue to sit behind Cloudflare while the front-end files are served from GitHub Pages
 
 ## Architecture
 
 ```text
-Frontend (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  Scryfall API
+Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  Scryfall API
                                     │                    ──→  JustTCG API
                                     │                    ──→  TopDeck.gg API
                                     │                    ──→  Pollinations AI

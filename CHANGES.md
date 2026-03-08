@@ -1,5 +1,47 @@
 # investMTG — Changelog
 
+## 2026-03-08: Go Live — Frontend wired to Cloudflare Worker v2 backend
+
+### What Changed
+Wired the production frontend (root-level SPA) to use the deployed Cloudflare Worker v2 backend API instead of localStorage and direct Scryfall API calls. The site at www.investmtg.com now loads all data through the backend.
+
+### Frontend Migration (13 files changed, 800+ lines)
+- **utils/api.js** — Added `normalizeCard()` (D1 flat → Scryfall shape converter), `backendFetch()`, and 20+ backend proxy functions for all API endpoints
+- **components/Ticker.js** — Uses `fetchTicker()` from backend instead of direct Scryfall collection API
+- **components/HomeView.js** — Loads featured/trending/budget cards from `/api/featured`, `/api/trending`, `/api/budget`
+- **components/PortfolioView.js** — Server-side CRUD via `/api/portfolio` with localStorage fallback
+- **components/StoreView.js** — Dynamic store list from `/api/stores` with static fallback
+- **components/SellerDashboard.js** — Full CRUD via `/api/sellers` and `/api/listings`
+- **components/MarketMoversView.js** — Uses `/api/movers/:category` with key mapping
+- **components/SearchView.js** — Uses `/api/search` with Scryfall autocomplete fallback
+- **components/CardDetailView.js** — Uses `/api/card/:id` with Scryfall fallback for full data
+- **utils/stores.js** — `getStoresAsync()` with static fallback
+- **utils/events-config.js** — `getEventsAsync()` with static fallback
+- **utils/marketplace-data.js** — Returns Promise from `/api/listings`
+- **app.js** — Async state init via `Promise.all` with loading gate, `refreshMarketplace()` from backend
+
+### Data Shape Normalization
+Backend returns two shapes: D1 flat (`price_usd`, `image_small`) for cached endpoints and Scryfall shape (`prices.usd`, `image_uris`) for search/fresh cards. The `normalizeCard()` function in api.js converts D1 flat → Scryfall-compatible shape so all existing components work without modification.
+
+### Deploy Workflow Fix
+Restored `.github/workflows/deploy.yml` to deploy the root directory directly (no build step) instead of building `frontend-v2/dist`. The root SPA uses native ES modules via import maps and needs no compilation.
+
+### Not Yet Migrated
+- **CartView.js** and **CheckoutView.js** — Cart has a shape mismatch between frontend (array-based) and backend (per-item API). Deferred to a future session.
+
+### Verified Live
+All flows tested on www.investmtg.com:
+- Ticker strip shows 16 cards with live prices from backend
+- Homepage loads featured, trending, and budget sections
+- Search returns results from `/api/search`
+- Card detail loads from `/api/card/:id`
+- Stores (5) and Events (3) load from D1
+- Portfolio CRUD works with session cookies
+- Seller registration and listing management functional
+- Market movers load by category
+
+---
+
 ## 2026-03-08: Frontend V2 migration path formalized
 
 ### Architecture

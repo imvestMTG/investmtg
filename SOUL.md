@@ -69,16 +69,24 @@ Required updates after release-impacting work:
 ## Architecture principles
 
 ### Front end
-The intended production front end is the React + TypeScript app in `frontend-v2/`.
+The production front end is the root-level SPA: vanilla JavaScript with React 19 loaded via import maps from esm.sh. There is no build step — the repository root is deployed directly to GitHub Pages.
 
-Rules for the rewrite:
-- static-hosting friendly
-- hash-routed
-- no dependency on browser storage in the core shell
-- clear separation between remote reference data and local UX scaffolding
+Coding rules (must be followed in all root-level JS files):
+- `var h = React.createElement;` — no JSX, no Babel transform
+- `var ref = React.useState()` with `ref[0]` / `ref[1]` — no array destructuring
+- `var` only — no `let` or `const`
+- `function` keyword only — no arrow functions inside component bodies
+- Native ES modules via `<script type="module">` and import maps
+- React 19 and ReactDOM 19 loaded from `esm.sh`
+
+Key characteristics:
+- hash-based routing
+- static-hosting friendly (no server-side rendering)
+- all API data flows through the Worker v2 backend
+- `frontend-v2/` exists in the repository as an experimental TypeScript/Vite rewrite but is **not deployed** and is not the production source of truth
 
 ### Worker
-The Cloudflare Worker remains a separate gateway for protected or proxied API access, and now also carries the D1 + KV-backed server-side architecture.
+The Cloudflare Worker remains a separate gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture.
 
 ## Data sources
 
@@ -98,23 +106,23 @@ The Cloudflare Worker remains a separate gateway for protected or proxied API ac
 - show Cardmarket as part of the modern Guam-first buyer flow
 - rely on fake listing activity to make the market look alive
 - imply global-shipping capability in a Guam-only product mode
-- treat copied build artifacts as the real source of truth when source-folder builds are available
+- treat `frontend-v2/` as the production deployment — it is an experimental rewrite, not deployed
 
 ## Release discipline
 
 Before any go-live push:
-1. build the rewrite app
-2. lint the rewrite app
-3. verify no secrets were committed
-4. verify the Pages workflow still publishes `frontend-v2/dist`
-5. verify worker docs and bindings still match the deployed backend
-6. update the required docs in the same session
+1. verify the root SPA loads correctly (no build step required)
+2. verify no secrets were committed
+3. verify the Pages workflow still publishes the root directory directly
+4. verify worker docs and bindings still match the deployed backend
+5. update the required docs in the same session
 
 ## Changelog
 
 | Date | Change |
 |------|--------|
-| 2026-03-08 | Formalized `frontend-v2/` as the source of truth for the modern Guam-only front end while preserving the Cloudflare Worker v2 backend and updating docs to reflect both layers |
+| 2026-03-08 | Wired root-level SPA to Cloudflare Worker v2 backend; site live at www.investmtg.com; deploy workflow updated to publish root directory directly |
+| 2026-03-08 | Formalized `frontend-v2/` as an experimental rewrite (not deployed); root-level SPA confirmed as the production front end |
 | 2026-03-08 | Established the Cloudflare Worker v2 backend with D1 database and KV cache support |
 | 2026-03-08 | Added release rule that code, docs, and security review ship together |
 
