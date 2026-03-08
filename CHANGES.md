@@ -1,5 +1,26 @@
 # investMTG — Changelog
 
+## 2026-03-08: Step-based listing wizard, auto-confirm card search, design overhaul — SW v14
+
+### Redesign
+
+- **Step-based listing form wizard** — Replaced the broken 2-column layout with a clean 3-step vertical wizard: (1) Find Your Card, (2) Choose Printing, (3) Listing Details. Each step reveals progressively as the user completes the previous one.
+- **New `lf-*` CSS class system** — All listing form styles now use a dedicated `lf-` prefix (`lf-section`, `lf-step-header`, `lf-pgrid`, `lf-plist`, etc.) for clean separation from other components. Removed all old `listing-form-layout`, `listing-form-columns`, `printings-panel-*`, `printings-grid-*`, and `printings-list-*` classes.
+- **Step indicators** — Numbered step badges (1, 2, 3) with green checkmark state when complete.
+- **Selected card summary** — Step 3 shows a card image + set info banner so the seller always knows which printing they're listing.
+
+### Features
+
+- **Auto-confirm card name on blur/Enter** — Typing a card name and pressing Enter or tabbing away now automatically confirms the name and triggers the printings fetch, even without clicking an autocomplete suggestion. If autocomplete has an exact match, it picks that; otherwise uses the first suggestion or the typed text.
+- **Printings grid/list toggle** — Carried forward from v13 but now using `lf-pgrid` / `lf-plist` class names inside the step-based layout.
+
+### Infrastructure
+
+- Service Worker bumped to v14.
+- Removed 67 lines of dead 2-column CSS.
+
+---
+
 ## 2026-03-08: 2-column listing form, printings browser panel, listing creation bugfix — SW v13
 
 ### Bug Fixes

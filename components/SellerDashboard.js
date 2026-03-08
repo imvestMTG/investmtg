@@ -234,7 +234,10 @@ function RegistrationForm(props) {
   );
 }
 
-// ===== ADD/EDIT LISTING FORM WITH SET AUTOCOMPLETE + PRINTINGS PANEL =====
+// ===== ADD/EDIT LISTING FORM — STEP-BASED LAYOUT =====
+// Step 1: Search card name → autocomplete or type and press Enter
+// Step 2: Pick a printing from the visual grid (auto-shown)
+// Step 3: Fill listing details (condition, price, contact)
 function ListingForm(props) {
   var initial = props.initial;
   var onSave = props.onSave;
@@ -250,7 +253,8 @@ function ListingForm(props) {
     type: 'sale',
     notes: '',
     contact: '',
-    imageUri: ''
+    imageUri: '',
+    imageNormal: ''
   };
   var ref1 = React.useState(Object.assign({}, defaultForm, initial || {}));
   var form = ref1[0], setForm = ref1[1];
@@ -267,11 +271,11 @@ function ListingForm(props) {
   var ref5 = React.useState(false);
   var submitting = ref5[0], setSubmitting = ref5[1];
 
-  // Card name for which we should fetch printings
+  // Card name confirmed for printings fetch
   var ref6 = React.useState('');
   var confirmedCardName = ref6[0], setConfirmedCardName = ref6[1];
 
-  // View mode for printings panel: 'grid' or 'list'
+  // View mode: 'grid' or 'list'
   var ref7 = React.useState('grid');
   var viewMode = ref7[0], setViewMode = ref7[1];
 
@@ -281,6 +285,19 @@ function ListingForm(props) {
   function update(key, val) {
     setForm(function(p) { return Object.assign({}, p, { [key]: val }); });
     setErrors(function(p) { return Object.assign({}, p, { [key]: '' }); });
+  }
+
+  function confirmCard(name) {
+    update('cardName', name);
+    setAutocompleteQuery('');
+    setAcOpen(false);
+    setConfirmedCardName(name);
+    // Clear previous printing selection
+    update('setName', '');
+    update('setCode', '');
+    update('collectorNumber', '');
+    update('imageUri', '');
+    update('imageNormal', '');
   }
 
   function handleCardNameChange(e) {
@@ -294,18 +311,48 @@ function ListingForm(props) {
       update('setCode', '');
       update('collectorNumber', '');
       update('imageUri', '');
+      update('imageNormal', '');
     }
   }
 
+  // Confirm on Enter key or blur with valid text
+  function handleCardNameKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // If autocomplete has results, pick the first one; else use typed text
+      if (ac.results.length > 0) {
+        confirmCard(ac.results[0]);
+      } else if (form.cardName.trim().length >= 2) {
+        confirmCard(form.cardName.trim());
+      }
+    }
+  }
+
+  function handleCardNameBlur() {
+    setTimeout(function() {
+      setAcOpen(false);
+      // Auto-confirm if user typed a name but never selected from dropdown
+      if (form.cardName.trim().length >= 3 && !confirmedCardName) {
+        // If autocomplete has an exact match, use it
+        var typed = form.cardName.trim().toLowerCase();
+        var exactMatch = ac.results.find(function(name) {
+          return name.toLowerCase() === typed;
+        });
+        if (exactMatch) {
+          confirmCard(exactMatch);
+        } else if (ac.results.length > 0) {
+          // Use first autocomplete result if close
+          confirmCard(ac.results[0]);
+        } else if (form.cardName.trim().length >= 3) {
+          // Last resort: confirm the typed text to trigger Scryfall search
+          confirmCard(form.cardName.trim());
+        }
+      }
+    }, 200);
+  }
+
   function handleAcSelect(name) {
-    update('cardName', name);
-    setAutocompleteQuery('');
-    setAcOpen(false);
-    setConfirmedCardName(name);
-    update('setName', '');
-    update('setCode', '');
-    update('collectorNumber', '');
-    update('imageUri', '');
+    confirmCard(name);
   }
 
   function handleSetSelect(printing) {
@@ -313,15 +360,22 @@ function ListingForm(props) {
     update('setCode', printing.setCode);
     update('collectorNumber', printing.collectorNumber || '');
     update('imageUri', printing.imageSmall || '');
+    update('imageNormal', printing.imageNormal || '');
     if (!form.price && printing.priceUsd) {
       update('price', printing.priceUsd);
     }
   }
 
+  function handleClearCard() {
+    setForm(function(p) { return Object.assign({}, p, defaultForm); });
+    setConfirmedCardName('');
+    setAutocompleteQuery('');
+  }
+
   function validate() {
     var e = {};
     if (!form.cardName.trim()) { e.cardName = 'Card name is required'; }
-    if (!form.setName.trim()) { e.setName = 'Please select a printing from the right panel (or type a set name)'; }
+    if (!form.setName.trim()) { e.setName = 'Select a printing below'; }
     if (form.type === 'sale' && (!form.price || isNaN(parseFloat(form.price)) || parseFloat(form.price) <= 0)) {
       e.price = 'Valid price is required for sale listings';
     }
@@ -341,206 +395,198 @@ function ListingForm(props) {
     }), function() { setSubmitting(false); });
   }
 
-  // Check if we have printings to show
   var hasPrintings = confirmedCardName && printingsData.printings.length > 0;
   var isPrintingsLoading = confirmedCardName && printingsData.loading;
+  var selectedKey = form.setCode
+    ? form.setCode + '-' + (form.collectorNumber || '')
+    : '';
 
-  // The currently selected printing key
-  var selectedKey = form.setCode && form.collectorNumber
-    ? form.setCode + '-' + form.collectorNumber
-    : form.setCode || '';
+  return h('div', { className: 'lf' },
 
-  // ===== PRINTINGS PANEL (right side) =====
-  function renderPrintingsPanel() {
-    if (!confirmedCardName) {
-      return h('div', { className: 'printings-panel-empty' },
-        h('div', { className: 'printings-panel-empty-icon' },
-          h(LayersIcon, null)
-        ),
-        h('p', null, 'Search for a card name to browse all available printings and variants.'),
-        h('p', { className: 'printings-panel-hint' }, 'Each printing shows set, rarity, collector number, and market price.')
-      );
-    }
-
-    if (isPrintingsLoading) {
-      return h('div', { className: 'printings-panel-loading' },
-        h('div', { className: 'skeleton skeleton-text', style: { width: '60%' } }),
-        h('div', { className: 'skeleton skeleton-text', style: { width: '80%' } }),
-        h('div', { className: 'skeleton skeleton-text', style: { width: '40%' } }),
-        h('p', { style: { color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-2)' } }, 'Loading printings from Scryfall\u2026')
-      );
-    }
-
-    if (printingsData.error) {
-      return h('div', { className: 'printings-panel-error' },
-        h(AlertCircleIcon, null),
-        h('p', null, 'Could not load printings for this card.')
-      );
-    }
-
-    if (printingsData.printings.length === 0) {
-      return h('div', { className: 'printings-panel-empty' },
-        h('p', null, 'No printings found for "' + confirmedCardName + '".')
-      );
-    }
-
-    var printings = printingsData.printings;
-
-    return h('div', null,
-      // Header with count and view toggle
-      h('div', { className: 'printings-panel-header' },
-        h('span', { className: 'printings-panel-count' },
-          printings.length + ' printing' + (printings.length !== 1 ? 's' : '')
-        ),
-        h('div', { className: 'printings-view-toggle' },
-          h('button', {
-            type: 'button',
-            className: 'printings-view-btn' + (viewMode === 'grid' ? ' active' : ''),
-            onClick: function() { setViewMode('grid'); },
-            title: 'Grid view'
-          }, h(GridIcon, null)),
-          h('button', {
-            type: 'button',
-            className: 'printings-view-btn' + (viewMode === 'list' ? ' active' : ''),
-            onClick: function() { setViewMode('list'); },
-            title: 'List view'
-          }, h(ListIcon, null))
+    // ========== STEP 1: CARD SEARCH ==========
+    h('div', { className: 'lf-section' },
+      h('div', { className: 'lf-step-header' },
+        h('span', { className: 'lf-step-num' }, '1'),
+        h('div', null,
+          h('h3', { className: 'lf-step-title' }, 'Find Your Card'),
+          h('p', { className: 'lf-step-desc' }, 'Start typing to search Scryfall. Press Enter or select a result.')
         )
       ),
+      h('div', { className: 'lf-search-row' },
+        h('div', { className: 'form-group listing-form-autocomplete', style: { flex: 1, marginBottom: 0 } },
+          h('input', {
+            id: 'lf-card',
+            type: 'text',
+            className: 'form-input lf-search-input' + (errors.cardName ? ' error' : ''),
+            placeholder: 'Search card name\u2026',
+            value: form.cardName,
+            onChange: handleCardNameChange,
+            onKeyDown: handleCardNameKeyDown,
+            onBlur: handleCardNameBlur,
+            autoComplete: 'off'
+          }),
+          acOpen && ac.results.length > 0 && h('div', { className: 'autocomplete-dropdown open' },
+            ac.results.slice(0, 8).map(function(name) {
+              return h('div', {
+                key: name,
+                className: 'autocomplete-item',
+                onMouseDown: function() { handleAcSelect(name); }
+              }, name);
+            })
+          ),
+          acOpen && ac.loading && h('div', { className: 'autocomplete-dropdown open' },
+            h('div', { className: 'autocomplete-item', style: { color: 'var(--color-text-muted)' } }, 'Searching\u2026')
+          )
+        ),
+        confirmedCardName && h('button', {
+          type: 'button',
+          className: 'btn btn-ghost btn-sm',
+          onClick: handleClearCard,
+          title: 'Clear and search again'
+        }, '\u2715 Clear')
+      ),
+      errors.cardName && h('p', { className: 'form-error' }, errors.cardName),
 
-      // Grid view
-      viewMode === 'grid' && h('div', { className: 'printings-grid' },
-        printings.map(function(p) {
-          var key = p.setCode + '-' + (p.collectorNumber || '');
-          var isSelected = selectedKey === key;
-          return h('div', {
-            key: key,
-            className: 'printings-grid-item' + (isSelected ? ' selected' : ''),
-            onClick: function() { handleSetSelect(p); }
-          },
-            p.imageSmall
-              ? h('img', {
-                  src: p.imageSmall,
-                  alt: p.setName,
-                  className: 'printings-grid-img',
-                  loading: 'lazy'
-                })
-              : h('div', { className: 'printings-grid-img-placeholder' },
-                  h('span', null, p.setCode.toUpperCase())
-                ),
-            h('div', { className: 'printings-grid-info' },
-              h('div', { className: 'printings-grid-set' }, p.setName),
-              h('div', { className: 'printings-grid-meta' },
-                h('span', { className: 'set-code-badge' }, p.setCode.toUpperCase()),
-                p.collectorNumber && h('span', null, '#' + p.collectorNumber),
-                p.rarity && h('span', { className: 'rarity-' + p.rarity }, p.rarity.charAt(0).toUpperCase() + p.rarity.slice(1))
-              ),
-              h('div', { className: 'printings-grid-price' },
-                p.priceUsd ? '$' + p.priceUsd : (p.priceUsdFoil ? '\u2728$' + p.priceUsdFoil : 'N/A')
-              )
-            ),
-            isSelected && h('div', { className: 'printings-selected-badge' }, '\u2713 Selected')
-          );
-        })
+      // Confirmed card indicator
+      confirmedCardName && h('div', { className: 'lf-confirmed-card' },
+        h('span', { className: 'lf-confirmed-check' }, '\u2713'),
+        h('span', null, 'Searching printings for: '),
+        h('strong', null, confirmedCardName)
+      )
+    ),
+
+    // ========== STEP 2: SELECT PRINTING ==========
+    (confirmedCardName || form.setName) && h('div', { className: 'lf-section' },
+      h('div', { className: 'lf-step-header' },
+        h('span', { className: 'lf-step-num' + (form.setName ? ' done' : '') }, form.setName ? '\u2713' : '2'),
+        h('div', null,
+          h('h3', { className: 'lf-step-title' }, 'Choose Printing'),
+          h('p', { className: 'lf-step-desc' },
+            form.setName
+              ? 'Selected: ' + form.setName + (form.setCode ? ' (' + form.setCode.toUpperCase() + ')' : '')
+              : 'Pick the exact set and variant you have.'
+          )
+        )
+      ),
+      errors.setName && h('p', { className: 'form-error', style: { marginLeft: '44px' } }, errors.setName),
+
+      // Loading skeleton
+      isPrintingsLoading && h('div', { className: 'lf-printings-loading' },
+        h('div', { className: 'skeleton', style: { width: '100%', height: '200px', borderRadius: 'var(--radius-lg)' } }),
+        h('p', { className: 'lf-loading-text' }, 'Fetching printings from Scryfall\u2026')
       ),
 
-      // List view
-      viewMode === 'list' && h('div', { className: 'printings-list' },
-        printings.map(function(p) {
-          var key = p.setCode + '-' + (p.collectorNumber || '');
-          var isSelected = selectedKey === key;
-          return h('div', {
-            key: key,
-            className: 'printings-list-item' + (isSelected ? ' selected' : ''),
-            onClick: function() { handleSetSelect(p); }
-          },
-            p.imageSmall && h('img', {
-              src: p.imageSmall,
-              alt: '',
-              className: 'printings-list-thumb',
-              loading: 'lazy'
-            }),
-            h('div', { className: 'printings-list-info' },
-              h('div', { className: 'printings-list-name' }, p.setName),
-              h('div', { className: 'printings-list-meta' },
-                h('span', { className: 'set-code-badge' }, p.setCode.toUpperCase()),
-                p.collectorNumber && h('span', null, '#' + p.collectorNumber),
-                p.rarity && h('span', { className: 'rarity-' + p.rarity }, p.rarity.charAt(0).toUpperCase() + p.rarity.slice(1))
-              )
-            ),
-            h('div', { className: 'printings-list-prices' },
-              p.priceUsd && h('span', { className: 'set-price-usd' }, '$' + p.priceUsd),
-              p.priceUsdFoil && h('span', { className: 'set-price-foil' }, '\u2728$' + p.priceUsdFoil),
-              !p.priceUsd && !p.priceUsdFoil && h('span', { className: 'set-price-na' }, 'N/A')
-            ),
-            isSelected && h('div', { className: 'printings-list-check' }, '\u2713')
-          );
-        })
-      )
-    );
-  }
+      // Printings grid/list
+      hasPrintings && h('div', { className: 'lf-printings-wrap' },
+        // View controls
+        h('div', { className: 'lf-printings-controls' },
+          h('span', { className: 'lf-printings-count' },
+            printingsData.printings.length + ' printing' + (printingsData.printings.length !== 1 ? 's' : '') + ' found'
+          ),
+          h('div', { className: 'lf-view-toggle' },
+            h('button', {
+              type: 'button',
+              className: 'lf-view-btn' + (viewMode === 'grid' ? ' active' : ''),
+              onClick: function() { setViewMode('grid'); }
+            }, h(GridIcon, null)),
+            h('button', {
+              type: 'button',
+              className: 'lf-view-btn' + (viewMode === 'list' ? ' active' : ''),
+              onClick: function() { setViewMode('list'); }
+            }, h(ListIcon, null))
+          )
+        ),
 
-  // ===== FORM (left side) =====
-  function renderFormSide() {
-    return h('form', { onSubmit: handleSubmit, className: 'listing-form-left' },
-
-      // Card Name with Scryfall autocomplete
-      h('div', { className: 'form-group listing-form-autocomplete' },
-        h('label', { className: 'form-label', htmlFor: 'lf-card' }, 'Card Name'),
-        h('input', {
-          id: 'lf-card',
-          type: 'text',
-          className: 'form-input' + (errors.cardName ? ' error' : ''),
-          placeholder: 'Type to search Scryfall\u2026',
-          value: form.cardName,
-          onChange: handleCardNameChange,
-          autoComplete: 'off',
-          onBlur: function() { setTimeout(function() { setAcOpen(false); }, 150); }
-        }),
-        errors.cardName && h('p', { className: 'form-error' }, errors.cardName),
-        acOpen && ac.results.length > 0 && h('div', { className: 'autocomplete-dropdown open' },
-          ac.results.slice(0, 8).map(function(name) {
+        // GRID VIEW
+        viewMode === 'grid' && h('div', { className: 'lf-pgrid' },
+          printingsData.printings.map(function(p) {
+            var key = p.setCode + '-' + (p.collectorNumber || '');
+            var isSel = selectedKey === key;
             return h('div', {
-              key: name,
-              className: 'autocomplete-item',
-              onMouseDown: function() { handleAcSelect(name); }
-            }, name);
+              key: key,
+              className: 'lf-pgrid-card' + (isSel ? ' selected' : ''),
+              onClick: function() { handleSetSelect(p); }
+            },
+              p.imageSmall
+                ? h('img', { src: p.imageSmall, alt: p.setName, className: 'lf-pgrid-img', loading: 'lazy' })
+                : h('div', { className: 'lf-pgrid-img-ph' }, h('span', null, p.setCode.toUpperCase())),
+              h('div', { className: 'lf-pgrid-body' },
+                h('div', { className: 'lf-pgrid-set' }, p.setName),
+                h('div', { className: 'lf-pgrid-meta' },
+                  h('span', { className: 'set-code-badge' }, p.setCode.toUpperCase()),
+                  p.collectorNumber && h('span', null, '#' + p.collectorNumber),
+                  p.rarity && h('span', { className: 'rarity-' + p.rarity }, p.rarity.charAt(0).toUpperCase() + p.rarity.slice(1))
+                ),
+                h('div', { className: 'lf-pgrid-price' },
+                  p.priceUsd ? '$' + p.priceUsd : (p.priceUsdFoil ? '\u2728$' + p.priceUsdFoil : 'N/A')
+                )
+              ),
+              isSel && h('div', { className: 'lf-pgrid-check' }, '\u2713')
+            );
           })
         ),
-        acOpen && ac.loading && h('div', { className: 'autocomplete-dropdown open' },
-          h('div', { className: 'autocomplete-item', style: { color: 'var(--color-text-muted)' } }, 'Searching\u2026')
+
+        // LIST VIEW
+        viewMode === 'list' && h('div', { className: 'lf-plist' },
+          printingsData.printings.map(function(p) {
+            var key = p.setCode + '-' + (p.collectorNumber || '');
+            var isSel = selectedKey === key;
+            return h('div', {
+              key: key,
+              className: 'lf-plist-row' + (isSel ? ' selected' : ''),
+              onClick: function() { handleSetSelect(p); }
+            },
+              p.imageSmall && h('img', { src: p.imageSmall, alt: '', className: 'lf-plist-thumb', loading: 'lazy' }),
+              h('div', { className: 'lf-plist-info' },
+                h('div', { className: 'lf-plist-name' }, p.setName),
+                h('div', { className: 'lf-plist-meta' },
+                  h('span', { className: 'set-code-badge' }, p.setCode.toUpperCase()),
+                  p.collectorNumber && h('span', null, '#' + p.collectorNumber),
+                  p.rarity && h('span', { className: 'rarity-' + p.rarity }, p.rarity.charAt(0).toUpperCase() + p.rarity.slice(1))
+                )
+              ),
+              h('div', { className: 'lf-plist-prices' },
+                p.priceUsd && h('span', { className: 'set-price-usd' }, '$' + p.priceUsd),
+                p.priceUsdFoil && h('span', { className: 'set-price-foil' }, '\u2728$' + p.priceUsdFoil),
+                !p.priceUsd && !p.priceUsdFoil && h('span', { className: 'set-price-na' }, 'N/A')
+              ),
+              isSel && h('div', { className: 'lf-plist-check' }, '\u2713')
+            );
+          })
         )
       ),
 
-      // Selected set display (read-only summary of what was picked from panel)
-      h('div', { className: 'form-group' },
-        h('label', { className: 'form-label' },
-          'Selected Printing',
-          isPrintingsLoading && h('span', { className: 'set-loading-hint' }, ' \u2014 loading\u2026')
-        ),
-        form.setName
-          ? h('div', { className: 'selected-printing-display' },
-              form.imageUri && h('img', {
-                src: form.imageUri,
-                alt: '',
-                className: 'selected-printing-thumb'
-              }),
-              h('div', { className: 'selected-printing-info' },
-                h('div', { className: 'selected-printing-name' }, form.setName),
-                h('div', { className: 'selected-printing-meta' },
-                  form.setCode && h('span', { className: 'set-code-badge' }, form.setCode.toUpperCase()),
-                  form.collectorNumber && h('span', null, '#' + form.collectorNumber)
-                )
-              )
-            )
-          : h('div', { className: 'selected-printing-placeholder' },
-              hasPrintings
-                ? 'Click a printing from the panel on the right \u2192'
-                : (confirmedCardName ? 'Loading printings\u2026' : 'Search a card name first')
-            ),
-        errors.setName && h('p', { className: 'form-error' }, errors.setName)
+      // Error
+      printingsData.error && h('div', { className: 'lf-printings-error' },
+        h(AlertCircleIcon, null),
+        h('span', null, 'Could not load printings. You can type a set name manually below.')
+      )
+    ),
+
+    // ========== STEP 3: LISTING DETAILS ==========
+    (form.setName || (confirmedCardName && printingsData.error)) && h('form', { onSubmit: handleSubmit, className: 'lf-section' },
+      h('div', { className: 'lf-step-header' },
+        h('span', { className: 'lf-step-num' }, '3'),
+        h('div', null,
+          h('h3', { className: 'lf-step-title' }, 'Listing Details'),
+          h('p', { className: 'lf-step-desc' }, 'Set condition, price, and contact info.')
+        )
       ),
 
+      // Selected card summary
+      form.imageUri && h('div', { className: 'lf-selected-card' },
+        h('img', { src: form.imageNormal || form.imageUri, alt: form.cardName, className: 'lf-selected-img' }),
+        h('div', { className: 'lf-selected-info' },
+          h('div', { className: 'lf-selected-name' }, form.cardName),
+          h('div', { className: 'lf-selected-set' },
+            form.setName,
+            form.setCode && h('span', { className: 'set-code-badge', style: { marginLeft: 'var(--space-2)' } }, form.setCode.toUpperCase()),
+            form.collectorNumber && h('span', { style: { marginLeft: 'var(--space-1)' } }, '#' + form.collectorNumber)
+          )
+        )
+      ),
+
+      // Condition + Type row
       h('div', { className: 'form-row-2col' },
         h('div', { className: 'form-group' },
           h('label', { className: 'form-label', htmlFor: 'lf-cond' }, 'Condition'),
@@ -569,6 +615,7 @@ function ListingForm(props) {
         )
       ),
 
+      // Price
       form.type === 'sale' && h('div', { className: 'form-group' },
         h('label', { className: 'form-label', htmlFor: 'lf-price' }, 'Price (USD)'),
         h('div', { className: 'form-input-prefix' },
@@ -587,50 +634,44 @@ function ListingForm(props) {
         errors.price && h('p', { className: 'form-error' }, errors.price)
       ),
 
+      // Contact
       h('div', { className: 'form-group' },
-        h('label', { className: 'form-label', htmlFor: 'lf-contact' }, 'Contact for This Listing'),
+        h('label', { className: 'form-label', htmlFor: 'lf-contact' }, 'Contact'),
         h('input', {
           id: 'lf-contact',
           type: 'text',
           className: 'form-input',
-          placeholder: 'How to reach you (email, phone, discord\u2026)',
+          placeholder: 'Email, phone, or Discord handle',
           value: form.contact,
           onChange: function(e) { update('contact', e.target.value); }
         })
       ),
 
+      // Notes
       h('div', { className: 'form-group' },
         h('label', { className: 'form-label', htmlFor: 'lf-notes' }, 'Notes (optional)'),
         h('textarea', {
           id: 'lf-notes',
           className: 'form-input',
-          placeholder: 'Any details about the card, trade wants, availability\u2026',
+          placeholder: 'Trade wants, availability, meetup preferences\u2026',
           value: form.notes,
           rows: 2,
           onChange: function(e) { update('notes', e.target.value); }
         })
       ),
 
-      h('div', { className: 'listing-form-actions' },
+      // Actions
+      h('div', { className: 'lf-actions' },
         h('button', { type: 'button', className: 'btn btn-secondary', onClick: onCancel }, 'Cancel'),
         h('button', { type: 'submit', className: 'btn btn-primary', disabled: submitting },
-          submitting ? 'Saving...' : (initial && initial.id ? 'Save Changes' : 'Add Listing')
+          submitting ? 'Creating\u2026' : (initial && initial.id ? 'Save Changes' : 'Create Listing')
         )
       )
-    );
-  }
+    ),
 
-  // ===== 2-COLUMN LAYOUT =====
-  return h('div', { className: 'listing-form-layout' },
-    h('h3', { className: 'listing-form-title' }, initial && initial.id ? 'Edit Listing' : 'Add New Listing'),
-    h('div', { className: 'listing-form-columns' },
-      // Left column: the form
-      renderFormSide(),
-      // Right column: printings browser panel
-      h('div', { className: 'printings-panel' },
-        h('h4', { className: 'printings-panel-title' }, 'Printings & Variants'),
-        renderPrintingsPanel()
-      )
+    // Cancel-only when form hasn't progressed past step 1
+    !confirmedCardName && !form.setName && h('div', { className: 'lf-actions', style: { marginTop: 'var(--space-4)' } },
+      h('button', { type: 'button', className: 'btn btn-secondary', onClick: onCancel }, 'Cancel')
     )
   );
 }
