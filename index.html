@@ -61,7 +61,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(self \"https://js.sumup.com\" \"https://gateway.sumup.com\")">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com data:; connect-src 'self' https://api.scryfall.com https://esm.sh https://gateway.sumup.com https://api.sumup.com https://js.sumup.com https://api.justtcg.com https://api2.moxfield.com https://edhtop16.com https://topdeck.gg https://investmtg-proxy.bloodshutdawn.workers.dev; frame-src https://gateway.sumup.com https://js.sumup.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh https://ga.jspm.io https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com data:; connect-src 'self' https://api.scryfall.com https://esm.sh https://ga.jspm.io https://gateway.sumup.com https://api.sumup.com https://js.sumup.com https://api.justtcg.com https://api2.moxfield.com https://edhtop16.com https://topdeck.gg https://investmtg-proxy.bloodshutdawn.workers.dev; frame-src https://gateway.sumup.com https://js.sumup.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 
 <!-- Structured Data -->
 <script type="application/ld+json">
@@ -116,13 +116,30 @@
 <link rel="stylesheet" href="./base.css">
 <link rel="stylesheet" href="./style.css">
 
+<!-- Import map polyfill for older mobile browsers (pre-iOS 16.4) -->
+<script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+
+<!-- Global error handler — show message if modules fail to load -->
+<script>
+window.addEventListener('error', function() {
+  var r = document.getElementById('root');
+  if (r && !r.querySelector('[data-app]')) {
+    r.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#E8E6E1;background:#0D0F12;font:14px system-ui,sans-serif;text-align:center;">investMTG failed to load.<br>Please refresh. If this keeps happening, clear website data.</div>';
+  }
+});
+</script>
+
+<!-- Preload React modules for faster mobile startup -->
+<link rel="modulepreload" href="https://esm.sh/react@18?dev=false">
+<link rel="modulepreload" href="https://esm.sh/react-dom@18/client?dev=false">
+
 <!-- Import Map for React 18 (production builds) -->
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18",
-    "react-dom/client": "https://esm.sh/react-dom@18/client",
-    "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime"
+    "react": "https://esm.sh/react@18?dev=false",
+    "react-dom/client": "https://esm.sh/react-dom@18/client?dev=false",
+    "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime?dev=false"
   }
 }
 </script>
@@ -130,7 +147,9 @@
 <body>
 
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
-<div id="root"></div>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#8B8D94;background:#0D0F12;font:14px system-ui,sans-serif;">Loading…</div>
+</div>
 
 <script type="module" src="./app.js"></script>
 </body>

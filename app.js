@@ -25,9 +25,21 @@ function lazyComponent(importFn, exportName) {
         cache.p = importFn().then(function(mod) {
           cache.C = mod[exportName];
           setTick(function(n) { return n + 1; });
+        }).catch(function() {
+          /* Import failed — clear promise so next render retries */
+          cache.p = null;
         });
       }
-      return null;
+      return h('div', {
+        style: {
+          minHeight: '120px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-text-muted, #8B8D94)',
+          fontSize: '14px'
+        }
+      }, 'Loading\u2026');
     }
     return h(cache.C, props);
   };
@@ -235,23 +247,54 @@ function App() {
       return cartFallback;
     });
 
+    // Safety timeout — if backend is unreachable, clear loading after 6s
+    var safetyTimer = setTimeout(function() {
+      if (globalState.loading) {
+        globalState.portfolio = portfolioFallback;
+        globalState.listings = [];
+        globalState.cart = cartFallback;
+        globalState.loading = false;
+        notify();
+      }
+    }, 6000);
+
     Promise.all([portfolioPromise, listingsPromise, cartPromise]).then(function(results) {
+      clearTimeout(safetyTimer);
       globalState.portfolio = results[0];
       globalState.listings = results[1];
       globalState.cart = results[2];
       globalState.loading = false;
       notify();
+    }).catch(function() {
+      clearTimeout(safetyTimer);
+      globalState.portfolio = portfolioFallback;
+      globalState.listings = [];
+      globalState.cart = cartFallback;
+      globalState.loading = false;
+      notify();
     });
+
+    return function() { clearTimeout(safetyTimer); };
   }, []);
 
-  // While loading, show nothing (minimal loading state)
+  // While loading, show a minimal loading indicator
   if (gs.state.loading) {
-    return null;
+    return h('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        color: 'var(--color-text-muted, #8B8D94)',
+        fontFamily: 'var(--font-body, system-ui, sans-serif)',
+        fontSize: '14px'
+      }
+    }, 'Loading…');
   }
 
   var cartCount = gs.state.cart.reduce(function(sum, item) { return sum + (item.qty || 1); }, 0);
 
-  return h('div', { className: 'app-wrapper' },
+  return h('div', { className: 'app-wrapper', 'data-app': 'true' },
     h(Ticker, null),
     h(Header, {
       route: route,

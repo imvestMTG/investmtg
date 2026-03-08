@@ -1,11 +1,9 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v2';
+var CACHE_NAME = 'investmtg-v3';
 var STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/style.css',
-  '/app.js',
+  '/base.css',
   '/manifest.json'
 ];
 
@@ -24,30 +22,59 @@ self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys().then(function(names) {
       return Promise.all(
-        names.filter(function(name) { return name !== CACHE_NAME; })
-          .map(function(name) { return caches.delete(name); })
+        names.map(function(name) {
+          if (name !== CACHE_NAME) return caches.delete(name);
+        })
       );
+    }).then(function() {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', function(event) {
-  /* Network-first for everything — ensures deployments take effect immediately.
-     Falls back to cache only when offline. */
+  var req = event.request;
+  var url = new URL(req.url);
+
+  /* Only handle GET requests */
+  if (req.method !== 'GET') return;
+
+  /* Never cache navigation requests (HTML) — always fetch fresh index.html */
+  if (req.mode === 'navigate' || req.destination === 'document') {
+    event.respondWith(
+      fetch(req).catch(function() {
+        return caches.match('/') || caches.match('/index.html');
+      })
+    );
+    return;
+  }
+
+  /* Never cache JS files — always fetch fresh to pick up deployments */
+  if (url.pathname.endsWith('.js') && url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(req).catch(function() {
+        return caches.match(req);
+      })
+    );
+    return;
+  }
+
+  /* Never intercept cross-origin requests (esm.sh, Scryfall, backend, etc.) */
+  if (url.origin !== self.location.origin) return;
+
+  /* For CSS, manifest, images: cache-first with network fallback */
   event.respondWith(
-    fetch(event.request).then(function(response) {
-      /* Cache successful responses for offline fallback */
-      if (response.status === 200 && response.type === 'basic') {
-        var clone = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) {
-          cache.put(event.request, clone);
-        });
-      }
-      return response;
-    }).catch(function() {
-      /* Offline — serve from cache if available */
-      return caches.match(event.request);
+    caches.match(req).then(function(cached) {
+      if (cached) return cached;
+      return fetch(req).then(function(response) {
+        if (response && response.status === 200 && response.type === 'basic') {
+          var clone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(req, clone);
+          });
+        }
+        return response;
+      });
     })
   );
 });
