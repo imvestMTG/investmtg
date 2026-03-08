@@ -24,7 +24,11 @@ function sanitizePrice(val) {
   return Math.min(p, 99999);
 }
 
-export function ListingModal({ isOpen, onClose, onSubmit, prefillCardName }) {
+export function ListingModal(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var onSubmit = props.onSubmit;
+  var prefillCardName = props.prefillCardName;
   var cardNameRef = React.useRef(null);
   var formRef = React.useRef(null);
 
