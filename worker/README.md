@@ -47,9 +47,9 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 |-------|--------|---------|
 | `/api/health` | GET | health check |
 | `/api/ticker` | GET | tracked card prices |
-| `/api/featured` | GET | featured cards |
-| `/api/trending` | GET | trending cards |
-| `/api/budget` | GET | budget staples |
+| `/api/featured` | GET | featured cards (12 high-value staples incl. dual lands, Gaea's Cradle, Tabernacle) |
+| `/api/trending` | GET | trending cards (12 market movers incl. The One Ring, Ragavan, Dockside) |
+| `/api/budget` | GET | budget staples (12 commander staples under ~$5) |
 | `/api/search` | GET | Scryfall-backed card search |
 | `/api/card/:id` | GET | card detail proxy/cache |
 | `/api/movers/:cat` | GET | market movers by category |

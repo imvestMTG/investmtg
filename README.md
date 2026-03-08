@@ -99,7 +99,10 @@ Key characteristics:
 - Cookie consent banner for third-party service cookies
 
 ### Home / Discovery
-- featured, trending, and budget card sections loaded from `/api/featured`, `/api/trending`, `/api/budget`
+- featured (12 cards), trending (12 cards), and budget (12 cards) sections in horizontal scrolling carousels loaded from `/api/featured`, `/api/trending`, `/api/budget`
+- carousel: CSS scroll-snap, touch-friendly swiping, arrow navigation on desktop, edge fade hints
+- section headers with subtitles describing each category
+- app shell in index.html — skeleton header, hero, and carousel cards shown before React mounts (faster FCP)
 - ticker strip with 16 live card prices from `/api/ticker`
 - market movers by category from `/api/movers/:category`
 
@@ -111,7 +114,7 @@ Key characteristics:
 - `utils/api.js` — backend proxy functions, `normalizeCard()` shape converter, Bearer token auth
 - `utils/auth.js` — auth state manager (checkAuth, signIn, signOut, onAuthChange, useAuth)
 - `utils/` — config, helpers, stores, events, marketplace data, sanitization
-- `index.html` — import map for React 18.3.1 / ReactDOM from self-hosted vendor bundles
+- `index.html` — import map for React 18.3.1 / ReactDOM from self-hosted vendor bundles, app shell skeleton UI
 - `style.css`, `base.css` — application styles
 
 ### Hosting
@@ -144,6 +147,7 @@ investmtg/
 │   ├── CookieNotice.js
 │   ├── ... (other views and shared components)
 │   └── shared/
+│       ├── CardCarousel.js
 │       ├── CardGrid.js
 │       ├── ConfirmModal.js
 │       ├── ErrorBoundary.js
@@ -169,7 +173,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v26 (PWA offline support + auto-reload + image caching)
+├── sw.js                           # service worker v27 (PWA offline support + auto-reload + image caching)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md

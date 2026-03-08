@@ -45,14 +45,14 @@ Current `connect-src` allowlist: `'self'`, `api.investmtg.com`, `api.scryfall.co
 
 ### Loading fallback chain
 To prevent blank screens on slow connections or mobile browsers:
-1. `index.html` contains visible "Loading…" HTML inside `#root` — shown before React hydrates
+1. `index.html` contains a full app shell inside `#root` — skeleton header with logo, hero section with tagline, search bar placeholder, and carousel card skeletons with shimmer animation. Shown before React hydrates for immediate FCP.
 2. `app.js` loading state renders visible "Loading…" text instead of `null`
 3. `lazyComponent()` shows a "Loading…" placeholder while dynamic imports resolve
 4. A global error handler in `index.html` catches module load failures and displays a user-friendly message
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v26`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v27`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -90,7 +90,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 ### Views
 | File | Route | Purpose |
 |------|-------|---------|
-| `components/HomeView.js` | `#home` | Featured, trending, budget sections |
+| `components/HomeView.js` | `#home` | Featured, trending, budget sections in horizontal scrolling carousels (12 cards each) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id` |
 | `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
@@ -116,7 +116,8 @@ These rules apply to all root-level `.js` files and must not be violated:
 ### Shared components
 | File | Purpose |
 |------|---------|
-| `components/shared/CardGrid.js` | Reusable card grid layout |
+| `components/shared/CardCarousel.js` | Horizontal scrolling carousel for homepage card sections (scroll-snap, arrow nav, touch-friendly) |
+| `components/shared/CardGrid.js` | Reusable card grid layout (used in search results) |
 | `components/shared/ConfirmModal.js` | Styled confirmation/alert modal |
 | `components/shared/ErrorBoundary.js` | React error boundary wrapper |
 | `components/shared/Icons.js` | SVG icon components |
@@ -224,6 +225,7 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── CookieNotice.js
 │   └── shared/
 │       ├── BackToTop.js
+│       ├── CardCarousel.js
 │       ├── CardGrid.js
 │       ├── ConfirmModal.js
 │       ├── ErrorBoundary.js
@@ -261,7 +263,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v26
+├── sw.js                           # service worker v27
 ├── manifest.json
 ├── 404.html
 ├── CNAME

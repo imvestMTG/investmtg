@@ -1,5 +1,16 @@
 # investMTG — Changelog
 
+## 2026-03-09: Homepage carousel card sections + app shell (SW v27)
+
+- **CardCarousel.js (new)** — Horizontal scrolling carousel component for homepage card sections. CSS scroll-snap, touch-friendly swiping, left/right arrow navigation on desktop (hidden on mobile), edge fade hints, responsive card widths (170px mobile / 200px default / 220px large screens).
+- **HomeView.js** — Replaced `CardGrid` with `CardCarousel` for Featured, Trending, and Budget sections. Removed `.slice(0, 3)` limit so all cards from the worker are displayed. Added section headers with subtitles (e.g. "High-value Reserved List and Legacy staples"). Uses new `.card-section` / `.card-section-header` classes.
+- **Worker card lists expanded** — Featured: 12 cards (added Tundra, Badlands, Plateau, Scrubland, Gaea's Cradle, Tabernacle). Trending: 12 cards (added Jewel Lotus, Dockside Extortionist, Fierce Guardianship, Smothering Tithe, Cyclonic Rift, Atraxa). Budget: 12 cards (added Beast Within, Chaos Warp, Farseek, Command Tower). KV cache cleared for new lists.
+- **style.css** — Added `.card-section-*`, `.carousel-wrap`, `.carousel-track`, `.carousel-card-*`, `.carousel-arrow-*` CSS. Responsive breakpoints for mobile/desktop.
+- **index.html** — Replaced bare "Loading..." text with a full app shell: skeleton header with investMTG logo, hero section with tagline and search bar placeholder, carousel skeleton cards with shimmer animation. Improves First Contentful Paint and perceived load time.
+- SW bumped to v27.
+
+---
+
 ## 2026-03-09: Terms of Service update + acceptance gate + Privacy Policy fix (SW v26)
 
 - **TermsView.js updated** — Now reflects Google OAuth accounts (Section 3: User Accounts), 5 card conditions (NM/LP/MP/HP/DMG) in Section 4, JustTCG condition pricing in Section 5, and links to Privacy Policy and Pricing & Data Sources pages. Renumbered to 14 sections.
