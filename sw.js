@@ -1,6 +1,6 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v3';
+var CACHE_NAME = 'investmtg-v4';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
@@ -49,8 +49,8 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  /* Never cache JS files — always fetch fresh to pick up deployments */
-  if (url.pathname.endsWith('.js') && url.origin === self.location.origin) {
+  /* Never cache JS/MJS files — always fetch fresh to pick up deployments */
+  if ((url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) && url.origin === self.location.origin) {
     event.respondWith(
       fetch(req).catch(function() {
         return caches.match(req);
