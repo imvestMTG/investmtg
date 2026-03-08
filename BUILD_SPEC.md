@@ -180,7 +180,8 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/orders` | POST | Create order (auth required). Returns server-generated `GUM-YYYYMM-XXXXX` ID. |
 | `/api/orders` | GET | List orders for authenticated user (sorted by `created_at DESC`) |
 | `/api/orders/:id` | GET | Get single order by ID (owner-only) |
-| `/api/sumup/checkout` | POST | Create SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code `M55T01IN`, returns `{ checkout_id }`. Frontend mounts SumUp Card Widget with the returned ID for PCI/3DS-compliant card entry. |
+| `/api/sumup/checkout` | POST | Create SumUp checkout (auth required). Accepts `{ amount, order_id }`. Calls SumUp Checkouts API with merchant code `M55T01IN`, returns `{ checkout_id, hosted_checkout_url }`. Includes `return_url` (webhook) and `redirect_url` (3DS redirect). Frontend mounts SumUp Card Widget with the returned ID for PCI/3DS-compliant card entry. |
+| `/api/sumup-webhook` | POST | SumUp webhook handler. Receives `CHECKOUT_STATUS_CHANGED` events, validates via SumUp API poll, updates D1 order status to `confirmed`/`paid`. Returns 200 immediately per SumUp requirements. |
 | `/justtcg` | proxy | Condition pricing |
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |

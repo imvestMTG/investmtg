@@ -62,7 +62,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/orders` | POST | create order (auth required; returns `GUM-YYYYMM-XXXXX` ID) |
 | `/api/orders` | GET | list orders for authenticated user (newest first) |
 | `/api/orders/:id` | GET | get single order by ID (owner-only) |
-| `/api/sumup/checkout` | POST | Create a SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code, returns `{ checkout_id }`. Frontend mounts SumUp Card Widget with the returned checkout ID. |
+| `/api/sumup/checkout` | POST | Create a SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code, returns `{ checkout_id, hosted_checkout_url }`. Sets `return_url` for webhook and `redirect_url` for post-payment redirect. Frontend mounts SumUp Card Widget with the returned checkout ID. |
+| `/api/sumup-webhook` | POST | SumUp payment webhook. Receives `CHECKOUT_STATUS_CHANGED` events from SumUp. Validates by polling SumUp API with `SUMUP_SECRET_KEY`, then updates D1 order status to `confirmed` / `paid`. No auth required (validated server-side). |
 
 ### Auth routes
 | Route | Method | Purpose |

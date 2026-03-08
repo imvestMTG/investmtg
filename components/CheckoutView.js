@@ -222,7 +222,11 @@ export function CheckoutView(props) {
         donateSubmitButton: false,
         showFooter: false,
         showZipCode: true,
+        showEmail: true,
+        email: contact.email || '',
         locale: 'en-US',
+        currency: 'USD',
+        amount: total.toFixed(2),
         onResponse: function(type, body) {
           if (type === 'success' || (body && body.status === 'PAID')) {
             finishOrder(result.orderId, 'sumup');

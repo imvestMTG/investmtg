@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-09: Cart enhancements + SumUp upgrades (SW v32)
+
+- **CartView.js** — Added price savings display on condition buttons ("Save $X.XX" badge comparing to Near Mint price). Added trust & security badges in cart summary sidebar (secure checkout, buyer protection, accepted cards). Added package count indicator showing number of seller packages. New inline SVG icons: LockIcon, ShieldIcon, CardPayIcon.
+- **CheckoutView.js** — Enhanced SumUp Card Widget mount config: added `showEmail: true` with pre-filled customer email, `currency: 'USD'`, and `amount` display on pay button.
+- **style.css** — Added `.cart-summary__trust`, `.cart-summary__trust-row`, `.cart-summary__packages` for trust badges and package count. Added `.cond-option__save` savings badge (green pill). Added SumUp dark theme CSS overrides targeting `[data-sumup-id]` attributes for widget container, inputs, and submit button.
+- **worker/worker.js** — Added `return_url` (webhook) and `redirect_url` (3DS redirect) to SumUp checkout creation. Added `hosted_checkout_url` passthrough in response. New `/api/sumup-webhook` route: handles `CHECKOUT_STATUS_CHANGED` events, validates by polling SumUp API, updates D1 order status.
+- SW bumped to v32.
+
+---
+
 ## 2026-03-09: Service worker cache fix (SW v31)
 
 - **sw.js** — Changed CSS/manifest/font caching strategy from cache-first to network-first. Root cause of persistent stale-CSS bug: the old cache-first strategy served the old cached style.css even after a new SW version activated, because the page had already loaded before the SW update cycle completed. Network-first ensures fresh CSS is always fetched on page load, falling back to cache only when offline. JS files were already network-first (line 64-72).

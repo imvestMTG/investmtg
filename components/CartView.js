@@ -7,6 +7,30 @@ import { CART_MAX_QUANTITY } from '../utils/config.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
+/* LockIcon — small inline SVG for trust badges */
+function LockIcon() {
+  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', style: { flexShrink: 0 } },
+    h('rect', { x: 5, y: 11, width: 14, height: 10, rx: 2, stroke: 'currentColor', strokeWidth: 2 }),
+    h('path', { d: 'M8 11V7a4 4 0 018 0v4', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' })
+  );
+}
+
+/* ShieldIcon — small inline SVG for buyer protection */
+function ShieldIcon() {
+  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', style: { flexShrink: 0 } },
+    h('path', { d: 'M12 2l8 4v6c0 5.25-3.38 10.13-8 12-4.62-1.87-8-6.75-8-12V6l8-4z', stroke: 'currentColor', strokeWidth: 2, strokeLinejoin: 'round' }),
+    h('path', { d: 'M9 12l2 2 4-4', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' })
+  );
+}
+
+/* CardPayIcon — small inline SVG for accepted cards */
+function CardPayIcon() {
+  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', style: { flexShrink: 0 } },
+    h('rect', { x: 2, y: 5, width: 20, height: 14, rx: 2, stroke: 'currentColor', strokeWidth: 2 }),
+    h('path', { d: 'M2 10h20', stroke: 'currentColor', strokeWidth: 2 })
+  );
+}
+
 /* ConditionOption — selectable condition button */
 function ConditionOption(props) {
   var abbr = props.abbr;
@@ -14,6 +38,7 @@ function ConditionOption(props) {
   var price = props.price;
   var isSelected = props.isSelected;
   var onSelect = props.onSelect;
+  var savings = props.savings;
 
   /* Condition accent colors */
   var condColor = abbr === 'NM'  ? '#22c55e' :
@@ -41,7 +66,8 @@ function ConditionOption(props) {
     h('span', { className: 'cond-option__dot', style: { background: condColor } }),
     h('span', { className: 'cond-option__abbr' }, abbr),
     h('span', { className: 'cond-option__name' }, fullLabel),
-    h('span', { className: 'cond-option__price' }, formatUSD(price))
+    h('span', { className: 'cond-option__price' }, formatUSD(price)),
+    savings > 0 ? h('span', { className: 'cond-option__save' }, 'Save ' + formatUSD(savings)) : null
   );
 }
 
@@ -154,22 +180,26 @@ function CartItem(props) {
                 var bi = condOrder.indexOf(b[0]); if (bi < 0) bi = 99;
                 return ai - bi;
               });
-              return entries;
-            })().map(function(entry) {
-              var condLabel = entry[0];
-              var condPrice = entry[1];
-              var abbr = getAbbr(condLabel);
-              var isSelected = (item.condition || '').toUpperCase() === abbr ||
-                               (item.condition || '') === condLabel;
-              return h(ConditionOption, {
-                key: condLabel,
-                abbr: abbr,
-                fullLabel: condLabel,
-                price: condPrice,
-                isSelected: isSelected,
-                onSelect: function() { onSelectCondition(item.id, abbr, condPrice); }
+              /* Find NM price for savings calculation */
+              var nmPrice = jtcg.conditionPrices['Near Mint'] || 0;
+              return entries.map(function(entry) {
+                var condLabel = entry[0];
+                var condPrice = entry[1];
+                var abbr = getAbbr(condLabel);
+                var isSelected = (item.condition || '').toUpperCase() === abbr ||
+                                 (item.condition || '') === condLabel;
+                var savings = nmPrice > 0 && condPrice < nmPrice ? nmPrice - condPrice : 0;
+                return h(ConditionOption, {
+                  key: condLabel,
+                  abbr: abbr,
+                  fullLabel: condLabel,
+                  price: condPrice,
+                  isSelected: isSelected,
+                  savings: savings,
+                  onSelect: function() { onSelectCondition(item.id, abbr, condPrice); }
+                });
               });
-            })
+            })()
           )
         )
       : null
@@ -371,6 +401,32 @@ export function CartView(props) {
 
         h('a', { href: '#store', className: 'btn btn-secondary cart-summary__continue' },
           'Continue Shopping'
+        ),
+
+        /* Trust & security badges */
+        h('div', { className: 'cart-summary__trust' },
+          h('div', { className: 'cart-summary__trust-row' },
+            h(LockIcon, null),
+            h('span', null, 'Secure checkout via SumUp')
+          ),
+          h('div', { className: 'cart-summary__trust-row' },
+            h(ShieldIcon, null),
+            h('span', null, 'Buyer protection on all orders')
+          ),
+          h('div', { className: 'cart-summary__trust-row' },
+            h(CardPayIcon, null),
+            h('span', null, 'Visa, Mastercard, Amex, Discover')
+          )
+        ),
+
+        /* Package count */
+        h('div', { className: 'cart-summary__packages' },
+          h(TruckIcon, null),
+          h('span', null,
+            Object.keys(sellerGroups).length === 1
+              ? '1 package'
+              : Object.keys(sellerGroups).length + ' packages (from ' + Object.keys(sellerGroups).length + ' sellers)'
+          )
         ),
 
         h('div', { className: 'cart-summary__local' },

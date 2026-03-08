@@ -1255,6 +1255,8 @@ async function handleSumUpCheckout(request, env) {
     merchant_code: 'M55T01IN',
     description: 'investMTG Order ' + body.order_id,
     pay_to_email: 'bloodshutdawn@gmail.com',
+    return_url: 'https://api.investmtg.com/api/sumup-webhook',
+    redirect_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id,
   };
 
   try {
@@ -1283,11 +1285,68 @@ async function handleSumUpCheckout(request, env) {
       checkout_id: data.id,
       amount: data.amount,
       currency: data.currency,
+      hosted_checkout_url: data.hosted_checkout_url || null,
     }, 201, request);
   } catch (e) {
     console.error('SumUp checkout fetch error:', e.message);
     return json({ error: 'SumUp service unavailable', detail: e.message }, 502, request);
   }
+}
+
+/* ══════════════════════════════════════
+   SUMUP WEBHOOK HANDLER
+   ══════════════════════════════════════
+
+   POST /api/sumup-webhook
+   Receives CHECKOUT_STATUS_CHANGED events from SumUp.
+   Validates by polling SumUp API, then updates the D1 order.
+*/
+
+async function handleSumUpWebhook(request, env) {
+  // SumUp webhooks are POST requests
+  if (request.method !== 'POST') {
+    return json({ ok: true }, 200, request);
+  }
+
+  // Respond 200 immediately (SumUp requires fast response)
+  // Then process asynchronously via waitUntil if available
+  const body = await request.json().catch(() => null);
+  if (!body || !body.id) {
+    return json({ ok: true, message: 'No checkout ID' }, 200, request);
+  }
+
+  // Only handle CHECKOUT_STATUS_CHANGED (ignore unknown event types)
+  if (body.event_type && body.event_type !== 'CHECKOUT_STATUS_CHANGED') {
+    return json({ ok: true, message: 'Ignored event: ' + body.event_type }, 200, request);
+  }
+
+  // Validate by fetching the checkout from SumUp API
+  if (env.SUMUP_SECRET_KEY) {
+    try {
+      const checkoutResp = await fetch('https://api.sumup.com/v0.1/checkouts/' + body.id, {
+        headers: { 'Authorization': 'Bearer ' + env.SUMUP_SECRET_KEY }
+      });
+      const checkout = await checkoutResp.json();
+
+      if (checkout.status === 'PAID' && checkout.checkout_reference) {
+        // Update order status in D1
+        const txnId = (checkout.transactions && checkout.transactions[0])
+          ? checkout.transactions[0].id : null;
+        try {
+          await env.DB.prepare(
+            'UPDATE orders SET status = ?, payment_status = ?, sumup_txn_id = ?, updated_at = datetime("now") WHERE id = ?'
+          ).bind('confirmed', 'paid', txnId || '', checkout.checkout_reference).run();
+          console.log('Webhook: order ' + checkout.checkout_reference + ' confirmed via SumUp');
+        } catch (dbErr) {
+          console.error('Webhook DB error:', dbErr.message);
+        }
+      }
+    } catch (e) {
+      console.error('Webhook SumUp validation error:', e.message);
+    }
+  }
+
+  return json({ ok: true }, 200, request);
 }
 
 /* ══════════════════════════════════════
@@ -1442,6 +1501,7 @@ export default {
         return handleOrders(request, env, orderId || undefined);
       }
       if (path === '/api/sumup/checkout')                    return handleSumUpCheckout(request, env);
+      if (path === '/api/sumup-webhook')                      return handleSumUpWebhook(request, env);
 
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);
