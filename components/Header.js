@@ -3,19 +3,36 @@ import React from 'react';
 import { SearchIcon, PortfolioIcon, ShoppingCartIcon, MoonIcon, SunIcon, MenuIcon, XIcon, SellerIcon } from './shared/Icons.js';
 var h = React.createElement;
 
-export function Header({ route, cartCount }) {
+export function Header(props) {
+  var route = props.route;
+  var cartCount = props.cartCount;
+  var user = props.user;
+  var onSignIn = props.onSignIn;
+  var onSignOut = props.onSignOut;
+
   var ref = React.useState(false);
   var mobileOpen = ref[0], setMobileOpen = ref[1];
 
-  var ref2 = React.useState(function() {
+  var ref2 = React.useState(false);
+  var userMenuOpen = ref2[0], setUserMenuOpen = ref2[1];
+
+  var ref3 = React.useState(function() {
     return localStorage.getItem('investmtg-theme') || 'dark';
   });
-  var theme = ref2[0], setTheme = ref2[1];
+  var theme = ref3[0], setTheme = ref3[1];
 
   React.useEffect(function() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('investmtg-theme', theme);
   }, [theme]);
+
+  // Close user menu on outside click
+  React.useEffect(function() {
+    if (!userMenuOpen) return;
+    function close() { setUserMenuOpen(false); }
+    document.addEventListener('click', close);
+    return function() { document.removeEventListener('click', close); };
+  }, [userMenuOpen]);
 
   function toggleTheme() {
     setTheme(function(t) { return t === 'dark' ? 'light' : 'dark'; });
@@ -80,6 +97,48 @@ export function Header({ route, cartCount }) {
         )
       ),
       h('div', { className: 'header-right' },
+        /* Auth: sign-in button or user avatar */
+        user
+          ? h('div', {
+              className: 'user-menu-wrap',
+              onClick: function(e) { e.stopPropagation(); setUserMenuOpen(function(o) { return !o; }); }
+            },
+              h('button', {
+                className: 'user-avatar-btn',
+                'aria-label': 'Account menu',
+                'aria-expanded': userMenuOpen,
+                title: user.name
+              },
+                user.picture
+                  ? h('img', { src: user.picture, alt: '', className: 'user-avatar', referrerPolicy: 'no-referrer' })
+                  : h('span', { className: 'user-avatar user-avatar-fallback' }, user.name.charAt(0).toUpperCase())
+              ),
+              userMenuOpen && h('div', { className: 'user-dropdown' },
+                h('div', { className: 'user-dropdown-header' },
+                  h('span', { className: 'user-dropdown-name' }, user.name),
+                  h('span', { className: 'user-dropdown-email' }, user.email)
+                ),
+                h('hr', { className: 'user-dropdown-divider' }),
+                h('button', {
+                  className: 'user-dropdown-item',
+                  onClick: function() { nav('portfolio'); setUserMenuOpen(false); }
+                }, 'My Portfolio'),
+                h('button', {
+                  className: 'user-dropdown-item',
+                  onClick: function() { nav('seller'); setUserMenuOpen(false); }
+                }, 'Seller Dashboard'),
+                h('hr', { className: 'user-dropdown-divider' }),
+                h('button', {
+                  className: 'user-dropdown-item user-dropdown-signout',
+                  onClick: function(e) { e.stopPropagation(); onSignOut && onSignOut(); }
+                }, 'Sign Out')
+              )
+            )
+          : h('button', {
+              className: 'btn btn-sm btn-sign-in',
+              onClick: function() { onSignIn && onSignIn(); },
+              'aria-label': 'Sign in with Google'
+            }, 'Sign In'),
         h('button', {
           className: 'icon-btn',
           onClick: toggleTheme,

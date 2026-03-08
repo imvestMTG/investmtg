@@ -10,7 +10,7 @@ investMTG is a Guam-first Magic: The Gathering marketplace and pricing experienc
 
 The live site at www.investmtg.com is served from the **root-level SPA** — a vanilla JavaScript application using React 18.3.1 via import maps with self-hosted vendor bundles. There is no build step. The repository root is published directly to GitHub Pages.
 
-All API data flows through the Cloudflare Worker v2 backend at `https://investmtg-proxy.bloodshutdawn.workers.dev`.
+All API data flows through the Cloudflare Worker v3 backend at `https://investmtg-proxy.bloodshutdawn.workers.dev`.
 
 ### Front end
 The root-level SPA (`app.js`, `components/`, `utils/`) is the production frontend.
@@ -21,8 +21,8 @@ Key characteristics:
 - Hash-based routing
 - Native ES modules via `<script type="module">`
 - No build step — deploy as-is to GitHub Pages
-- All data loaded from Worker v2 backend API endpoints
-- `es-module-shims` polyfill for pre-iOS 16.4 browser compatibility
+- All data loaded from Worker v3 backend API endpoints
+- Google OAuth 2.0 authentication for persistent user accounts
 
 Coding rules enforced across all root-level JS files:
 - `var h = React.createElement;` — no JSX transform
@@ -31,13 +31,14 @@ Coding rules enforced across all root-level JS files:
 - `function` keyword only — no arrow functions in component bodies
 
 ### Backend
-`worker/` contains the Cloudflare Worker v2 used as the secure backend layer.
+`worker/` contains the Cloudflare Worker v3 used as the secure backend layer.
 
 Key characteristics:
 - Cloudflare Worker API gateway and proxy
-- Cloudflare D1 database for server-side data (portfolios, listings, sellers, stores, events, cart)
+- Cloudflare D1 database for server-side data (users, auth sessions, portfolios, listings, sellers, stores, events, cart)
 - Cloudflare KV cache for market and discovery responses (ticker, featured, trending, budget, movers)
-- Encrypted secrets for protected third-party APIs
+- Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1
+- Encrypted secrets for protected third-party APIs and auth credentials
 - Anonymous session cookie support for server-side user state
 
 ### frontend-v2/ (experimental, not deployed)

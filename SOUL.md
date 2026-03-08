@@ -82,11 +82,12 @@ Coding rules (must be followed in all root-level JS files):
 Key characteristics:
 - hash-based routing
 - static-hosting friendly (no server-side rendering)
-- all API data flows through the Worker v2 backend
+- all API data flows through the Worker v3 backend
+- Google OAuth 2.0 for persistent user accounts (sellers and buyers)
 - `frontend-v2/` exists in the repository as an experimental TypeScript/Vite rewrite but is **not deployed** and is not the production source of truth
 
 ### Worker
-The Cloudflare Worker remains a separate gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture.
+The Cloudflare Worker (v3) remains a separate gateway for protected or proxied API access, and carries the D1 + KV-backed server-side architecture plus Google OAuth authentication.
 
 ## Data sources
 
@@ -98,7 +99,8 @@ The Cloudflare Worker remains a separate gateway for protected or proxied API ac
 | Tournament and meta data | [TopDeck.gg](https://topdeck.gg), [EDH Top 16](https://edhtop16.com) | Worker-backed integrations |
 | Decklist imports | [Moxfield](https://moxfield.com) | Integrated as needed |
 | Proxy / gateway | Cloudflare Worker | Secret-backed API routing |
-| Server-side persistence | Cloudflare D1 | Listings, sellers, stores, events, cart, portfolio |
+| User accounts | Google OAuth 2.0 | Authentication via Google sign-in, accounts stored in D1 |
+| Server-side persistence | Cloudflare D1 | Users, auth sessions, listings, sellers, stores, events, cart, portfolio |
 | Edge cache | Cloudflare KV | Cached market and discovery responses |
 
 ## What we do not do
@@ -122,6 +124,8 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Google OAuth authentication: persistent user accounts for sellers and buyers, Worker v3 with auth routes, frontend auth UI |
+| 2026-03-08 | Self-hosted React: eliminated esm.sh redirect chains, vendor/ bundles, SW v4 |
 | 2026-03-08 | Fixed mobile black screen: loading fallbacks, SW v3, es-module-shims polyfill for pre-iOS 16.4 browsers |
 | 2026-03-08 | Wired root-level SPA to Cloudflare Worker v2 backend; site live at www.investmtg.com; deploy workflow updated to publish root directory directly |
 | 2026-03-08 | Formalized `frontend-v2/` as an experimental rewrite (not deployed); root-level SPA confirmed as the production front end |

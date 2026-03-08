@@ -2,11 +2,11 @@
 
 ## Project context
 
-investMTG is a Guam-only Magic: The Gathering marketplace and pricing app. The production frontend is the root-level SPA deployed directly to GitHub Pages from the repository root. All API data flows through the Cloudflare Worker v2 backend.
+investMTG is a Guam-only Magic: The Gathering marketplace and pricing app. The production frontend is the root-level SPA deployed directly to GitHub Pages from the repository root. All API data flows through the Cloudflare Worker v3 backend.
 
 The production architecture combines:
 - the root-level SPA (`app.js`, `components/`, `utils/`) — no build step
-- the Cloudflare Worker v2 backend in `worker/`
+- the Cloudflare Worker v3 backend in `worker/`
 
 `frontend-v2/` is an experimental TypeScript/Vite rewrite that exists in the repository but is not deployed.
 

@@ -1,6 +1,6 @@
 /**
- * investmtg-proxy — Cloudflare Worker (v2)
- * Full backend for investmtg.com with D1 database + KV caching
+ * investmtg-proxy — Cloudflare Worker (v3)
+ * Full backend for investmtg.com with D1 database + KV caching + Google OAuth
  *
  * Bindings:
  *   DB    — D1 database (investmtg-db)
@@ -9,6 +9,10 @@
  * Secrets:
  *   JUSTTCG_API_KEY
  *   TOPDECK_API_KEY
+ *   GOOGLE_CLIENT_ID
+ *   GOOGLE_CLIENT_SECRET
+ *   AUTH_SECRET
+ *   FRONTEND_URL
  *
  * Routes:
  *   /api/ticker           — KV-cached ticker prices
@@ -18,12 +22,16 @@
  *   /api/search           — Proxied Scryfall search with D1 caching
  *   /api/card/:id         — Card detail with D1-cached pricing
  *   /api/movers/:cat      — Market movers data
- *   /api/portfolio        — Portfolio CRUD (anonymous sessions)
- *   /api/listings         — Marketplace listings CRUD
- *   /api/sellers          — Seller registration + management
+ *   /api/portfolio        — Portfolio CRUD (auth user or anonymous session)
+ *   /api/listings         — Marketplace listings CRUD (write routes require auth)
+ *   /api/sellers          — Seller registration + management (write routes require auth)
  *   /api/stores           — Local stores from D1
  *   /api/events           — Community events from D1
- *   /api/cart             — Shopping cart CRUD
+ *   /api/cart             — Shopping cart CRUD (auth user or anonymous session)
+ *   /auth/google          — Start Google OAuth flow
+ *   /auth/callback        — Google OAuth callback
+ *   /auth/me              — Current authenticated user
+ *   /auth/logout          — Destroy auth session
  *   /justtcg              — JustTCG API proxy (existing)
  *   /topdeck              — TopDeck API proxy (existing)
  *   /chatbot              — AI chatbot proxy (existing)
@@ -52,6 +60,9 @@ const TTL_TRENDING = 1800;    // 30 minutes
 const TTL_BUDGET = 3600;      // 1 hour
 const TTL_MOVERS = 1800;      // 30 minutes
 const TTL_PRICE = 600;        // 10 minutes for individual card prices
+
+const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const AUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 
 // Ticker cards to track
 const TICKER_CARDS = [
@@ -116,35 +127,163 @@ function json(data, status, request) {
   });
 }
 
-/* ── Session management ── */
+/* ── Session + auth helpers ── */
+
+function getCookie(request, name) {
+  const cookie = request.headers.get('Cookie') || '';
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 function getSession(request) {
-  const cookie = request.headers.get('Cookie') || '';
-  const match = cookie.match(/investmtg_session=([a-f0-9-]+)/);
-  return match ? match[1] : null;
+  return getCookie(request, 'investmtg_session');
+}
+
+function getAuthToken(request) {
+  return getCookie(request, 'investmtg_auth');
 }
 
 function generateSession() {
-  // Simple UUID v4 generation
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
+  return crypto.randomUUID();
+}
+
+function buildCookie(name, value, maxAge) {
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAge}`;
+}
+
+function clearCookie(name) {
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
+}
+
+function withCookies(response, cookies) {
+  const headers = new Headers(response.headers);
+  for (const cookie of cookies) headers.append('Set-Cookie', cookie);
+  return new Response(response.body, { status: response.status, headers });
 }
 
 function withSessionCookie(response, sessionToken) {
-  const headers = new Headers(response.headers);
-  headers.append('Set-Cookie',
-    `investmtg_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=31536000`
-  );
-  return new Response(response.body, { status: response.status, headers });
+  return withCookies(response, [buildCookie('investmtg_session', sessionToken, 31536000)]);
+}
+
+function withAuthCookie(response, authToken) {
+  return withCookies(response, [buildCookie('investmtg_auth', authToken, AUTH_SESSION_MAX_AGE)]);
 }
 
 function ensureSession(request) {
   let token = getSession(request);
   const isNew = !token;
+  const authToken = getAuthToken(request);
   if (!token) token = generateSession();
-  return { token, isNew };
+  return { token, isNew, authToken };
+}
+
+function createRedirect(request, location, cookies = []) {
+  const headers = new Headers(corsHeaders(request));
+  headers.set('Location', location);
+  for (const cookie of cookies) headers.append('Set-Cookie', cookie);
+  return new Response(null, { status: 302, headers });
+}
+
+function utf8Bytes(str) {
+  return new TextEncoder().encode(str);
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function hmacSign(secret, value) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    utf8Bytes(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, utf8Bytes(value));
+  return bytesToBase64Url(new Uint8Array(signature));
+}
+
+async function createOAuthState(env) {
+  const nonce = crypto.randomUUID();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const payload = `${nonce}.${timestamp}`;
+  const signature = await hmacSign(env.AUTH_SECRET, payload);
+  return `${nonce}.${timestamp}.${signature}`;
+}
+
+async function verifyOAuthState(env, state) {
+  if (!state) return false;
+  const parts = state.split('.');
+  if (parts.length !== 3) return false;
+  const [nonce, timestamp, signature] = parts;
+  if (!nonce || !timestamp || !signature) return false;
+  const ts = parseInt(timestamp, 10);
+  if (!Number.isFinite(ts)) return false;
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - ts) > AUTH_STATE_MAX_AGE) return false;
+  const expected = await hmacSign(env.AUTH_SECRET, `${nonce}.${timestamp}`);
+  return signature === expected;
+}
+
+async function getAuthUser(request, env) {
+  const token = getAuthToken(request);
+  if (!token) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const row = await env.DB.prepare(`
+    SELECT s.token, s.user_id, u.id, u.email, u.name, u.picture, u.role
+    FROM auth_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.token = ? AND s.expires_at > ?
+  `).bind(token, now).first();
+
+  if (!row) {
+    await env.DB.prepare('DELETE FROM auth_sessions WHERE token = ? OR expires_at <= ?').bind(token, now).run().catch(() => {});
+    return null;
+  }
+
+  return {
+    userId: row.user_id,
+    token: row.token,
+    user: {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      picture: row.picture,
+      role: row.role,
+    },
+  };
+}
+
+async function migrateAnonymousDataToUser(env, sessionToken, userId) {
+  if (!sessionToken || !userId) return;
+
+  await Promise.all([
+    env.DB.prepare('UPDATE portfolios SET user_id = ? WHERE session_token = ?').bind(userId, sessionToken).run(),
+    env.DB.prepare('UPDATE listings SET user_id = ? WHERE session_token = ?').bind(userId, sessionToken).run(),
+    env.DB.prepare('UPDATE sellers SET user_id = ? WHERE session_token = ?').bind(userId, sessionToken).run(),
+    env.DB.prepare('UPDATE cart_items SET user_id = ? WHERE session_token = ?').bind(userId, sessionToken).run(),
+  ]);
+}
+
+function portfolioScope(auth, token) {
+  return auth ? { clause: 'p.user_id = ?', value: auth.userId } : { clause: 'p.session_token = ?', value: token };
+}
+
+function listingOwnerScope(auth) {
+  return auth ? { clause: 'user_id = ?', value: auth.userId } : null;
+}
+
+function sellerScope(auth, token) {
+  return auth ? { clause: 'user_id = ?', value: auth.userId } : { clause: 'session_token = ?', value: token };
+}
+
+function cartScope(auth, token) {
+  return auth ? { clause: 'c.user_id = ?', value: auth.userId } : { clause: 'c.session_token = ?', value: token };
 }
 
 /* ── Rate limiting (in-memory, per-isolate) ── */
@@ -259,6 +398,143 @@ async function getCachedCardsByNames(db, cache, cacheKey, names, ttl) {
   }
 
   return result;
+}
+
+/* ═══════════════════════════════════════════
+   AUTH ROUTE HANDLERS
+   ═══════════════════════════════════════════ */
+
+async function handleGoogleAuth(request, env) {
+  if (!env.GOOGLE_CLIENT_ID || !env.AUTH_SECRET) {
+    return json({ error: 'Auth not configured' }, 500, request);
+  }
+
+  const url = new URL(request.url);
+  const redirectUri = `${url.origin}/auth/callback`;
+  const state = await createOAuthState(env);
+  const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  googleUrl.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
+  googleUrl.searchParams.set('redirect_uri', redirectUri);
+  googleUrl.searchParams.set('response_type', 'code');
+  googleUrl.searchParams.set('scope', 'openid email profile');
+  googleUrl.searchParams.set('access_type', 'offline');
+  googleUrl.searchParams.set('prompt', 'consent');
+  googleUrl.searchParams.set('state', state);
+
+  return createRedirect(request, googleUrl.toString());
+}
+
+async function handleAuthCallback(request, env) {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.AUTH_SECRET || !env.FRONTEND_URL) {
+    return json({ error: 'Auth not configured' }, 500, request);
+  }
+
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+
+  if (!code) return json({ error: 'Missing code' }, 400, request);
+  if (!(await verifyOAuthState(env, state))) return json({ error: 'Invalid state' }, 400, request);
+
+  const redirectUri = `${url.origin}/auth/callback`;
+  const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }).toString(),
+  });
+
+  if (!tokenResp.ok) {
+    const detail = await tokenResp.text().catch(() => 'OAuth token exchange failed');
+    return json({ error: 'Token exchange failed', detail }, 502, request);
+  }
+
+  const tokenData = await tokenResp.json();
+  if (!tokenData.access_token) return json({ error: 'Missing access token' }, 502, request);
+
+  const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+
+  if (!userResp.ok) {
+    const detail = await userResp.text().catch(() => 'Failed to fetch user info');
+    return json({ error: 'User info fetch failed', detail }, 502, request);
+  }
+
+  const profile = await userResp.json();
+  if (!profile.id || !profile.email) {
+    return json({ error: 'Invalid Google profile' }, 502, request);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const existingUser = await env.DB.prepare(
+    'SELECT id, created_at, role FROM users WHERE google_id = ?'
+  ).bind(profile.id).first();
+
+  let userId;
+  if (existingUser) {
+    await env.DB.prepare(`
+      UPDATE users
+      SET email = ?, name = ?, picture = ?, role = COALESCE(role, 'buyer'), last_login = ?
+      WHERE id = ?
+    `).bind(
+      profile.email,
+      profile.name || profile.email,
+      profile.picture || '',
+      now,
+      existingUser.id
+    ).run();
+    userId = existingUser.id;
+  } else {
+    const result = await env.DB.prepare(`
+      INSERT INTO users (google_id, email, name, picture, role, created_at, last_login)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      profile.id,
+      profile.email,
+      profile.name || profile.email,
+      profile.picture || '',
+      'buyer',
+      now,
+      now
+    ).run();
+    userId = result.meta?.last_row_id;
+  }
+
+  if (!userId) return json({ error: 'Failed to create user' }, 500, request);
+
+  const authToken = crypto.randomUUID();
+  const expiresAt = now + AUTH_SESSION_MAX_AGE;
+  await env.DB.prepare(
+    'INSERT INTO auth_sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)'
+  ).bind(authToken, userId, now, expiresAt).run();
+
+  const anonymousSession = getSession(request);
+  await migrateAnonymousDataToUser(env, anonymousSession, userId);
+
+  return createRedirect(request, env.FRONTEND_URL, [
+    buildCookie('investmtg_auth', authToken, AUTH_SESSION_MAX_AGE),
+  ]);
+}
+
+async function handleAuthMe(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ authenticated: false }, 200, request);
+  return json({ authenticated: true, user: auth.user }, 200, request);
+}
+
+async function handleAuthLogout(request, env) {
+  const token = getAuthToken(request);
+  if (token) {
+    await env.DB.prepare('DELETE FROM auth_sessions WHERE token = ?').bind(token).run().catch(() => {});
+  }
+  const response = json({ success: true }, 200, request);
+  return withCookies(response, [clearCookie('investmtg_auth')]);
 }
 
 /* ═══════════════════════════════════════════
@@ -398,16 +674,22 @@ async function handleMovers(request, env, category) {
 /* ── Portfolio routes ── */
 
 async function handlePortfolio(request, env) {
+  const auth = await getAuthUser(request, env);
   const { token, isNew } = ensureSession(request);
   const method = request.method;
   const url = new URL(request.url);
+  const scope = portfolioScope(auth, token);
 
   if (method === 'GET') {
     const rows = await env.DB.prepare(
-      'SELECT p.*, pr.price_usd, pr.price_usd_foil, pr.image_small, pr.image_normal, pr.set_name FROM portfolios p LEFT JOIN prices pr ON p.card_id = pr.card_id WHERE p.session_token = ? ORDER BY p.added_at DESC'
-    ).bind(token).all();
-    const resp = json({ items: rows.results, session: token }, 200, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+      `SELECT p.*, pr.price_usd, pr.price_usd_foil, pr.image_small, pr.image_normal, pr.set_name
+       FROM portfolios p
+       LEFT JOIN prices pr ON p.card_id = pr.card_id
+       WHERE ${scope.clause}
+       ORDER BY p.added_at DESC`
+    ).bind(scope.value).all();
+    const resp = json({ items: rows.results, session: token, authenticated: !!auth }, 200, request);
+    return !auth && isNew ? withSessionCookie(resp, token) : resp;
   }
 
   if (method === 'POST') {
@@ -416,21 +698,28 @@ async function handlePortfolio(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(
-      'INSERT OR REPLACE INTO portfolios (session_token, card_id, card_name, quantity, added_price, added_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(token, body.card_id, body.card_name || '', body.quantity || 1, body.added_price || null, now).run();
+      'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(
+      auth ? auth.userId : null,
+      auth ? null : token,
+      body.card_id,
+      body.card_name || '',
+      body.quantity || 1,
+      body.added_price || null,
+      now
+    ).run();
 
     const resp = json({ success: true, message: 'Added to portfolio' }, 201, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+    return !auth && isNew ? withSessionCookie(resp, token) : resp;
   }
 
   if (method === 'DELETE') {
     const parts = url.pathname.split('/');
     const cardId = parts[parts.length - 1];
     if (!cardId || cardId === 'portfolio') {
-      // Delete all
-      await env.DB.prepare('DELETE FROM portfolios WHERE session_token = ?').bind(token).run();
+      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.clause}`).bind(scope.value).run();
     } else {
-      await env.DB.prepare('DELETE FROM portfolios WHERE session_token = ? AND card_id = ?').bind(token, cardId).run();
+      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.clause} AND card_id = ?`).bind(scope.value, cardId).run();
     }
     return json({ success: true }, 200, request);
   }
@@ -484,8 +773,10 @@ async function handleListings(request, env) {
     return json({ listings: rows.results, total: countRow?.total || 0, limit, offset }, 200, request);
   }
 
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
   if (method === 'POST') {
-    const { token, isNew } = ensureSession(request);
     const body = await request.json().catch(() => null);
     if (!body || !body.card_name || !body.price || !body.condition || !body.seller_name) {
       return json({ error: 'card_name, price, condition, and seller_name required' }, 400, request);
@@ -493,41 +784,49 @@ async function handleListings(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     const result = await env.DB.prepare(
-      'INSERT INTO listings (seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
-      body.seller_name, body.seller_contact || '', body.seller_store || '',
-      body.card_id || '', body.card_name, body.set_name || '', body.condition,
-      body.language || 'English', body.price, body.image_uri || '', body.notes || '',
-      'active', token, now, now
+      auth.userId,
+      body.seller_name,
+      body.seller_contact || '',
+      body.seller_store || '',
+      body.card_id || '',
+      body.card_name,
+      body.set_name || '',
+      body.condition,
+      body.language || 'English',
+      body.price,
+      body.image_uri || '',
+      body.notes || '',
+      'active',
+      null,
+      now,
+      now
     ).run();
 
-    const resp = json({ success: true, id: result.meta?.last_row_id }, 201, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+    return json({ success: true, id: result.meta?.last_row_id }, 201, request);
   }
 
   if (method === 'PUT') {
-    const { token } = ensureSession(request);
     const parts = url.pathname.split('/');
     const id = parts[parts.length - 1];
     const body = await request.json().catch(() => null);
     if (!body) return json({ error: 'Body required' }, 400, request);
 
     const now = Math.floor(Date.now() / 1000);
-    // Only allow owner to update
     await env.DB.prepare(
-      'UPDATE listings SET status = ?, price = COALESCE(?, price), notes = COALESCE(?, notes), updated_at = ? WHERE id = ? AND session_token = ?'
-    ).bind(body.status || 'active', body.price || null, body.notes || null, now, id, token).run();
+      'UPDATE listings SET status = ?, price = COALESCE(?, price), notes = COALESCE(?, notes), updated_at = ? WHERE id = ? AND user_id = ?'
+    ).bind(body.status || 'active', body.price || null, body.notes || null, now, id, auth.userId).run();
 
     return json({ success: true }, 200, request);
   }
 
   if (method === 'DELETE') {
-    const { token } = ensureSession(request);
     const parts = url.pathname.split('/');
     const id = parts[parts.length - 1];
     await env.DB.prepare(
-      'UPDATE listings SET status = ?, updated_at = ? WHERE id = ? AND session_token = ?'
-    ).bind('removed', Math.floor(Date.now() / 1000), id, token).run();
+      'UPDATE listings SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?'
+    ).bind('removed', Math.floor(Date.now() / 1000), id, auth.userId).run();
     return json({ success: true }, 200, request);
   }
 
@@ -537,39 +836,44 @@ async function handleListings(request, env) {
 /* ── Seller routes ── */
 
 async function handleSellers(request, env) {
+  const auth = await getAuthUser(request, env);
   const { token, isNew } = ensureSession(request);
   const method = request.method;
 
   if (method === 'GET') {
+    const scopeClause = auth ? 'user_id = ?' : 'session_token = ?';
+    const scopeValue = auth ? auth.userId : token;
+
     const seller = await env.DB.prepare(
-      'SELECT * FROM sellers WHERE session_token = ?'
-    ).bind(token).first();
+      `SELECT * FROM sellers WHERE ${scopeClause}`
+    ).bind(scopeValue).first();
 
     if (!seller) {
       const resp = json({ registered: false }, 200, request);
-      return isNew ? withSessionCookie(resp, token) : resp;
+      return !auth && isNew ? withSessionCookie(resp, token) : resp;
     }
 
     // Also fetch their listings
     const listings = await env.DB.prepare(
-      'SELECT * FROM listings WHERE session_token = ? ORDER BY created_at DESC'
-    ).bind(token).all();
+      `SELECT * FROM listings WHERE ${scopeClause} ORDER BY created_at DESC`
+    ).bind(scopeValue).all();
 
     const resp = json({ registered: true, seller, listings: listings.results }, 200, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+    return !auth && isNew ? withSessionCookie(resp, token) : resp;
   }
 
   if (method === 'POST') {
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
     const body = await request.json().catch(() => null);
     if (!body || !body.name) return json({ error: 'name required' }, 400, request);
 
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(
-      'INSERT OR REPLACE INTO sellers (session_token, name, contact, store_affiliation, bio, registered_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(token, body.name, body.contact || '', body.store_affiliation || '', body.bio || '', now).run();
+      'INSERT OR REPLACE INTO sellers (user_id, session_token, name, contact, store_affiliation, bio, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(auth.userId, null, body.name, body.contact || '', body.store_affiliation || '', body.bio || '', now).run();
 
-    const resp = json({ success: true, message: 'Seller registered' }, 201, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+    return json({ success: true, message: 'Seller registered' }, 201, request);
   }
 
   return json({ error: 'Method not allowed' }, 405, request);
@@ -596,16 +900,21 @@ async function handleEvents(request, env) {
 /* ── Cart routes ── */
 
 async function handleCart(request, env) {
+  const auth = await getAuthUser(request, env);
   const { token, isNew } = ensureSession(request);
   const method = request.method;
   const url = new URL(request.url);
+  const scope = cartScope(auth, token);
 
   if (method === 'GET') {
     const rows = await env.DB.prepare(
-      'SELECT c.*, l.card_name, l.set_name, l.condition, l.price, l.seller_name, l.image_uri FROM cart_items c JOIN listings l ON c.listing_id = l.id WHERE c.session_token = ? AND l.status = ?'
-    ).bind(token, 'active').all();
-    const resp = json({ items: rows.results }, 200, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+      `SELECT c.*, l.card_name, l.set_name, l.condition, l.price, l.seller_name, l.image_uri
+       FROM cart_items c
+       JOIN listings l ON c.listing_id = l.id
+       WHERE ${scope.clause} AND l.status = ?`
+    ).bind(scope.value, 'active').all();
+    const resp = json({ items: rows.results, authenticated: !!auth }, 200, request);
+    return !auth && isNew ? withSessionCookie(resp, token) : resp;
   }
 
   if (method === 'POST') {
@@ -614,20 +923,20 @@ async function handleCart(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(
-      'INSERT OR REPLACE INTO cart_items (session_token, listing_id, quantity, added_at) VALUES (?, ?, ?, ?)'
-    ).bind(token, body.listing_id, body.quantity || 1, now).run();
+      'INSERT OR REPLACE INTO cart_items (user_id, session_token, listing_id, quantity, added_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(auth ? auth.userId : null, auth ? null : token, body.listing_id, body.quantity || 1, now).run();
 
     const resp = json({ success: true }, 201, request);
-    return isNew ? withSessionCookie(resp, token) : resp;
+    return !auth && isNew ? withSessionCookie(resp, token) : resp;
   }
 
   if (method === 'DELETE') {
     const parts = url.pathname.split('/');
     const id = parts[parts.length - 1];
     if (!id || id === 'cart') {
-      await env.DB.prepare('DELETE FROM cart_items WHERE session_token = ?').bind(token).run();
+      await env.DB.prepare(`DELETE FROM cart_items WHERE ${auth ? 'user_id = ?' : 'session_token = ?'}`).bind(scope.value).run();
     } else {
-      await env.DB.prepare('DELETE FROM cart_items WHERE session_token = ? AND listing_id = ?').bind(token, id).run();
+      await env.DB.prepare(`DELETE FROM cart_items WHERE ${auth ? 'user_id = ?' : 'session_token = ?'} AND listing_id = ?`).bind(scope.value, id).run();
     }
     return json({ success: true }, 200, request);
   }
@@ -732,7 +1041,7 @@ async function handleGenericProxy(request) {
 async function handleHealth(request, env) {
   try {
     await env.DB.prepare('SELECT 1').first();
-    return json({ status: 'ok', db: 'connected', version: '2.0.0' }, 200, request);
+    return json({ status: 'ok', db: 'connected', version: '3.0.0' }, 200, request);
   } catch (e) {
     return json({ status: 'error', db: 'disconnected', error: e.message }, 500, request);
   }
@@ -756,6 +1065,12 @@ export default {
     const path = url.pathname;
 
     try {
+      // Auth routes
+      if (path === '/auth/google')                          return handleGoogleAuth(request, env);
+      if (path === '/auth/callback')                        return handleAuthCallback(request, env);
+      if (path === '/auth/me')                              return handleAuthMe(request, env);
+      if (path === '/auth/logout' && request.method === 'DELETE') return handleAuthLogout(request, env);
+
       // New API routes (D1 + KV backed)
       if (path === '/api/health')                           return handleHealth(request, env);
       if (path === '/api/ticker')                           return handleTicker(request, env);

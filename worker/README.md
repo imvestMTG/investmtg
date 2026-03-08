@@ -1,6 +1,6 @@
-# investmtg-proxy Worker (v2)
+# investmtg-proxy Worker (v3)
 
-Cloudflare Worker that serves as the unified backend for investMTG — combining API gateway, CORS proxy, D1 database, and KV edge caching.
+Cloudflare Worker that serves as the unified backend for investMTG — combining API gateway, CORS proxy, D1 database, KV edge caching, and Google OAuth 2.0 authentication.
 
 ## Role in the stack
 
@@ -16,6 +16,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
                                     │                    ──→  JustTCG API
                                     │                    ──→  TopDeck.gg API
                                     │                    ──→  Pollinations AI
+                                    │                    ──→  Google OAuth
                                     ├── D1 Database (investmtg-db)
                                     └── KV Cache (INVESTMTG_CACHE)
 ```
@@ -24,10 +25,14 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 | Binding | Type | Resource |
 |---------|------|----------|
-| `DB` | D1 Database | `investmtg-db` — SQLite database with 7 tables |
+| `DB` | D1 Database | `investmtg-db` — SQLite database with 9 tables |
 | `CACHE` | KV Namespace | `INVESTMTG_CACHE` — edge cache |
 | `JUSTTCG_API_KEY` | Secret | JustTCG API key (encrypted) |
 | `TOPDECK_API_KEY` | Secret | TopDeck.gg API key (encrypted) |
+| `GOOGLE_CLIENT_ID` | Secret | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Secret | Google OAuth client secret |
+| `AUTH_SECRET` | Secret | HMAC key for auth session tokens (256-bit) |
+| `FRONTEND_URL` | Secret | Frontend URL for OAuth callback redirect |
 
 ## Routes
 
@@ -49,6 +54,14 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/events` | GET | community events |
 | `/api/cart` | GET/POST/DELETE | shopping cart |
 
+### Auth routes
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/auth/google` | GET | Start Google OAuth flow (redirect to Google consent screen) |
+| `/auth/callback` | GET | Google OAuth callback — exchange code for tokens, create/update user, set auth cookie |
+| `/auth/me` | GET | Return current authenticated user (or `{ authenticated: false }`) |
+| `/auth/logout` | DELETE | Destroy auth session, clear cookie |
+
 ### Proxy routes
 | Route | Target | Purpose | Notes |
 |-------|--------|---------|-------|
@@ -59,14 +72,16 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 ## Database schema
 
-7 tables in the D1 database (`schema.sql`):
+9 tables in the D1 database:
+- `users` — Google-authenticated user accounts (google_id, email, name, picture, role)
+- `auth_sessions` — HMAC-signed session tokens with 30-day expiry
 - `prices`
-- `portfolios`
-- `listings`
-- `sellers`
+- `portfolios` — has `user_id` FK to users
+- `listings` — has `user_id` FK to users
+- `sellers` — has `user_id` FK to users
 - `events`
 - `stores`
-- `cart_items`
+- `cart_items` — has `user_id` FK to users
 
 ## Security
 

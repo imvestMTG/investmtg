@@ -1,0 +1,17 @@
+Completed Worker v3 Google OAuth rewrite.
+
+Files updated:
+- /home/user/workspace/investmtg-repo/worker/worker.js
+- /home/user/workspace/investmtg-repo/worker/auth-migration.sql
+
+Key changes:
+- Added Google OAuth routes: /auth/google, /auth/callback, /auth/me, /auth/logout
+- Added HMAC-signed OAuth state generation and verification using Web Crypto API
+- Added auth session lookup helper: getAuthUser(request, env)
+- Preserved anonymous session flow for portfolio and cart
+- Required authentication for listings writes and seller registration
+- Migrates anonymous session data to user_id on successful OAuth callback
+- Updated health version to 3.0.0
+
+Validation:
+- node --check passed for worker.js

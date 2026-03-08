@@ -1,5 +1,48 @@
 # investMTG — Changelog
 
+## 2026-03-08: Google OAuth authentication — persistent user accounts
+
+### What Changed
+Added Google OAuth 2.0 sign-in so sellers and buyers have persistent accounts. Previously, the Seller Dashboard was session-based (anonymous cookies), meaning users could lose their listings if they cleared browser data or switched devices. Now accounts are tied to Google identity and stored in D1.
+
+### Backend (Worker v3)
+- New auth routes: `/auth/google`, `/auth/callback`, `/auth/me`, `/auth/logout`
+- New D1 tables: `users` (id, google_id, email, name, picture, role, created_at, last_login), `auth_sessions` (token, user_id, created_at, expires_at)
+- Added `user_id` column to: portfolios, listings, sellers, cart_items
+- Auth sessions stored in D1, expire after 30 days
+- Anonymous session data auto-migrates to user account on first sign-in
+- Write routes (POST listings, register seller) now return 401 if not authenticated
+- Read routes (portfolio, cart) work with both auth and anonymous sessions
+- New secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `FRONTEND_URL`
+
+### Frontend
+- `utils/auth.js` — new auth state manager (checkAuth, signIn, signOut, onAuthChange, useAuth hook)
+- `components/Header.js` — rewritten with user avatar, dropdown menu (My Portfolio, Seller Dashboard, Sign Out), and Sign In button
+- `components/SellerDashboard.js` — shows "Sign In to Sell" prompt with Google button when not authenticated; seller registration form only after sign-in
+- `app.js` — wired auth: imports auth.js, calls checkAuth on mount, passes user/onSignIn/onSignOut to Header and SellerDashboard
+- `style.css` — new auth UI styles (avatar, dropdown, sign-in button, Google button, auth prompt)
+- `index.html` — CSP updated: added `lh3.googleusercontent.com` to img-src, `accounts.google.com` to form-action
+- `sw.js` — bumped to v5
+
+### Files Added
+- `utils/auth.js`
+- `worker/auth-migration.sql`
+- `worker/worker-v3-auth-notes.txt`
+
+### Files Modified
+- `worker/worker.js` (v3 — 1102 lines)
+- `components/Header.js`
+- `components/SellerDashboard.js`
+- `app.js`
+- `style.css`
+- `index.html`
+- `sw.js` (v5)
+
+### Setup Required
+User must create Google OAuth credentials in Google Cloud Console and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as Worker secrets.
+
+---
+
 ## 2026-03-08: Self-host React — eliminate esm.sh redirect chains (mobile black screen fix)
 
 ### Root Cause

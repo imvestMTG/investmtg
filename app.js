@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { getInitialMarketplaceData } from './utils/marketplace-data.js';
 import { fetchPortfolio, fetchListings, fetchCart, createListing } from './utils/api.js';
+import { checkAuth, signIn, signOut, onAuthChange } from './utils/auth.js';
 import { Ticker } from './components/Ticker.js';
 import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
@@ -195,6 +196,15 @@ function App() {
   var buyLocalCard = ref3[0], setBuyLocalCard = ref3[1];
   var viewCacheRef = React.useRef({});
 
+  /* ── Auth state ── */
+  var refAuth = React.useState(null);
+  var authUser = refAuth[0], setAuthUser = refAuth[1];
+
+  React.useEffect(function() {
+    checkAuth().then(function(u) { setAuthUser(u); });
+    return onAuthChange(function(u) { setAuthUser(u); });
+  }, []);
+
   // ===== ASYNC STATE INITIALIZATION =====
   React.useEffect(function() {
     var portfolioFallback = JSON.parse(localStorage.getItem('investmtg-portfolio') || '[]');
@@ -298,7 +308,10 @@ function App() {
     h(Ticker, null),
     h(Header, {
       route: route,
-      cartCount: cartCount
+      cartCount: cartCount,
+      user: authUser,
+      onSignIn: signIn,
+      onSignOut: signOut
     }),
     h('main', { className: 'main-content', id: 'main-content' },
       h(ErrorBoundary, null,
@@ -344,7 +357,9 @@ function App() {
         updateCart: gs.updateCart
       }),
       route.page === 'seller' && h(SellerDashboard, {
-        refreshMarketplace: gs.refreshMarketplace
+        refreshMarketplace: gs.refreshMarketplace,
+        user: authUser,
+        onSignIn: signIn
       }),
       route.page === 'order' && h(OrderConfirmation, {
         orderId: route.id
