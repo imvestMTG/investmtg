@@ -1,20 +1,38 @@
-/* CheckoutView.js — Checkout with Reserve & Pay at Pickup only */
+/* CheckoutView.js — Checkout with SumUp Card Payment + Reserve & Pay at Pickup */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
 import { TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
-import { GUAM_GRT_RATE, SHIPPING_FLAT_RATE, PROXY_BASE } from '../utils/config.js';
+import { SHIPPING_FLAT_RATE, PROXY_BASE, SUMUP_PUBLIC_KEY } from '../utils/config.js';
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 import { storageGet, storageSet, storageGetRaw } from '../utils/storage.js';
 var h = React.createElement;
+
+/* Lazy-load SumUp Card SDK v2 */
+var sumupSDKPromise = null;
+function loadSumUpSDK() {
+  if (sumupSDKPromise) return sumupSDKPromise;
+  if (window.SumUpCard) return Promise.resolve(window.SumUpCard);
+  sumupSDKPromise = new Promise(function(resolve, reject) {
+    var script = document.createElement('script');
+    script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+    script.onload = function() {
+      if (window.SumUpCard) { resolve(window.SumUpCard); }
+      else { reject(new Error('SumUp SDK loaded but SumUpCard not found')); }
+    };
+    script.onerror = function() { reject(new Error('Failed to load SumUp SDK')); };
+    document.head.appendChild(script);
+  });
+  return sumupSDKPromise;
+}
 
 export function CheckoutView(props) {
   var state = props.state;
   var updateCart = props.updateCart;
   var cart = state.cart;
 
-  // Step: 1=review, 2=fulfillment, 3=contact, 4=payment, 5=confirm-modal
+  // Step: 1=review, 2=fulfillment, 3=contact, 4=payment
   var ref1 = React.useState(1);
   var step = ref1[0], setStep = ref1[1];
 
@@ -40,12 +58,33 @@ export function CheckoutView(props) {
   var ref8 = React.useState(false);
   var showConfirm = ref8[0], setShowConfirm = ref8[1];
 
+  // Payment method: 'sumup' or 'reserve'
+  var ref9 = React.useState('sumup');
+  var paymentMethod = ref9[0], setPaymentMethod = ref9[1];
+
+  // SumUp state
+  var ref10 = React.useState(null);
+  var sumupError = ref10[0], setSumupError = ref10[1];
+
+  var ref11 = React.useState(false);
+  var sumupLoading = ref11[0], setSumupLoading = ref11[1];
+
+  var ref12 = React.useState(null);
+  var sumupCheckoutId = ref12[0], setSumupCheckoutId = ref12[1];
+
+  var ref13 = React.useState(false);
+  var sumupMounted = ref13[0], setSumupMounted = ref13[1];
+
+  // Ref for SumUp card widget container
+  var sumupContainerRef = React.useRef(null);
+  // Ref for SumUp card instance (to destroy on unmount)
+  var sumupInstanceRef = React.useRef(null);
+
   var subtotal = cart.reduce(function(sum, item) {
     return sum + (item.price || 0) * (item.qty || 1);
   }, 0);
-  var tax = subtotal * GUAM_GRT_RATE;
   var shipping = fulfillment === 'ship' ? SHIPPING_FLAT_RATE : 0;
-  var total = subtotal + tax + shipping;
+  var total = subtotal + shipping;
 
   var sellerGroups = groupBySeller(cart);
 
@@ -63,15 +102,48 @@ export function CheckoutView(props) {
     return Object.keys(errors).length === 0;
   }
 
-  function completeOrder() {
-    setPaymentProcessing(true);
-
+  /* ── Create order on server, get order ID ── */
+  function createServerOrder(method) {
     var store = PICKUP_STORES.find(function(s) { return s.id === pickupStore; });
-    var order = {
-      id: null, // will be set by server response, or fallback to local ID
+    var authToken = storageGetRaw('investmtg_auth_token', null);
+    var headers = { 'Content-Type': 'application/json' };
+    if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+
+    var apiBody = {
       items: cart.slice(),
       subtotal: subtotal,
-      tax: tax,
+      shipping: shipping,
+      total: total,
+      fulfillment: fulfillment,
+      pickup_store: store || null,
+      contact_name: sanitizeInput(contact.name, 100),
+      contact_email: sanitizeInput(contact.email, 200),
+      contact_phone: sanitizeInput(contact.phone, 20),
+      payment_method: method
+    };
+
+    return fetch(PROXY_BASE + '/api/orders', {
+      method: 'POST',
+      credentials: 'include',
+      headers: headers,
+      body: JSON.stringify(apiBody)
+    }).then(function(res) {
+      return res.json();
+    }).then(function(data) {
+      var serverId = (data && data.order && data.order.id) ? data.order.id : null;
+      return serverId || ('GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase());
+    }).catch(function() {
+      return 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+    });
+  }
+
+  /* ── Save completed order locally + redirect ── */
+  function finishOrder(orderId, method) {
+    var store = PICKUP_STORES.find(function(s) { return s.id === pickupStore; });
+    var savedOrder = {
+      id: orderId,
+      items: cart.slice(),
+      subtotal: subtotal,
       shipping: shipping,
       total: total,
       fulfillment: fulfillment,
@@ -82,65 +154,101 @@ export function CheckoutView(props) {
         phone: sanitizeInput(contact.phone, 20)
       },
       date: new Date().toISOString(),
-      paymentMethod: 'reserve',
-      status: 'reserved'
+      paymentMethod: method,
+      status: method === 'sumup' ? 'paid' : 'reserved'
     };
 
-    // Save to localStorage first (guaranteed fallback)
-    function saveLocalAndFinish(finalId) {
-      var savedOrder = Object.assign({}, order, { id: finalId });
-      var orders = storageGet('investmtg-orders', []);
-      if (!Array.isArray(orders)) orders = [];
-      orders.unshift(savedOrder);
-      storageSet('investmtg-orders', orders);
-      updateCart([]);
-      setPaymentProcessing(false);
-      setCompletedOrder(savedOrder);
-      window.location.hash = 'order/' + finalId;
-    }
+    var orders = storageGet('investmtg-orders', []);
+    if (!Array.isArray(orders)) orders = [];
+    orders.unshift(savedOrder);
+    storageSet('investmtg-orders', orders);
+    updateCart([]);
+    setPaymentProcessing(false);
+    setCompletedOrder(savedOrder);
+    window.location.hash = 'order/' + orderId;
+  }
 
-    // POST to /api/orders — use server ID if available, else fallback to local
-    var authToken = storageGetRaw('investmtg_auth_token', null);
-    var headers = { 'Content-Type': 'application/json' };
-    if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
-
-    var apiBody = {
-      items: order.items,
-      subtotal: order.subtotal,
-      tax: order.tax,
-      shipping: order.shipping,
-      total: order.total,
-      fulfillment: order.fulfillment,
-      pickup_store: order.pickupStore,
-      contact_name: order.contact.name,
-      contact_email: order.contact.email,
-      contact_phone: order.contact.phone,
-      payment_method: 'reserve'
-    };
-
-    fetch(PROXY_BASE + '/api/orders', {
-      method: 'POST',
-      credentials: 'include',
-      headers: headers,
-      body: JSON.stringify(apiBody)
-    }).then(function(res) {
-      return res.json();
-    }).then(function(data) {
-      var serverId = (data && data.order && data.order.id) ? data.order.id : null;
-      if (serverId) {
-        // Use server-assigned ID
-        saveLocalAndFinish(serverId);
-      } else {
-        // Server responded but no ID — fall back
-        var fallbackId = 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
-        saveLocalAndFinish(fallbackId);
-      }
-    }).catch(function() {
-      // API failed — complete order locally
-      var fallbackId = 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
-      saveLocalAndFinish(fallbackId);
+  /* ── Reserve order (no payment taken) ── */
+  function completeReserveOrder() {
+    setPaymentProcessing(true);
+    createServerOrder('reserve').then(function(orderId) {
+      finishOrder(orderId, 'reserve');
     });
   }
+
+  /* ── Initialize SumUp checkout when user selects Pay Online ── */
+  function initSumUpCheckout() {
+    if (sumupCheckoutId) return; // Already initialized
+    setSumupLoading(true);
+    setSumupError(null);
+
+    // 1. Create order on server first to get the order ID
+    createServerOrder('sumup').then(function(orderId) {
+      // 2. Create SumUp checkout via worker
+      var authToken = storageGetRaw('investmtg_auth_token', null);
+      var headers = { 'Content-Type': 'application/json' };
+      if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+
+      return fetch(PROXY_BASE + '/api/sumup/checkout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers,
+        body: JSON.stringify({ amount: total, order_id: orderId })
+      }).then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.ok || !data.checkout_id) {
+            throw new Error(data.detail || data.error || 'Failed to create checkout');
+          }
+          setSumupCheckoutId(data.checkout_id);
+          setSumupLoading(false);
+          return { checkoutId: data.checkout_id, orderId: orderId };
+        });
+    }).then(function(result) {
+      // 3. Load SDK and mount widget
+      return loadSumUpSDK().then(function(SumUpCard) {
+        return { SumUpCard: SumUpCard, checkoutId: result.checkoutId, orderId: result.orderId };
+      });
+    }).then(function(result) {
+      if (!sumupContainerRef.current) return;
+      var card = result.SumUpCard.mount({
+        id: 'sumup-card-container',
+        checkoutId: result.checkoutId,
+        donateSubmitButton: false,
+        showFooter: false,
+        showZipCode: true,
+        locale: 'en-US',
+        onResponse: function(type, body) {
+          if (type === 'success' || (body && body.status === 'PAID')) {
+            finishOrder(result.orderId, 'sumup');
+          } else if (type === 'error' || type === 'sent' || (body && body.status === 'FAILED')) {
+            setSumupError('Payment was not completed. ' + (body && body.message ? body.message : 'Please try again.'));
+            setPaymentProcessing(false);
+          }
+        }
+      });
+      sumupInstanceRef.current = card;
+      setSumupMounted(true);
+    }).catch(function(err) {
+      setSumupError(err.message || 'Could not initialize payment. Please try Reserve & Pay at Pickup.');
+      setSumupLoading(false);
+    });
+  }
+
+  // Cleanup SumUp widget on unmount
+  React.useEffect(function() {
+    return function() {
+      if (sumupInstanceRef.current && typeof sumupInstanceRef.current.unmount === 'function') {
+        try { sumupInstanceRef.current.unmount(); } catch (e) { /* ignore */ }
+      }
+    };
+  }, []);
+
+  // When step changes to 4 and paymentMethod is 'sumup', init checkout
+  React.useEffect(function() {
+    if (step === 4 && paymentMethod === 'sumup' && !sumupCheckoutId && !sumupLoading) {
+      initSumUpCheckout();
+    }
+  }, [step, paymentMethod]);
 
   // Empty cart
   if (cart.length === 0 && !completedOrder) {
@@ -156,7 +264,7 @@ export function CheckoutView(props) {
 
   return h('div', { className: 'container checkout-page' },
 
-    // ===== CONFIRMATION MODAL =====
+    // ===== CONFIRMATION MODAL (for reserve only) =====
     showConfirm && h('div', { className: 'checkout-confirm-overlay' },
       h('div', { className: 'checkout-confirm-modal' },
         h('div', { className: 'checkout-confirm-icon' }, '\uD83D\uDD12'),
@@ -181,7 +289,7 @@ export function CheckoutView(props) {
             className: 'btn btn-primary' + (paymentProcessing ? ' loading' : ''),
             onClick: function() {
               setShowConfirm(false);
-              completeOrder();
+              completeReserveOrder();
             },
             disabled: paymentProcessing
           },
@@ -248,11 +356,8 @@ export function CheckoutView(props) {
           h('div', { className: 'checkout-summary-row' },
             h('span', null, 'Subtotal'), h('span', null, formatUSD(subtotal))
           ),
-          h('div', { className: 'checkout-summary-row' },
-            h('span', null, 'Guam GRT (4%)'), h('span', null, formatUSD(tax))
-          ),
           h('div', { className: 'checkout-summary-row checkout-summary-total' },
-            h('span', null, 'Est. Total'), h('span', null, formatUSD(subtotal + tax))
+            h('span', null, 'Est. Total'), h('span', null, formatUSD(subtotal))
           )
         ),
 
@@ -350,7 +455,7 @@ export function CheckoutView(props) {
 
         h('div', { className: 'checkout-summary-mini' },
           h('span', null, 'Order total:'),
-          h('strong', null, ' ' + formatUSD(subtotal + tax + (fulfillment === 'ship' ? SHIPPING_FLAT_RATE : 0)))
+          h('strong', null, ' ' + formatUSD(subtotal + (fulfillment === 'ship' ? SHIPPING_FLAT_RATE : 0)))
         ),
 
         h('div', { className: 'checkout-actions' },
@@ -446,8 +551,102 @@ export function CheckoutView(props) {
           )
         ),
 
-        // Reserve info box (only payment method)
-        h('div', { className: 'checkout-reserve-info' },
+        // ── Payment method selector ──
+        h('div', { className: 'checkout-payment-methods' },
+          h('h3', { className: 'checkout-payment-methods-title' }, 'Choose Payment Method'),
+
+          h('label', {
+            className: 'fulfillment-option' + (paymentMethod === 'sumup' ? ' selected' : ''),
+            onClick: function() { setPaymentMethod('sumup'); }
+          },
+            h('input', {
+              type: 'radio',
+              name: 'payment-method',
+              value: 'sumup',
+              checked: paymentMethod === 'sumup',
+              onChange: function() { setPaymentMethod('sumup'); }
+            }),
+            h('div', { className: 'fulfillment-option-content' },
+              h('div', { className: 'fulfillment-option-header' },
+                h('span', { style: { fontSize: '1.4em' } }, '\uD83D\uDCB3'),
+                h('div', null,
+                  h('div', { className: 'fulfillment-option-title' }, 'Pay Online'),
+                  h('div', { className: 'fulfillment-option-price' }, 'Credit / Debit Card')
+                )
+              ),
+              h('p', { className: 'fulfillment-option-desc' },
+                'Pay securely now with your credit or debit card via SumUp. Your card details are handled entirely by SumUp \u2014 we never see them.'
+              )
+            )
+          ),
+
+          h('label', {
+            className: 'fulfillment-option' + (paymentMethod === 'reserve' ? ' selected' : ''),
+            onClick: function() { setPaymentMethod('reserve'); }
+          },
+            h('input', {
+              type: 'radio',
+              name: 'payment-method',
+              value: 'reserve',
+              checked: paymentMethod === 'reserve',
+              onChange: function() { setPaymentMethod('reserve'); }
+            }),
+            h('div', { className: 'fulfillment-option-content' },
+              h('div', { className: 'fulfillment-option-header' },
+                h('span', { style: { fontSize: '1.4em' } }, '\uD83D\uDD12'),
+                h('div', null,
+                  h('div', { className: 'fulfillment-option-title' }, 'Reserve & Pay at Pickup'),
+                  h('div', { className: 'fulfillment-option-price' }, 'No charge now')
+                )
+              ),
+              h('p', { className: 'fulfillment-option-desc' },
+                'Reserve your cards now. Pay the seller directly when you pick up \u2014 cash, card, or Venmo.'
+              )
+            )
+          )
+        ),
+
+        // ── SumUp Card Widget (shown when paymentMethod === 'sumup') ──
+        paymentMethod === 'sumup' && h('div', { className: 'checkout-sumup-section' },
+          sumupLoading && h('div', { className: 'checkout-sumup-loading' },
+            h('span', { className: 'spinner' }),
+            h('span', null, ' Preparing secure payment\u2026')
+          ),
+
+          sumupError && h('div', { className: 'checkout-sumup-error' },
+            h('p', null, sumupError),
+            h('button', {
+              className: 'btn btn-secondary btn-sm',
+              onClick: function() {
+                setSumupError(null);
+                setSumupCheckoutId(null);
+                setSumupLoading(false);
+                setSumupMounted(false);
+                sumupSDKPromise = null;
+                initSumUpCheckout();
+              }
+            }, 'Retry Payment')
+          ),
+
+          // The SumUp Card Widget will mount here
+          h('div', {
+            id: 'sumup-card-container',
+            ref: sumupContainerRef,
+            style: {
+              minHeight: sumupMounted ? '280px' : '0',
+              transition: 'min-height 0.3s ease'
+            }
+          }),
+
+          sumupMounted && h('div', { className: 'payment-security-badges' },
+            h('span', { className: 'security-badge' }, '\uD83D\uDD12 PCI Compliant'),
+            h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F 3D Secure'),
+            h('span', { className: 'security-badge' }, '\u2705 Powered by SumUp')
+          )
+        ),
+
+        // ── Reserve info (shown when paymentMethod === 'reserve') ──
+        paymentMethod === 'reserve' && h('div', { className: 'checkout-reserve-info' },
           h('div', { className: 'checkout-reserve-info-header' },
             h('span', { className: 'checkout-reserve-icon' }, '\uD83D\uDD12'),
             h('div', null,
@@ -464,9 +663,6 @@ export function CheckoutView(props) {
           h('div', { className: 'checkout-summary-row' },
             h('span', null, 'Subtotal'), h('span', null, formatUSD(subtotal))
           ),
-          h('div', { className: 'checkout-summary-row' },
-            h('span', null, 'Guam GRT (4%)'), h('span', null, formatUSD(tax))
-          ),
           fulfillment === 'ship' && h('div', { className: 'checkout-summary-row' },
             h('span', null, 'Shipping'), h('span', null, formatUSD(SHIPPING_FLAT_RATE))
           ),
@@ -482,21 +678,35 @@ export function CheckoutView(props) {
             disabled: paymentProcessing
           }, '\u2190 Back'),
 
-          h('button', {
-            className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
-            onClick: function() { setShowConfirm(true); },
-            disabled: paymentProcessing
-          },
-            paymentProcessing
-              ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
-              : h('span', null, '\uD83D\uDD12 Reserve Order \u2014 ', formatUSD(total))
-          )
+          // For reserve: show reserve button
+          // For SumUp: the widget handles the submit, but show a fallback button if widget not mounted
+          paymentMethod === 'reserve'
+            ? h('button', {
+                className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
+                onClick: function() { setShowConfirm(true); },
+                disabled: paymentProcessing
+              },
+                paymentProcessing
+                  ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
+                  : h('span', null, '\uD83D\uDD12 Reserve Order \u2014 ', formatUSD(total))
+              )
+            : (!sumupMounted && !sumupLoading)
+              ? h('button', {
+                  className: 'btn btn-primary btn-lg',
+                  onClick: function() { initSumUpCheckout(); },
+                  disabled: sumupLoading
+                }, '\uD83D\uDCB3 Initialize Payment')
+              : null
         ),
 
         h('div', { className: 'checkout-payment-info' },
-          h('p', { className: 'checkout-payment-note' },
-            '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
-          ),
+          paymentMethod === 'reserve'
+            ? h('p', { className: 'checkout-payment-note' },
+                '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
+              )
+            : h('p', { className: 'checkout-payment-note' },
+                '\uD83D\uDCB3 Your payment is processed securely by SumUp. investMTG never sees your card details.'
+              ),
           h('div', { className: 'payment-security-badges' },
             h('span', { className: 'security-badge' }, '\uD83D\uDD12 SSL Encrypted'),
             h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Checkout'),

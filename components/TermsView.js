@@ -39,7 +39,7 @@ export function TermsView() {
     h('section', { className: 'legal-section' },
       h('h2', null, '4. Pricing and Tax'),
       h('p', null, 'All prices displayed on the Site are in US Dollars (USD). Market prices shown on card detail pages are sourced from Scryfall and reflect approximate market values — they are not offers to sell at those prices.'),
-      h('p', null, 'Checkout includes an estimated Guam Gross Receipts Tax (GRT) of 4%. Sellers are responsible for their own tax obligations under Guam law. investMTG provides the GRT estimate as a convenience and does not guarantee its accuracy.')
+      h('p', null, 'Sellers are responsible for their own tax obligations under Guam law. investMTG does not collect or remit taxes on behalf of sellers or buyers.')
     ),
 
     h('section', { className: 'legal-section' },

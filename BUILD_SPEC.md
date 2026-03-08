@@ -47,11 +47,11 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v12`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v16`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
-- **Cross-origin requests** (backend Worker, Scryfall, etc.): skipped entirely — the service worker does not intercept them
+- **Cross-origin requests** (backend Worker, Scryfall, SumUp SDK, etc.): skipped entirely — the service worker does not intercept them
 - On activation, all previous cache versions are purged
 - On activation, sends `postMessage({ type: 'SW_UPDATED' })` to all open tabs, which triggers an automatic page reload via a listener in `app.js`. This eliminates stale-cache bugs during SW version transitions.
 
@@ -91,7 +91,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/SellerDashboard.js` | `#seller` | Seller registration, listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart (not yet wired to backend) |
-| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal. Reserve & Pay at Pickup only. POSTs to `/api/orders`. |
+| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
 | `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. |
 | `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
 | `components/DecklistView.js` | `#decklist` | Decklist import |
@@ -119,7 +119,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, and 20+ backend proxy functions for all API endpoints |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
-| `utils/config.js` | Centralized constants (tax rate, shipping, cart limits, API intervals, `PROXY_BASE`) |
+| `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
 | `utils/helpers.js` | Shared formatting and utility functions |
 | `utils/sanitize.js` | `sanitizeInput()`, `isValidEmail()`, `isValidPhone()` |
 | `utils/stores.js` | `getStoresAsync()` — fetches from `/api/stores` with static fallback |
@@ -142,9 +142,10 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
-| D1 Database | `investmtg-db` | 7-table SQLite database |
+| D1 Database | `investmtg-db` | 11-table SQLite database |
 | KV Namespace | `INVESTMTG_CACHE` | Edge cache for market and discovery responses |
 | Worker | `investmtg-proxy` | Unified backend + proxy |
+| SumUp | Checkouts API | Online card payment processing via Card Widget |
 
 ### Worker routes
 | Route | Method | Purpose |
@@ -166,6 +167,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/orders` | POST | Create order (auth required). Returns server-generated `GUM-YYYYMM-XXXXX` ID. |
 | `/api/orders` | GET | List orders for authenticated user (sorted by `created_at DESC`) |
 | `/api/orders/:id` | GET | Get single order by ID (owner-only) |
+| `/api/sumup/checkout` | POST | Create SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code `M55T01IN`, returns `{ checkout_id }`. Frontend mounts SumUp Card Widget with the returned ID for PCI/3DS-compliant card entry. |
 | `/justtcg` | proxy | Condition pricing |
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |
@@ -245,7 +247,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v12
+├── sw.js                           # service worker v16
 ├── manifest.json
 ├── 404.html
 ├── CNAME

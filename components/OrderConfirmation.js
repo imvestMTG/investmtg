@@ -235,9 +235,6 @@ export function OrderConfirmation(props) {
           h('div', { className: 'order-total-row' },
             h('span', null, 'Subtotal'), h('span', null, formatUSD(order.subtotal))
           ),
-          h('div', { className: 'order-total-row' },
-            h('span', null, 'Guam GRT (4%)'), h('span', null, formatUSD(order.tax))
-          ),
           order.shipping > 0 && h('div', { className: 'order-total-row' },
             h('span', null, 'Shipping'), h('span', null, formatUSD(order.shipping))
           ),

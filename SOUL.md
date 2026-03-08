@@ -124,6 +124,7 @@ Before any go-live push:
 
 | Date | Change |
 |------|--------|
+| 2026-03-08 | SumUp payment processor restored: Card Widget integration with lazy SDK loading, Pay Online + Reserve & Pay at Pickup dual payment methods, `POST /api/sumup/checkout` worker endpoint, admin bypass layer on worker `getAuthUser()` via `ADMIN_TOKEN` secret for testing, removed all Guam GRT tax references site-wide (config, CartView, CheckoutView, OrderConfirmation, TermsView); SW v16 |
 | 2026-03-08 | Order workflow overhaul: 4-step checkout wizard with confirmation modal, reserve & pay at pickup, server-generated `GUM-YYYYMM-XXXXX` order IDs, D1 order persistence, My Orders page (`#orders`), Order Confirmation server-first loading, removed dead SumUp code; SW v15 |
 | 2026-03-08 | Step-based listing wizard (3-step flow: search → pick printing → details), auto-confirm on blur/Enter, new lf-* CSS system, removed broken 2-column layout; SW v14 |
 | 2026-03-08 | 2-column listing form with printings browser panel (grid/list views), fixed listing creation for trade listings (price=0 bug), better error messages; SW v13 |

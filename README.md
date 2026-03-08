@@ -43,6 +43,8 @@ Key characteristics:
 - Anonymous session cookie support for server-side user state
 - Generic CORS proxy (`/?target=`) for Moxfield, Scryfall, and EDH Top 16 APIs with User-Agent forwarding
 - Auto-promotes user role to 'seller' on seller registration
+- SumUp payment integration: `POST /api/sumup/checkout` creates a SumUp checkout, frontend mounts SumUp Card Widget for PCI-compliant card entry
+- Admin bypass: `ADMIN_TOKEN` secret allows testing worker endpoints without Google OAuth
 
 ### frontend-v2/ (experimental, not deployed)
 `frontend-v2/` is a TypeScript/Vite rewrite of the application. It exists in the repository as an experimental project but **is not the live production app** and is not deployed anywhere.
@@ -73,11 +75,13 @@ Key characteristics:
 - meetup zone and island delivery framing
 - full CRUD via `/api/sellers` and `/api/listings`
 
-### Order & Reserve flow
+### Order & Checkout flow
 - 4-step checkout wizard: Review → Fulfillment → Contact → Payment with confirmation modal
-- Reserve & Pay at Pickup — no online payment required; buyer pays seller directly at pickup
+- Two payment methods: **Pay Online** (SumUp Card Widget — PCI/3DS compliant) and **Reserve & Pay at Pickup** (no online payment; buyer pays seller at meetup)
+- SumUp Card Widget lazy-loaded from `gateway.sumup.com` SDK; checkout created via worker `POST /api/sumup/checkout`
 - Server-generated sequential order IDs (`GUM-YYYYMM-XXXXX`) via D1 `order_counters` table
 - Orders persisted to D1 via `POST /api/orders` with localStorage fallback
+- Order status: `pending_payment` (SumUp online), `reserved` (pay at pickup)
 - My Orders page (`#orders`) lists all orders with status badges, totals, and fulfillment info
 - Order Confirmation page (`#order/:id`) loads server-first with localStorage fallback
 
@@ -150,7 +154,7 @@ investmtg/
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v12 (PWA offline support + auto-reload)
+├── sw.js                           # service worker v16 (PWA offline support + auto-reload)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md
@@ -204,6 +208,7 @@ npx wrangler dev
 - [Cloudflare Workers](https://workers.cloudflare.com/) — proxy and secret-backed API routing
 - [Cloudflare D1](https://developers.cloudflare.com/d1/) — server-side data storage
 - [Cloudflare KV](https://developers.cloudflare.com/kv/) — cached market/discovery responses
+- [SumUp](https://www.sumup.com) — online card payment processing via Card Widget
 - [GitHub Pages](https://pages.github.com/) — static site hosting
 
 ## Notes

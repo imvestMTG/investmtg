@@ -1,7 +1,6 @@
 /* config.js — Centralized configuration constants for investMTG */
 
-// Tax
-export var GUAM_GRT_RATE = 0.04; // 4% Guam Gross Receipts Tax
+// Shipping
 export var SHIPPING_FLAT_RATE = 5.00; // USD
 
 // Cart

@@ -20,6 +20,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
                                     │                    ──→  TopDeck.gg API
                                     │                    ──→  Pollinations AI
                                     │                    ──→  Google OAuth
+                                    │                    ──→  SumUp Checkouts API
                                     ├── D1 Database (investmtg-db)
                                     └── KV Cache (INVESTMTG_CACHE)
 ```
@@ -36,6 +37,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `GOOGLE_CLIENT_SECRET` | Secret | Google OAuth client secret |
 | `AUTH_SECRET` | Secret | HMAC key for auth session tokens (256-bit) |
 | `FRONTEND_URL` | Secret | Frontend URL for OAuth callback redirect |
+| `SUMUP_SECRET_KEY` | Secret | SumUp API secret key for creating checkouts |
+| `ADMIN_TOKEN` | Secret | Admin bypass token — when `Authorization: Bearer <ADMIN_TOKEN>` is sent, `getAuthUser()` returns a synthetic admin user, bypassing Google OAuth. For testing only. |
 
 ## Routes
 
@@ -59,6 +62,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/orders` | POST | create order (auth required; returns `GUM-YYYYMM-XXXXX` ID) |
 | `/api/orders` | GET | list orders for authenticated user (newest first) |
 | `/api/orders/:id` | GET | get single order by ID (owner-only) |
+| `/api/sumup/checkout` | POST | Create a SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code, returns `{ checkout_id }`. Frontend mounts SumUp Card Widget with the returned checkout ID. |
 
 ### Auth routes
 | Route | Method | Purpose |
@@ -98,6 +102,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - restrict origins to known production and development hosts
 - rate-limit abuse-prone endpoints
 - keep Guam-first marketplace messaging consistent in backend-generated copy where applicable
+- `ADMIN_TOKEN` provides a testing bypass for `getAuthUser()` — when `Authorization: Bearer <ADMIN_TOKEN>` is sent, the worker returns a synthetic admin user (`id: 'admin'`, `role: 'admin'`). This is for development/testing only and should not be exposed to end users.
 
 ## Deployment
 
@@ -134,6 +139,8 @@ npx wrangler d1 execute investmtg-db --command="SELECT COUNT(*) FROM stores" --r
 ```bash
 echo "your-key-here" | npx wrangler secret put JUSTTCG_API_KEY
 echo "your-key-here" | npx wrangler secret put TOPDECK_API_KEY
+echo "your-key-here" | npx wrangler secret put SUMUP_SECRET_KEY
+echo "your-token-here" | npx wrangler secret put ADMIN_TOKEN
 ```
 
 List configured secrets:

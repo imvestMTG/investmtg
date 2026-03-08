@@ -192,3 +192,12 @@
 
 /* Mobile adjustments for Orders */
 @media (max-width:767px){.order-list-card-inner{flex-direction:column;align-items:flex-start;gap:var(--space-3)}.order-list-card-left{min-width:unset}.order-list-card-right{flex-direction:row;align-items:center;gap:var(--space-3);width:100%;justify-content:space-between}.order-list-card-arrow{display:none}.checkout-confirm-modal{padding:var(--space-5)}}
+
+/* SumUp checkout + payment method selector */
+.checkout-payment-methods{margin-bottom:var(--space-6)}
+.checkout-payment-methods-title{font-family:var(--font-display);font-size:var(--text-sm);font-weight:600;margin-bottom:var(--space-3);color:var(--color-text-muted)}
+.checkout-sumup-section{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-5);margin-bottom:var(--space-4)}
+.checkout-sumup-loading{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);color:var(--color-text-muted);padding:var(--space-4) 0;justify-content:center}
+.checkout-sumup-error{background:var(--color-error-highlight);border:1px solid oklch(from var(--color-error) l c h / 0.3);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);text-align:center}
+.checkout-sumup-error p{color:var(--color-error);font-size:var(--text-sm);margin-bottom:var(--space-3)}
+#sumup-card-container{border-radius:var(--radius-md);overflow:hidden}

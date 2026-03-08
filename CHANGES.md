@@ -1,5 +1,52 @@
 # investMTG — Changelog
 
+## 2026-03-08: GRT removal, SumUp payment restoration, admin bypass — SW v16
+
+### GRT Removed Site-Wide
+
+- **Removed `GUAM_GRT_RATE` from `utils/config.js`** — The 4% Guam Gross Receipts Tax line item has been completely removed from the site per owner’s request.
+- **CartView.js** — No longer imports `GUAM_GRT_RATE`, no longer calculates or displays tax. Order summary shows subtotal only.
+- **CheckoutView.js** — All 4 checkout steps cleaned of GRT. Tax variable removed from order total calculation. Server order body no longer sends tax.
+- **OrderConfirmation.js** — Removed "Guam GRT (4%)" line from order totals display.
+- **TermsView.js** — Section 4 (Pricing and Tax) reworded: sellers are responsible for their own tax obligations; investMTG does not collect or remit taxes.
+
+### SumUp Payment Processor Restored
+
+- **Previous session incorrectly stripped SumUp code** — The v15 audit classified the SumUp integration as "dead code" and removed it from CheckoutView.js. In reality, the SumUp public key, Apple Pay verification, and merchant account (M55T01IN) were all active. The only missing piece was the secret key for server-side checkout creation.
+- **Worker: `POST /api/sumup/checkout`** — New endpoint creates a SumUp checkout via their API (`api.sumup.com/v0.1/checkouts`). Requires `SUMUP_SECRET_KEY` wrangler secret. Returns `checkout_id` for frontend widget mounting.
+- **CheckoutView.js rewritten** — Step 4 (Payment) now offers two payment methods:
+  1. **Pay Online** — SumUp Card Widget (credit/debit card via PCI-compliant iframe). SDK lazy-loaded from `gateway.sumup.com/gateway/ecom/card/v2/sdk.js`. Flow: create order → create SumUp checkout → mount widget → handle payment response.
+  2. **Reserve & Pay at Pickup** — Original reserve flow preserved for cash/in-person payment.
+- **Order status logic** — SumUp orders start with status `pending_payment`; reserve orders start with `reserved`.
+- **`SUMUP_SECRET_KEY`** stored as wrangler encrypted secret.
+
+### Admin Bypass Layer
+
+- **Worker: `ADMIN_TOKEN` secret** — New wrangler secret that allows bypassing Google OAuth for testing auth-gated endpoints. Send `Authorization: Bearer <ADMIN_TOKEN>` to any endpoint that requires auth.
+- **`getAuthUser()` updated** — Checks for admin token before falling through to normal cookie/Bearer token auth. Returns a synthetic admin user object.
+- **Admin token**: `163c70bd-4ef4-45df-bfc6-36cc4823cce0` (stored as wrangler secret, not in code).
+
+### Worker Secrets Added
+- `SUMUP_SECRET_KEY` — SumUp API secret key for checkout creation
+- `ADMIN_TOKEN` — Admin bypass token for testing
+
+### Infrastructure
+- Service Worker bumped to v16.
+- Worker redeployed with new SumUp + admin bypass routes.
+- Added CSS for payment method selector and SumUp card widget container.
+
+### Files Modified
+- `utils/config.js` — removed `GUAM_GRT_RATE`
+- `components/CartView.js` — removed GRT import and tax calc
+- `components/CheckoutView.js` — full rewrite with SumUp Card Widget + payment method selector
+- `components/OrderConfirmation.js` — removed GRT line
+- `components/TermsView.js` — updated tax section
+- `worker/worker.js` — admin bypass, SumUp checkout endpoint, order status logic
+- `style.css` — SumUp checkout CSS
+- `sw.js` — v16
+
+---
+
 ## 2026-03-08: Order workflow overhaul — reserve system, order persistence, My Orders page — SW v15
 
 ### Critical Bug Fixes

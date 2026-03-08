@@ -3,7 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { getJustTCGPricing } from '../utils/justtcg-api.js';
 import { TrashIcon, MapPinIcon, TruckIcon, ChevronRightIcon } from './shared/Icons.js';
-import { GUAM_GRT_RATE, CART_MAX_QUANTITY } from '../utils/config.js';
+import { CART_MAX_QUANTITY } from '../utils/config.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
@@ -106,8 +106,6 @@ export function CartView(props) {
   }, [cart.length]);
 
   var subtotal = cart.reduce(function(sum, item) { return sum + (item.price || 0) * (item.qty || 1); }, 0);
-  var tax = subtotal * GUAM_GRT_RATE;
-  var total = subtotal + tax;
 
   var sellerGroups = groupBySeller(cart);
 
@@ -280,15 +278,12 @@ export function CartView(props) {
           h('span', null, cart.length + ' item' + (cart.length !== 1 ? 's' : '')),
           h('span', null, formatUSD(subtotal))
         ),
-        h('div', { className: 'summary-row' },
-          h('span', null, 'Guam GRT (4%)'), h('span', null, formatUSD(tax))
-        ),
         h('div', { className: 'summary-row shipping-estimate' },
           h('span', null, 'Shipping'),
           h('span', { style: { color: 'var(--color-text-muted)' } }, 'Calc at checkout')
         ),
         h('div', { className: 'summary-row total' },
-          h('span', null, 'Subtotal'), h('span', null, formatUSD(total))
+          h('span', null, 'Subtotal'), h('span', null, formatUSD(subtotal))
         ),
 
         jtcgLoading

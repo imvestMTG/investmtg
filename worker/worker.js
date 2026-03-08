@@ -13,6 +13,8 @@
  *   GOOGLE_CLIENT_SECRET
  *   AUTH_SECRET
  *   FRONTEND_URL
+ *   SUMUP_SECRET_KEY  — SumUp secret API key for checkout creation
+ *   ADMIN_TOKEN       — Admin bypass token for testing (skips Google OAuth)
  *
  * Routes:
  *   /api/ticker           — KV-cached ticker prices
@@ -29,6 +31,7 @@
  *   /api/events           — Community events from D1
  *   /api/cart             — Shopping cart CRUD (auth user or anonymous session)
  *   /api/orders           — Order CRUD (auth required; POST creates, GET lists, GET/:id gets one)
+ *   /api/sumup/checkout   — Create SumUp checkout (auth required)
  *   /auth/google          — Start Google OAuth flow
  *   /auth/callback        — Google OAuth callback
  *   /auth/me              — Current authenticated user
@@ -231,6 +234,26 @@ async function verifyOAuthState(env, state) {
 }
 
 async function getAuthUser(request, env) {
+  // ── ADMIN BYPASS: check for ADMIN_TOKEN first ──
+  // Allows testing auth-gated endpoints without Google OAuth.
+  // Set via: wrangler secret put ADMIN_TOKEN
+  if (env.ADMIN_TOKEN) {
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader === 'Bearer ' + env.ADMIN_TOKEN) {
+      return {
+        userId: 'admin',
+        token: 'admin-bypass',
+        user: {
+          id: 'admin',
+          email: 'admin@investmtg.com',
+          name: 'Admin (Bypass)',
+          picture: '',
+          role: 'admin',
+        },
+      };
+    }
+  }
+
   // Accept token from cookie OR Authorization header (for cross-site requests)
   let token = getAuthToken(request);
   if (!token) {
@@ -1159,11 +1182,12 @@ async function handleOrders(request, env, orderId) {
       body.contact_email || '',
       body.contact_phone || '',
       body.payment_method || 'reserve',
-      'reserved',
+      body.payment_method === 'sumup' ? 'pending_payment' : 'reserved',
       nowStr,
       nowStr
     ).run();
 
+    const initialStatus = body.payment_method === 'sumup' ? 'pending_payment' : 'reserved';
     const order = {
       id,
       user_id: auth.userId,
@@ -1178,7 +1202,7 @@ async function handleOrders(request, env, orderId) {
       contact_email: body.contact_email || '',
       contact_phone: body.contact_phone || '',
       payment_method: body.payment_method || 'reserve',
-      status: 'reserved',
+      status: initialStatus,
       created_at: nowStr,
       updated_at: nowStr,
     };
@@ -1187,6 +1211,75 @@ async function handleOrders(request, env, orderId) {
   }
 
   return json({ error: 'Method not allowed' }, 405, request);
+}
+
+/* ══════════════════════════════════════
+   SUMUP PAYMENT ROUTES
+   ══════════════════════════════════════
+
+   POST /api/sumup/checkout
+   Creates a SumUp checkout via their API.
+   The checkout ID is returned to the frontend which mounts the SumUp Card Widget.
+   Requires SUMUP_SECRET_KEY wrangler secret.
+*/
+
+async function handleSumUpCheckout(request, env) {
+  if (request.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405, request);
+  }
+
+  if (!env.SUMUP_SECRET_KEY) {
+    return json({ error: 'SumUp not configured. Set SUMUP_SECRET_KEY via wrangler secret put.' }, 500, request);
+  }
+
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, 400, request);
+  if (!body.amount || body.amount <= 0) return json({ error: 'amount must be > 0' }, 400, request);
+  if (!body.order_id) return json({ error: 'order_id required' }, 400, request);
+
+  const checkoutBody = {
+    amount: body.amount,
+    currency: 'USD',
+    checkout_reference: body.order_id,
+    merchant_code: 'M55T01IN',
+    description: 'investMTG Order ' + body.order_id,
+    pay_to_email: 'bloodshutdawn@gmail.com',
+  };
+
+  try {
+    const resp = await fetch('https://api.sumup.com/v0.1/checkouts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + env.SUMUP_SECRET_KEY,
+      },
+      body: JSON.stringify(checkoutBody),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      console.error('SumUp checkout error:', JSON.stringify(data));
+      return json({
+        error: 'SumUp checkout creation failed',
+        detail: data.message || data.error_code || 'Unknown error',
+        status: resp.status,
+      }, resp.status >= 500 ? 502 : resp.status, request);
+    }
+
+    return json({
+      ok: true,
+      checkout_id: data.id,
+      amount: data.amount,
+      currency: data.currency,
+    }, 201, request);
+  } catch (e) {
+    console.error('SumUp checkout fetch error:', e.message);
+    return json({ error: 'SumUp service unavailable', detail: e.message }, 502, request);
+  }
 }
 
 /* ══════════════════════════════════════
@@ -1339,6 +1432,7 @@ export default {
         const orderId = path.replace(/^\/api\/orders\/?/, '') || null;
         return handleOrders(request, env, orderId || undefined);
       }
+      if (path === '/api/sumup/checkout')                    return handleSumUpCheckout(request, env);
 
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);
