@@ -535,7 +535,8 @@ export function SellerDashboard(props) {
 
   var listings = sellerListings;
   // Sales history from localStorage orders (kept as-is)
-  var allOrders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
+  var rawOrders = localStorage.getItem('investmtg-orders');
+  var allOrders = (rawOrders && rawOrders !== 'undefined' && rawOrders !== 'null') ? (function() { try { return JSON.parse(rawOrders); } catch(e) { return []; } })() : [];
   var sellerSales = allOrders.filter(function(o) {
     return o.items && o.items.some(function(i) { return i.seller === seller.name; });
   });

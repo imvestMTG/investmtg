@@ -13,7 +13,8 @@ export function OrderConfirmation({ orderId }) {
 
   React.useEffect(function() {
     // Load the order from localStorage
-    var orders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
+    var raw = localStorage.getItem('investmtg-orders');
+    var orders = (raw && raw !== 'undefined' && raw !== 'null') ? (function() { try { return JSON.parse(raw); } catch(e) { return []; } })() : [];
     var found = orders.find(function(o) { return o.id === orderId; });
     setOrder(found || null);
     setLoaded(true);

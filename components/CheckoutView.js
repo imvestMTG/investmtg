@@ -171,7 +171,8 @@ export function CheckoutView(props) {
       date: new Date().toISOString(),
       paymentMethod: paymentMethod
     };
-    var orders = JSON.parse(localStorage.getItem('investmtg-orders') || '[]');
+    var raw = localStorage.getItem('investmtg-orders');
+    var orders = (raw && raw !== 'undefined' && raw !== 'null') ? (function() { try { return JSON.parse(raw); } catch(e) { return []; } })() : [];
     orders.unshift(order);
     localStorage.setItem('investmtg-orders', JSON.stringify(orders));
     updateCart([]);

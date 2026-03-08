@@ -15,6 +15,12 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary.js';
 
 var h = React.createElement;
 
+// Safe JSON parse for localStorage — guards against corrupted values like the string "undefined"
+function safeParseJSON(raw, fallback) {
+  if (!raw || raw === 'undefined' || raw === 'null') return fallback;
+  try { return JSON.parse(raw); } catch(e) { return fallback; }
+}
+
 // ===== LAZY COMPONENT LOADER =====
 function lazyComponent(importFn, exportName) {
   var cache = { C: null, p: null };
@@ -108,7 +114,7 @@ function parseHash() {
 var globalState = {
   cart: [],
   portfolio: [],
-  watchlist: JSON.parse(localStorage.getItem('investmtg-watchlist') || '[]'),
+  watchlist: safeParseJSON(localStorage.getItem('investmtg-watchlist'), []),
   listings: [],
   priceCache: {},
   loading: true
@@ -126,20 +132,20 @@ function notify() {
 }
 
 function updateCart(newCart) {
-  globalState.cart = newCart;
-  localStorage.setItem('investmtg-cart', JSON.stringify(newCart));
+  globalState.cart = Array.isArray(newCart) ? newCart : [];
+  localStorage.setItem('investmtg-cart', JSON.stringify(globalState.cart));
   notify();
 }
 
 function updatePortfolio(newPortfolio) {
-  globalState.portfolio = newPortfolio;
-  localStorage.setItem('investmtg-portfolio', JSON.stringify(newPortfolio));
+  globalState.portfolio = Array.isArray(newPortfolio) ? newPortfolio : [];
+  localStorage.setItem('investmtg-portfolio', JSON.stringify(globalState.portfolio));
   notify();
 }
 
 function updateWatchlist(newWatchlist) {
-  globalState.watchlist = newWatchlist;
-  localStorage.setItem('investmtg-watchlist', JSON.stringify(newWatchlist));
+  globalState.watchlist = Array.isArray(newWatchlist) ? newWatchlist : [];
+  localStorage.setItem('investmtg-watchlist', JSON.stringify(globalState.watchlist));
   notify();
 }
 
@@ -207,8 +213,8 @@ function App() {
 
   // ===== ASYNC STATE INITIALIZATION =====
   React.useEffect(function() {
-    var portfolioFallback = JSON.parse(localStorage.getItem('investmtg-portfolio') || '[]');
-    var cartFallback = JSON.parse(localStorage.getItem('investmtg-cart') || '[]');
+    var portfolioFallback = safeParseJSON(localStorage.getItem('investmtg-portfolio'), []);
+    var cartFallback = safeParseJSON(localStorage.getItem('investmtg-cart'), []);
 
     // Fetch portfolio from backend; fall back to localStorage
     var portfolioPromise = fetchPortfolio().then(function(data) {
