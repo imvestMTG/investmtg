@@ -1,8 +1,9 @@
 /* moxfield-api.js — Moxfield decklist integration (unofficial public API)
  * Routed through Cloudflare Worker CORS proxy since Moxfield blocks browser CORS.
  */
+import { PROXY_BASE } from './config.js';
 
-var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+var PROXY_URL = PROXY_BASE;
 var MOXFIELD_API = 'https://api2.moxfield.com/v2';
 
 /* ── Cache ── */

@@ -5,8 +5,9 @@
  *
  * Attribution required: "Data provided by TopDeck.gg"
  */
+import { PROXY_BASE } from './config.js';
 
-var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+var PROXY_URL = PROXY_BASE;
 
 /* Simple cache — 10 min TTL */
 var _cache = {};

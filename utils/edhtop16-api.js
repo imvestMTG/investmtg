@@ -2,8 +2,9 @@
  * Public API: https://edhtop16.com/api/graphql (no key required)
  * Data: cEDH commander meta share, win rates, top cuts, staples, tournaments
  */
+import { PROXY_BASE } from './config.js';
 
-var PROXY_URL = 'https://investmtg-proxy.bloodshutdawn.workers.dev';
+var PROXY_URL = PROXY_BASE;
 var GRAPHQL_TARGET = 'https://edhtop16.com/api/graphql';
 var GRAPHQL_URL = PROXY_URL + '/?target=' + encodeURIComponent(GRAPHQL_TARGET);
 

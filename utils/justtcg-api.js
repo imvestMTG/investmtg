@@ -1,8 +1,9 @@
 /* justtcg-api.js — JustTCG pricing API integration
  * API key is stored server-side in the CORS proxy worker.
  * All requests route through the proxy — no secrets in browser JS. */
+import { PROXY_BASE as _PROXY } from './config.js';
 
-var PROXY_BASE = 'https://investmtg-proxy.bloodshutdawn.workers.dev/justtcg';
+var PROXY_BASE = _PROXY + '/justtcg';
 
 /* ── In-memory cache with TTL ── */
 var jtcgCache = {};

@@ -1,6 +1,6 @@
 # investMTG — Changelog
 
-## 2026-03-09: Auth sign-in fix (CSP + race condition) — SW v19
+## 2026-03-09: Auth fix + URL centralization audit — SW v19
 
 ### Root Cause: CSP Blocking API Calls
 
@@ -11,6 +11,11 @@
 
 - **Problem** — In `auth.js`, `captureTokenFromURL()` called `window.location.replace()` to strip the `?auth_token=` param, but `checkAuth()` continued executing after the call, starting an `authFetch('/auth/me')` request that would be aborted by the page navigation. This was a secondary issue (the page reload would re-run `checkAuth()` cleanly), but the aborted fetch wasted a network request and could confuse debugging.
 - **Fix** — `captureTokenFromURL()` now returns `'redirecting'` when it triggers a page reload. `checkAuth()` detects this and returns `new Promise(function() {})` (a never-resolving promise), which prevents any further execution during the page transition.
+
+### URL Centralization (Audit Fix)
+
+- **Problem** — Four API integration files (`justtcg-api.js`, `edhtop16-api.js`, `moxfield-api.js`, `topdeck-api.js`) had the old `investmtg-proxy.bloodshutdawn.workers.dev` URL hardcoded instead of importing from `config.js`. These were silently broken by the CSP cleanup that removed the old workers.dev URL from `connect-src`.
+- **Fix** — All four files now import `PROXY_BASE` from `config.js`. No frontend JS file has a hardcoded backend URL anymore — a single change to `config.js` updates everything.
 
 ### Debug Artifact Cleanup
 
