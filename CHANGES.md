@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-09: Cart page complete redesign (SW v30)
+
+- **CartView.js** — Complete rewrite from scratch. Extracted `CartItem` as a separate internal component with cleaner DOM structure. Extracted `ConditionOption` (replaces `ConditionChip`). New BEM-style class naming: `.cart-card`, `.cart-card__row`, `.cart-card__cond`, `.cond-option`, `.cart-summary`, `.cart-group`, `.cart-layout`. Condition selector now uses horizontal flex-wrap grid on desktop (all conditions visible in a row), vertical stack on mobile. All handler logic (qty update, remove, condition select) centralized and passed as props to CartItem.
+- **style.css** — Removed ~560 lines of fragmented cart CSS scattered across 4+ locations in the file (lines 1376-1719, 2862-2999, 4693-4770, plus stale keyframes and dead selectors). Replaced with a single consolidated 400-line block using the site’s design tokens consistently: `--color-surface`, `--color-border`, `--color-primary`, `--color-error`, `--radius-lg/md`, `--space-*`, `--font-display/body`. Eliminated all teal `--color-accent` fallbacks (now uses gold `--color-primary` for links). Removed dead CSS: `.cond-chip-abbr`, `.cond-chip-price`, `@keyframes condChipPulse`, empty `@media (hover:none)` block, duplicate `@keyframes condPromptPulse`.
+- **style.css** — Shared `.qty-btn`, `.qty-value`, and `.cart-item-controls` kept as generic utility classes (also used by PortfolioView).
+- **style.css** — Cart layout breakpoint raised from 767px to 899px for better tablet experience. Condition grid uses `flex-wrap` for horizontal layout on wider screens.
+- SW bumped to v30.
+
+---
+
 ## 2026-03-09: Cart condition selector CSS fix (SW v29)
 
 - **style.css** — Fixed cart item layout bug where condition selector rendered as jumbled plaintext instead of interactive cards. Root cause: duplicate `.cart-item` rules at lines 1399 and 7119 conflicted — the early rule set `display: flex` with implicit `flex-direction: row` and `align-items: center`, causing `.cart-item-top` and `.cart-condition-section` to render side-by-side instead of stacking vertically. Consolidated into a single `.cart-item` block with `flex-direction: column`, `gap: 0`, `padding: 0`, and `overflow: hidden`. Removed the stale v17 duplicate block from line 7119.

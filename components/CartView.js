@@ -7,43 +7,41 @@ import { CART_MAX_QUANTITY } from '../utils/config.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 var h = React.createElement;
 
-/* ConditionChip — card-style button for selecting card condition */
-function ConditionChip(_ref) {
-  var abbr = _ref.abbr;
-  var fullLabel = _ref.fullLabel;
-  var price = _ref.price;
-  var isSelected = _ref.isSelected;
-  var onSelect = _ref.onSelect;
+/* ConditionOption — selectable condition button */
+function ConditionOption(props) {
+  var abbr = props.abbr;
+  var fullLabel = props.fullLabel;
+  var price = props.price;
+  var isSelected = props.isSelected;
+  var onSelect = props.onSelect;
 
-  /* Condition-specific accent colors */
+  /* Condition accent colors */
   var condColor = abbr === 'NM'  ? '#22c55e' :
                   abbr === 'LP'  ? '#3b82f6' :
                   abbr === 'MP'  ? '#f59e0b' :
                   abbr === 'HP'  ? '#f97316' :
                   abbr === 'DMG' ? '#ef4444' : '#888';
 
-  var cardStyle = {};
+  var style = {};
   if (isSelected) {
-    cardStyle.borderColor = condColor;
-    cardStyle.boxShadow = '0 0 0 2px ' + condColor + '40';
+    style.borderColor = condColor;
+    style.boxShadow = '0 0 0 2px ' + condColor + '40';
+    style.background = condColor + '14';
   }
 
-  var dotStyle = { background: condColor };
-
   return h('button', {
-    className: 'cart-cond-card' + (isSelected ? ' cart-cond-card--active' : ''),
-    style: cardStyle,
+    className: 'cond-option' + (isSelected ? ' cond-option--selected' : ''),
+    style: style,
     onClick: onSelect,
+    type: 'button',
     'aria-label': 'Select ' + fullLabel + ' condition at ' + formatUSD(price),
     'aria-pressed': isSelected ? 'true' : 'false',
     title: fullLabel + ' — ' + formatUSD(price)
   },
-    h('span', { className: 'cond-card-dot', style: dotStyle }),
-    h('span', { className: 'cond-card-label' },
-      h('span', { className: 'cond-card-abbr' }, abbr),
-      h('span', { className: 'cond-card-full' }, fullLabel)
-    ),
-    h('span', { className: 'cond-card-price' }, formatUSD(price))
+    h('span', { className: 'cond-option__dot', style: { background: condColor } }),
+    h('span', { className: 'cond-option__abbr' }, abbr),
+    h('span', { className: 'cond-option__name' }, fullLabel),
+    h('span', { className: 'cond-option__price' }, formatUSD(price))
   );
 }
 
@@ -56,6 +54,128 @@ function WarningIcon() {
   );
 }
 
+/* CartItem — single item card with condition selector */
+function CartItem(props) {
+  var item = props.item;
+  var jtcg = props.jtcg;
+  var onUpdateQty = props.onUpdateQty;
+  var onRemove = props.onRemove;
+  var onSelectCondition = props.onSelectCondition;
+
+  var hasConditions = jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0;
+  var needsCondition = hasConditions && !item.condition;
+
+  var condOrder = ['Damaged', 'Heavily Played', 'Moderately Played', 'Lightly Played', 'Near Mint'];
+
+  function getAbbr(label) {
+    if (label === 'Near Mint') return 'NM';
+    if (label === 'Lightly Played') return 'LP';
+    if (label === 'Moderately Played') return 'MP';
+    if (label === 'Heavily Played') return 'HP';
+    if (label === 'Damaged') return 'DMG';
+    return label;
+  }
+
+  return h('div', { className: 'cart-card' + (needsCondition ? ' cart-card--alert' : '') },
+
+    /* ── Row: thumbnail + details + actions ── */
+    h('div', { className: 'cart-card__row' },
+
+      /* Thumbnail */
+      h('a', {
+        className: 'cart-card__thumb',
+        href: '#card/' + item.id,
+        'aria-label': 'View ' + item.name + ' details'
+      },
+        item.image
+          ? h('img', { src: item.image, alt: item.name, loading: 'lazy' })
+          : h('div', { className: 'cart-card__thumb-empty' }, '\uD83C\uDCCF')
+      ),
+
+      /* Info */
+      h('div', { className: 'cart-card__info' },
+        h('a', { className: 'cart-card__name', href: '#card/' + item.id }, item.name),
+        h('div', { className: 'cart-card__meta' },
+          item.set && h('span', { className: 'cart-card__set' }, item.set),
+          item.condition && h('span', { className: 'cart-card__badge cond-' + (item.condition || '').toLowerCase() }, item.condition)
+        ),
+        h('span', { className: 'cart-card__unit' }, formatUSD(item.price || 0) + ' each')
+      ),
+
+      /* Quantity */
+      h('div', { className: 'cart-card__qty' },
+        h('button', {
+          className: 'cart-card__qty-btn',
+          type: 'button',
+          onClick: function() { onUpdateQty(item.id, (item.qty || 1) - 1); },
+          'aria-label': 'Decrease quantity'
+        }, '\u2212'),
+        h('span', { className: 'cart-card__qty-val' }, item.qty || 1),
+        h('button', {
+          className: 'cart-card__qty-btn',
+          type: 'button',
+          onClick: function() { onUpdateQty(item.id, (item.qty || 1) + 1); },
+          'aria-label': 'Increase quantity',
+          disabled: (item.qty || 1) >= CART_MAX_QUANTITY
+        }, '+')
+      ),
+
+      /* Line price */
+      h('span', { className: 'cart-card__total' }, formatUSD((item.price || 0) * (item.qty || 1))),
+
+      /* Remove */
+      h('button', {
+        className: 'cart-card__remove',
+        type: 'button',
+        onClick: function() { onRemove(item.id); },
+        'aria-label': 'Remove ' + item.name
+      }, h(TrashIcon, null))
+    ),
+
+    /* ── Condition selector ── */
+    hasConditions
+      ? h('div', { className: 'cart-card__cond' + (needsCondition ? ' cart-card__cond--alert' : '') },
+          h('div', { className: 'cart-card__cond-head' },
+            needsCondition
+              ? h('span', { className: 'cart-card__cond-prompt' },
+                  h(WarningIcon, null),
+                  ' Select a condition'
+                )
+              : h('span', { className: 'cart-card__cond-chosen' },
+                  'Condition: ',
+                  h('strong', null, item.condition)
+                )
+          ),
+          h('div', { className: 'cart-card__cond-grid' },
+            (function() {
+              var entries = Object.entries(jtcg.conditionPrices);
+              entries.sort(function(a, b) {
+                var ai = condOrder.indexOf(a[0]); if (ai < 0) ai = 99;
+                var bi = condOrder.indexOf(b[0]); if (bi < 0) bi = 99;
+                return ai - bi;
+              });
+              return entries;
+            })().map(function(entry) {
+              var condLabel = entry[0];
+              var condPrice = entry[1];
+              var abbr = getAbbr(condLabel);
+              var isSelected = (item.condition || '').toUpperCase() === abbr ||
+                               (item.condition || '') === condLabel;
+              return h(ConditionOption, {
+                key: condLabel,
+                abbr: abbr,
+                fullLabel: condLabel,
+                price: condPrice,
+                isSelected: isSelected,
+                onSelect: function() { onSelectCondition(item.id, abbr, condPrice); }
+              });
+            })
+          )
+        )
+      : null
+  );
+}
+
 export function CartView(props) {
   var state = props.state;
   var updateCart = props.updateCart;
@@ -65,7 +185,7 @@ export function CartView(props) {
   var ref2 = React.useState(false);
   var jtcgLoading = ref2[0], setJtcgLoading = ref2[1];
 
-  // Fetch JustTCG condition prices for cart items that have tcgplayerId
+  /* Fetch JustTCG condition prices for cart items that have tcgplayerId */
   React.useEffect(function() {
     if (cart.length === 0) return;
     var itemsWithTcg = cart.filter(function(item) { return item.tcgplayerId; });
@@ -117,12 +237,20 @@ export function CartView(props) {
     updateCart(cart.filter(function(item) { return item.id !== id; }));
   }
 
+  function selectCondition(id, abbr, condPrice) {
+    updateCart(cart.map(function(ci) {
+      if (ci.id !== id) return ci;
+      return Object.assign({}, ci, { condition: abbr, price: condPrice });
+    }));
+  }
+
   function clearCart() {
     if (window.confirm('Remove all items from cart?')) {
       updateCart([]);
     }
   }
 
+  /* ── Empty state ── */
   if (cart.length === 0) {
     return h('div', { className: 'container cart-page' },
       h('h1', { className: 'page-heading' }, 'Your Cart'),
@@ -134,193 +262,89 @@ export function CartView(props) {
     );
   }
 
+  /* ── Cart with items ── */
   return h('div', { className: 'container cart-page' },
-    h('div', { className: 'cart-page-header' },
+    h('div', { className: 'cart-page__head' },
       h('h1', { className: 'page-heading' }, 'Your Cart'),
       h('button', {
-        className: 'btn btn-secondary btn-sm cart-clear-btn',
+        className: 'btn btn-secondary btn-sm cart-page__clear',
+        type: 'button',
         onClick: clearCart
       }, 'Clear Cart')
     ),
 
-    h('div', { className: 'cart-grid' },
-      h('div', { className: 'cart-items' },
+    h('div', { className: 'cart-layout' },
 
-        // Group items by seller
+      /* ── Left: items ── */
+      h('div', { className: 'cart-layout__items' },
         Object.keys(sellerGroups).map(function(seller) {
           var items = sellerGroups[seller];
-          return h('div', { key: seller, className: 'cart-seller-group' },
-            h('div', { className: 'cart-seller-header' },
-              h('span', { className: 'cart-seller-label' }, 'From: ' + seller)
+          return h('div', { key: seller, className: 'cart-group' },
+            h('div', { className: 'cart-group__head' },
+              h('span', { className: 'cart-group__label' }, 'From: ' + seller)
             ),
             items.map(function(item) {
-              var jtcg = jtcgPrices[item.id];
-              var hasConditions = jtcg && jtcg.conditionPrices && Object.keys(jtcg.conditionPrices).length > 0;
-              var needsCondition = hasConditions && !item.condition;
-
-              return h('div', { key: item.id, className: 'cart-item' + (needsCondition ? ' cart-item--needs-condition' : '') },
-
-                /* Top row: image + info + qty + price + remove */
-                h('div', { className: 'cart-item-top' },
-                  h('a', {
-                    className: 'cart-item-image',
-                    href: '#card/' + item.id,
-                    'aria-label': 'View ' + item.name + ' details'
-                  },
-                    item.image
-                      ? h('img', { src: item.image, alt: item.name, loading: 'lazy' })
-                      : h('div', { className: 'cart-item-img-placeholder' }, '\uD83C\uDCCF')
-                  ),
-                  h('div', { className: 'cart-item-details' },
-                    h('a', {
-                      className: 'cart-item-name cart-item-link',
-                      href: '#card/' + item.id
-                    }, item.name),
-                    h('div', { className: 'cart-item-meta' },
-                      item.set && h('a', {
-                        className: 'cart-item-set cart-item-link',
-                        href: '#search',
-                        onClick: function(e) {
-                          e.preventDefault();
-                          window.location.hash = 'search';
-                          setTimeout(function() {
-                            var setQuery = item.setCode ? 'e:' + item.setCode : item.set;
-                            var ev = new CustomEvent('investmtg-search', { detail: setQuery });
-                            window.dispatchEvent(ev);
-                          }, 50);
-                        }
-                      }, item.set),
-                      item.condition && h('span', {
-                        className: 'cart-item-cond-badge cond-' + (item.condition || '').toLowerCase()
-                      }, item.condition)
-                    ),
-                    h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each')
-                  ),
-                  h('div', { className: 'cart-item-controls' },
-                    h('button', {
-                      className: 'qty-btn',
-                      onClick: function() { updateQty(item.id, (item.qty || 1) - 1); },
-                      'aria-label': 'Decrease quantity'
-                    }, '\u2212'),
-                    h('span', { className: 'qty-value' }, item.qty || 1),
-                    h('button', {
-                      className: 'qty-btn',
-                      onClick: function() { updateQty(item.id, (item.qty || 1) + 1); },
-                      'aria-label': 'Increase quantity',
-                      disabled: (item.qty || 1) >= CART_MAX_QUANTITY
-                    }, '+')
-                  ),
-                  h('div', { className: 'cart-item-price' }, formatUSD((item.price || 0) * (item.qty || 1))),
-                  h('button', {
-                    className: 'cart-item-remove icon-btn',
-                    onClick: function() { removeItem(item.id); },
-                    'aria-label': 'Remove ' + item.name
-                  }, h(TrashIcon, null))
-                ),
-
-                /* Condition selector section — full-width below the item row */
-                hasConditions
-                  ? h('div', { className: 'cart-condition-section' + (needsCondition ? ' cart-condition-section--alert' : '') },
-                      h('div', { className: 'cart-condition-header' },
-                        needsCondition
-                          ? h('span', { className: 'cart-condition-prompt' },
-                              h(WarningIcon, null),
-                              'Select a condition to continue'
-                            )
-                          : h('span', { className: 'cart-condition-chosen' },
-                              'Condition: ',
-                              h('strong', null, item.condition)
-                            )
-                      ),
-                      h('div', { className: 'cart-condition-chips' },
-                        (function() {
-                          var condOrder = ['Damaged', 'Heavily Played', 'Moderately Played', 'Lightly Played', 'Near Mint'];
-                          var entries = Object.entries(jtcg.conditionPrices);
-                          entries.sort(function(a, b) {
-                            var ai = condOrder.indexOf(a[0]); if (ai < 0) ai = 99;
-                            var bi = condOrder.indexOf(b[0]); if (bi < 0) bi = 99;
-                            return ai - bi;
-                          });
-                          return entries;
-                        })().map(function(entry) {
-                          var condLabel = entry[0];
-                          var condPrice = entry[1];
-                          var abbr = condLabel === 'Near Mint' ? 'NM' :
-                                     condLabel === 'Lightly Played' ? 'LP' :
-                                     condLabel === 'Moderately Played' ? 'MP' :
-                                     condLabel === 'Heavily Played' ? 'HP' :
-                                     condLabel === 'Damaged' ? 'DMG' : condLabel;
-                          var isSelected = (item.condition || '').toUpperCase() === abbr ||
-                                           (item.condition || '') === condLabel;
-                          return h(ConditionChip, {
-                            key: condLabel,
-                            abbr: abbr,
-                            fullLabel: condLabel,
-                            price: condPrice,
-                            isSelected: isSelected,
-                            onSelect: function() {
-                              updateCart(cart.map(function(ci) {
-                                if (ci.id !== item.id) return ci;
-                                return Object.assign({}, ci, {
-                                  condition: abbr,
-                                  price: condPrice
-                                });
-                              }));
-                            }
-                          });
-                        })
-                      )
-                    )
-                  : null
-              );
+              return h(CartItem, {
+                key: item.id,
+                item: item,
+                jtcg: jtcgPrices[item.id],
+                onUpdateQty: updateQty,
+                onRemove: removeItem,
+                onSelectCondition: selectCondition
+              });
             })
           );
         })
       ),
 
-      h('div', { className: 'order-summary' },
-        h('h3', null, 'Order Summary'),
-        h('div', { className: 'summary-row' },
-          h('span', null, cart.length + ' item' + (cart.length !== 1 ? 's' : '')),
-          h('span', null, formatUSD(subtotal))
-        ),
-        h('div', { className: 'summary-row shipping-estimate' },
-          h('span', null, 'Shipping'),
-          h('span', { style: { color: 'var(--color-text-muted)' } }, 'Calc at checkout')
-        ),
-        h('div', { className: 'summary-row total' },
-          h('span', null, 'Subtotal'), h('span', null, formatUSD(subtotal))
+      /* ── Right: summary ── */
+      h('aside', { className: 'cart-summary' },
+        h('h3', { className: 'cart-summary__title' }, 'Order Summary'),
+
+        h('div', { className: 'cart-summary__rows' },
+          h('div', { className: 'cart-summary__row' },
+            h('span', null, cart.length + ' item' + (cart.length !== 1 ? 's' : '')),
+            h('span', null, formatUSD(subtotal))
+          ),
+          h('div', { className: 'cart-summary__row' },
+            h('span', null, 'Shipping'),
+            h('span', { className: 'cart-summary__muted' }, 'Calc at checkout')
+          ),
+          h('div', { className: 'cart-summary__row cart-summary__row--total' },
+            h('span', null, 'Subtotal'),
+            h('span', null, formatUSD(subtotal))
+          )
         ),
 
+        /* JustTCG attribution */
         jtcgLoading
-          ? h('div', { className: 'cart-jtcg-note loading' },
-              'Fetching condition prices...'
-            )
+          ? h('p', { className: 'cart-summary__note cart-summary__note--loading' }, 'Fetching condition prices\u2026')
           : Object.keys(jtcgPrices).length > 0
-            ? h('div', { className: 'cart-jtcg-note' },
+            ? h('p', { className: 'cart-summary__note' },
                 'Condition prices from ',
                 h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG')
               )
             : null,
 
-        h('div', { className: 'cart-fulfillment-preview' },
-          h('div', { className: 'cart-fulfillment-row' },
+        /* Fulfillment info */
+        h('div', { className: 'cart-summary__shipping' },
+          h('div', { className: 'cart-summary__ship-row' },
             h(MapPinIcon, null),
             h('span', null, 'Local Pickup \u2014 Free')
           ),
-          h('div', { className: 'cart-fulfillment-row' },
+          h('div', { className: 'cart-summary__ship-row' },
             h(TruckIcon, null),
             h('span', null, 'Ship to Guam \u2014 $5 flat')
           )
         ),
 
-        /* Checkout gate message */
+        /* Checkout gate */
         jtcgLoading
-          ? h('div', { className: 'cart-checkout-blocked cart-checkout-blocked--loading' },
+          ? h('div', { className: 'cart-summary__gate cart-summary__gate--loading' },
               h('span', null, 'Loading condition prices\u2026')
             )
           : itemsMissingCondition.length > 0
-            ? h('div', { className: 'cart-checkout-blocked' },
+            ? h('div', { className: 'cart-summary__gate' },
                 h(WarningIcon, null),
                 h('span', null, itemsMissingCondition.length === 1
                   ? 'Select a condition for 1 item before checkout'
@@ -329,15 +353,14 @@ export function CartView(props) {
               )
             : null,
 
-        /* Checkout button — disabled if conditions not selected or still loading */
+        /* Checkout button */
         h('a', {
           href: allConditionsChosen ? '#checkout' : undefined,
-          className: 'btn btn-primary btn-lg cart-checkout-btn' + (!allConditionsChosen ? ' cart-checkout-btn--disabled' : ''),
+          className: 'btn btn-primary btn-lg cart-summary__cta' + (!allConditionsChosen ? ' cart-summary__cta--disabled' : ''),
           onClick: function(e) {
             if (!allConditionsChosen) {
               e.preventDefault();
-              /* Scroll to the first item missing a condition */
-              var el = document.querySelector('.cart-item--needs-condition');
+              var el = document.querySelector('.cart-card--alert');
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           },
@@ -346,11 +369,11 @@ export function CartView(props) {
           'Proceed to Checkout ', h(ChevronRightIcon, null)
         ),
 
-        h('a', { href: '#store', className: 'btn btn-secondary cart-continue-btn' },
+        h('a', { href: '#store', className: 'btn btn-secondary cart-summary__continue' },
           'Continue Shopping'
         ),
 
-        h('div', { className: 'cart-local-pickup-note' },
+        h('div', { className: 'cart-summary__local' },
           h(MapPinIcon, null),
           h('span', null, 'All orders fulfilled through Guam local sellers.')
         )
