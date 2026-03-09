@@ -23,6 +23,7 @@ function savePriceCache(data) {
 function PortfolioImportModal(props) {
   var onClose = props.onClose;
   var onSuccess = props.onSuccess;
+  var onLocalImport = props.onLocalImport;
   var isAuth = props.isAuth;
 
   React.useEffect(function() {
@@ -51,20 +52,6 @@ function PortfolioImportModal(props) {
   var ref5 = React.useState(null);
   var resultMsg = ref5[0], setResultMsg = ref5[1];
 
-  if (!isAuth) {
-    return h('div', { className: 'mp-modal-overlay open import-modal-overlay', onClick: onClose },
-      h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
-        h('div', { className: 'import-modal-header' },
-          h('h3', null, 'Import to Portfolio'),
-          h('button', { className: 'mp-modal-close import-modal-close', onClick: onClose }, h(XIcon, null))
-        ),
-        h('p', { style: { padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-muted)' } },
-          'Sign in to import cards to your portfolio.'
-        )
-      )
-    );
-  }
-
   function handleFileUpload(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -88,23 +75,45 @@ function PortfolioImportModal(props) {
     if (!parsedResult || parsedResult.cards.length === 0) return;
     setSubmitting(true);
 
-    var items = parsedResult.cards.slice(0, 500).map(function(card) {
-      return {
-        card_id: card.scryfallId || '',
-        card_name: card.cardName,
-        quantity: 1,
-        added_price: card.price || 0
-      };
-    });
+    var cards = parsedResult.cards.slice(0, 500);
 
-    addToPortfolioBatch(items).then(function(result) {
+    if (isAuth) {
+      // Authenticated — sync to backend
+      var items = cards.map(function(card) {
+        return {
+          card_id: card.scryfallId || '',
+          card_name: card.cardName,
+          quantity: 1,
+          added_price: card.price || 0
+        };
+      });
+
+      addToPortfolioBatch(items).then(function(result) {
+        setSubmitting(false);
+        setResultMsg('Successfully imported ' + (result.created || items.length) + ' cards.');
+        if (onSuccess) onSuccess();
+      }).catch(function() {
+        setSubmitting(false);
+        setResultMsg('Import failed. Please try again.');
+      });
+    } else {
+      // Not authenticated — save to localStorage portfolio
+      var localItems = cards.map(function(card) {
+        return {
+          id: card.scryfallId || ('import-' + card.cardName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).slice(2, 8)),
+          name: card.cardName,
+          set: card.setName || card.setCode || '',
+          qty: 1,
+          buyPrice: card.price || 0,
+          currentPrice: 0,
+          image: null
+        };
+      });
+
+      if (onLocalImport) onLocalImport(localItems);
       setSubmitting(false);
-      setResultMsg('Successfully imported ' + (result.created || items.length) + ' cards.');
-      if (onSuccess) onSuccess();
-    }).catch(function() {
-      setSubmitting(false);
-      setResultMsg('Import failed. Please try again.');
-    });
+      setResultMsg('Successfully imported ' + localItems.length + ' cards to your local portfolio.');
+    }
   }
 
   var cardCount = parsedResult ? parsedResult.cards.length : 0;
@@ -136,6 +145,17 @@ function PortfolioImportModal(props) {
                   onClick: function() { setImportTab('text'); setParsedResult(null); }
                 }, 'Text / MTGA')
               ),
+
+              // Local storage note for non-auth users
+              !isAuth && h('p', {
+                style: {
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'center',
+                  margin: 'var(--space-2) 0 0',
+                  opacity: 0.8
+                }
+              }, 'Cards will be saved to this browser. Sign in to sync across devices.'),
 
               // CSV tab — file upload + textarea
               importTab === 'csv' && h(React.Fragment, null,
@@ -394,6 +414,11 @@ export function PortfolioView(props) {
             if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
           }).catch(function() {});
         },
+        onLocalImport: function(importedCards) {
+          var existing = portfolio.slice();
+          var merged = existing.concat(importedCards);
+          updatePortfolio(merged);
+        },
         isAuth: !!authUser
       })
     );
@@ -502,6 +527,11 @@ export function PortfolioView(props) {
           });
           if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
         }).catch(function() {});
+      },
+      onLocalImport: function(importedCards) {
+        var existing = portfolio.slice();
+        var merged = existing.concat(importedCards);
+        updatePortfolio(merged);
       },
       isAuth: !!authUser
     })
