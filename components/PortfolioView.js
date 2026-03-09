@@ -52,6 +52,9 @@ function PortfolioImportModal(props) {
   var ref5 = React.useState(null);
   var resultMsg = ref5[0], setResultMsg = ref5[1];
 
+  // Holds imported cards until user clicks Done (prevents parent re-render losing modal state)
+  var pendingRef = React.useRef(null);
+
   function handleFileUpload(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -110,7 +113,9 @@ function PortfolioImportModal(props) {
         };
       });
 
-      if (onLocalImport) onLocalImport(localItems);
+      // Store pending items — we apply them when the user clicks Done
+      // (applying now would re-render the parent and lose this modal's state)
+      pendingRef.current = localItems;
       setSubmitting(false);
       setResultMsg('Successfully imported ' + localItems.length + ' cards to your local portfolio.');
     }
@@ -129,7 +134,14 @@ function PortfolioImportModal(props) {
           ? h('div', { style: { textAlign: 'center', padding: 'var(--space-6)' } },
               h(CheckCircleIcon, null),
               h('p', { style: { marginTop: 'var(--space-3)' } }, resultMsg),
-              h('button', { className: 'btn btn-primary', onClick: onClose, style: { marginTop: 'var(--space-4)' } }, 'Done')
+              h('button', { className: 'btn btn-primary', onClick: function() {
+                // Flush any pending local import items before closing
+                if (pendingRef.current && onLocalImport) {
+                  onLocalImport(pendingRef.current);
+                  pendingRef.current = null;
+                }
+                onClose();
+              }, style: { marginTop: 'var(--space-4)' } }, 'Done')
             )
           : h(React.Fragment, null,
               // Tabs
