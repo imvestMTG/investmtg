@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-09: Cloudflare security hardening — rate limiting, orange-cloud, security headers, JSON-LD (SW v40)
+
+- **Cloudflare Rate Limiting** — Added WAF rate limiting rule via `http_ratelimit` phase: 20 requests per 10 seconds per IP on `/api/*` endpoints. Block action with 10-second mitigation timeout. Uses `cf.colo.id` + `ip.src` characteristics (free tier compatible). Complements the in-memory rate limiter on the Worker.
+- **Cloudflare Orange-Cloud** — Flipped `www.investmtg.com` CNAME from DNS-only (gray cloud) to proxied (orange cloud). All www traffic now routes through Cloudflare's CDN, enabling edge caching, DDoS protection, and HTTP response header injection. SSL `full_strict` mode (set in v39) prevents redirect loops.
+- **Cloudflare Transform Rules** — Added HTTP response header transform rule injecting 6 security headers on all proxied responses: `Strict-Transport-Security` (HSTS with preload), `X-Frame-Options` (SAMEORIGIN), `X-Content-Type-Options` (nosniff), `Referrer-Policy` (strict-origin-when-cross-origin), `Permissions-Policy` (camera/mic/geo denied), `X-XSS-Protection` (1; mode=block).
+- **index.html** — Added `LocalBusiness` JSON-LD structured data block for Guam local search visibility: schema includes area served (Guam), address region (GU/US), geo coordinates (13.4443, 144.7937), price range, and payment info. Complements existing `WebApplication` schema.
+- SW bumped to v40.
+
+---
+
 ## 2026-03-09: Audit hardening — security, infrastructure, schema sync (SW v39)
 
 - **Cloudflare** — Upgraded SSL mode from `full` to `full_strict` (validates GitHub Pages origin cert, prevents MITM). Enabled `always_online` (serves cached pages during origin outages). Both via Cloudflare API.

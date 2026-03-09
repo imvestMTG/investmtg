@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v39`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v40`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -266,7 +266,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css                       # all component styles (formatted, ~7500 lines)
 ├── base.css                        # reset, body defaults, confirm modal
-├── sw.js                           # service worker v39
+├── sw.js                           # service worker v40
 ├── manifest.json
 ├── 404.html
 ├── CNAME
