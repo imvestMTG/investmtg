@@ -126,6 +126,11 @@ function corsHeaders(request) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
+    /* Security headers — defense-in-depth on API responses */
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   };
 }
 
@@ -1650,5 +1655,15 @@ export default {
       console.error('Worker error:', e.message, e.stack);
       return json({ error: 'Internal error', detail: e.message }, 500, request);
     }
+  },
+
+  /* Cron Trigger — runs on schedule defined in wrangler.toml */
+  async scheduled(event, env, ctx) {
+    const now = Math.floor(Date.now() / 1000);
+    // Purge expired auth sessions
+    const result = await env.DB.prepare(
+      'DELETE FROM auth_sessions WHERE expires_at <= ?'
+    ).bind(now).run();
+    console.log('[Cron] Purged ' + (result.meta?.changes || 0) + ' expired auth sessions');
   },
 };

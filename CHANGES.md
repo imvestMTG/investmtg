@@ -1,5 +1,16 @@
 # investMTG — Changelog
 
+## 2026-03-09: Audit hardening — security, infrastructure, schema sync (SW v39)
+
+- **Cloudflare** — Upgraded SSL mode from `full` to `full_strict` (validates GitHub Pages origin cert, prevents MITM). Enabled `always_online` (serves cached pages during origin outages). Both via Cloudflare API.
+- **worker/worker.js** — Added HTTP security headers to all API responses via `corsHeaders()`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Added `scheduled()` handler for Cron Trigger that purges expired rows from `auth_sessions` daily.
+- **worker/wrangler.toml** — Added `[triggers]` section with daily cron (`0 3 * * *` UTC) for auth session cleanup.
+- **worker/schema.sql** — Synced with production D1 schema. Added `users` and `auth_sessions` table definitions (were missing). Added `user_id` column to `portfolios`, `listings`, `sellers`, and `cart_items` tables. Fixed `orders` table to match production (`user_email` instead of `user_id`, added `payment_status`, `checkout_id`, `sumup_txn_id` columns). Fixed `order_counters` default from 1 to 0.
+- **robots.txt** — Added robots.txt allowing all crawlers with sitemap reference.
+- SW bumped to v39.
+
+---
+
 ## 2026-03-09: Fix portfolio data persistence (SW v38)
 
 - **CardDetailView.js** — The "Track" button now syncs to the D1 backend via `addToPortfolioAPI()` (fire-and-forget) in addition to updating localStorage. Previously, tracked cards were only stored in localStorage and never written to D1, meaning a page refresh could wipe the portfolio when the backend returned an empty result set.

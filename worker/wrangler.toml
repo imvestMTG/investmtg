@@ -24,6 +24,10 @@ database_id = "82b5e51e-5d80-4396-8fb2-d345fe54ed0f"
 binding = "CACHE"
 id = "624ae32ee8ab4f0db4075108f350f8e1"
 
+# Cron Trigger — purge expired auth sessions daily at 3:00 AM UTC
+[triggers]
+crons = ["0 3 * * *"]
+
 # API keys stored as encrypted secrets (wrangler secret put)
 # JUSTTCG_API_KEY — set via: wrangler secret put JUSTTCG_API_KEY
 # TOPDECK_API_KEY — set via: wrangler secret put TOPDECK_API_KEY

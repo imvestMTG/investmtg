@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v39** — Audit hardening: SSL full_strict, always_online enabled, security headers on Worker API, daily cron for auth session cleanup, schema.sql synced with production D1, robots.txt added |
 | 2026-03-09 | **v38** — Fix portfolio data persistence: Track button now syncs to D1 backend, app init merges D1 + localStorage (no more data loss on refresh), auto-migrates existing localStorage portfolios to D1 |
 | 2026-03-09 | **v37** — Fix selling cards not in stock: removed CardDetailView direct Add to Cart (now Find Sellers → marketplace), BuyLocalModal requires selecting a real listing with seller, worker rejects orders without seller field |
 | 2026-03-09 | **v36** — Fix SumUp checkout: corrected merchant code typo (M55T01IN → M55T011N), fixed D1 schema mismatch (user_id → user_email in all order queries), enabled guest checkout, improved SumUp error handling, removed deprecated pay_to_email |

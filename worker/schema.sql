@@ -1,6 +1,27 @@
 -- investMTG D1 Database Schema
 -- Run with: wrangler d1 execute investmtg-db --file=schema.sql
 
+-- Users: Google OAuth accounts
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  google_id TEXT UNIQUE NOT NULL,
+  email TEXT NOT NULL,
+  name TEXT NOT NULL,
+  picture TEXT DEFAULT '',
+  role TEXT DEFAULT 'buyer',
+  created_at INTEGER NOT NULL,
+  last_login INTEGER NOT NULL
+);
+
+-- Auth sessions: bearer tokens linked to users (30-day expiry)
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- Price cache: avoid hammering Scryfall on every page load
 CREATE TABLE IF NOT EXISTS prices (
   card_id TEXT PRIMARY KEY,
@@ -29,6 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_prices_updated ON prices(updated_at);
 CREATE TABLE IF NOT EXISTS portfolios (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   session_token TEXT NOT NULL,
+  user_id INTEGER,
   card_id TEXT NOT NULL,
   card_name TEXT,
   quantity INTEGER DEFAULT 1,
@@ -44,6 +66,7 @@ CREATE TABLE IF NOT EXISTS listings (
   seller_name TEXT NOT NULL,
   seller_contact TEXT,
   seller_store TEXT,              -- Store affiliation (if any)
+  user_id INTEGER,
   card_id TEXT,
   card_name TEXT NOT NULL,
   set_name TEXT,
@@ -65,6 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_listings_card ON listings(card_name);
 CREATE TABLE IF NOT EXISTS sellers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   session_token TEXT UNIQUE NOT NULL,
+  user_id INTEGER,
   name TEXT NOT NULL,
   contact TEXT,
   store_affiliation TEXT,
@@ -111,7 +135,7 @@ CREATE TABLE IF NOT EXISTS stores (
 -- Orders: created at checkout
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_email TEXT NOT NULL,
   items TEXT NOT NULL,
   subtotal REAL NOT NULL,
   tax REAL NOT NULL,
@@ -119,9 +143,9 @@ CREATE TABLE IF NOT EXISTS orders (
   total REAL NOT NULL,
   fulfillment TEXT DEFAULT 'pickup',
   pickup_store TEXT,
-  contact_name TEXT,
-  contact_email TEXT,
-  contact_phone TEXT,
+  contact_name TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  contact_phone TEXT NOT NULL,
   payment_method TEXT DEFAULT 'reserve',
   status TEXT DEFAULT 'reserved',
   payment_status TEXT DEFAULT NULL,
@@ -130,19 +154,20 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_email);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 
 -- Monthly sequential counter for GUM-YYYYMM-XXXXX order IDs
 CREATE TABLE IF NOT EXISTS order_counters (
   month_key TEXT PRIMARY KEY,
-  last_seq INTEGER NOT NULL DEFAULT 1
+  last_seq INTEGER NOT NULL DEFAULT 0
 );
 
 -- Cart items (persistent across sessions)
 CREATE TABLE IF NOT EXISTS cart_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   session_token TEXT NOT NULL,
+  user_id INTEGER,
   listing_id INTEGER NOT NULL,
   quantity INTEGER DEFAULT 1,
   added_at INTEGER NOT NULL,

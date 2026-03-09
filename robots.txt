@@ -1,3 +1,6 @@
+# investMTG — Guam's MTG Marketplace
+# https://www.investmtg.com
+
 User-agent: *
 Allow: /
 

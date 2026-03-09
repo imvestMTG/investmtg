@@ -97,7 +97,17 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 - `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Uses `user_email` column (not user_id). Guest orders store `contact_email` as `user_email`. Auto-created by worker if missing. v33 adds ALTER TABLE migration for new payment columns on existing tables.
 - `order_counters` — monthly sequential counter for `GUM-YYYYMM-XXXXX` order IDs. Atomic upsert via `ON CONFLICT DO UPDATE`.
 
+## Scheduled tasks (Cron Triggers)
+
+| Cron | UTC | Purpose |
+|------|-----|---------|
+| `0 3 * * *` | Daily at 3:00 AM | Purge expired rows from `auth_sessions` |
+
+Defined in `wrangler.toml` under `[triggers]`. The `scheduled()` handler in `worker.js` runs the cleanup.
+
 ## Security
+
+All API responses include HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`) via the `corsHeaders()` helper.
 
 - API keys must remain in encrypted worker secrets
 - do not commit secrets to `wrangler.toml`, docs, or source files
