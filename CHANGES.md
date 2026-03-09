@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-09: Import system + storage optimization (SW v41)
+
+- **utils/import-parser.js** (NEW) — Shared parser module extracted from SellerDashboard.js inline parsers. Exports `parseManaboxCSV()`, `parseTextList()`, `parseCSVLine()`, `findCol()`. CSV parser supports Manabox, DragonShield, Deckbox, and TCGplayer column aliases. Text parser handles MTGA format ("4 Lightning Bolt (LEA) 123"), simple card names, and quantity-prefixed lines ("4x Sol Ring"). Both return standardized `{ cards, errors }` shape.
+- **utils/api.js** — Added `createListingsBatch(listings)` (POST /api/listings/batch) and `addToPortfolioBatch(items)` (POST /api/portfolio/batch) for bulk import operations.
+- **worker/worker.js** — Added `handleListingsBatch()`: auth required, accepts up to 500 listings, chunks into groups of 50 for D1 `batch()` atomic inserts, always sets `image_uri = ''` (storage optimization). Added `handlePortfolioBatch()`: auth required, accepts up to 500 items, uses INSERT OR REPLACE for idempotent imports. Modified existing POST /api/listings to always set `image_uri = ''`. Updated `handleHealth()` to v3.1.0 with storage row counts (listings, prices, portfolios). Updated `scheduled()` cron to purge price cache entries older than 30 days (`DELETE FROM prices WHERE updated_at < ?`). Added batch routes in fetch router before startsWith checks.
+- **components/SellerDashboard.js** — Removed inline `parseManaboxCSV`, `findCol`, `parseCSVLine` functions (~135 lines). Now imports from `import-parser.js`. Added CSV/Text tab switcher to BulkImportForm. Text tab supports MTGA format paste. Replaced sequential `createListing()` loop (200ms delay per card) with single `createListingsBatch()` call. Added 500-item cap warning.
+- **components/PortfolioView.js** — Added `PortfolioImportModal` component with CSV and Text tab support, file upload, parse preview, 500-item cap, and batch submit via `addToPortfolioBatch()`. Added Import button to portfolio header (both empty and populated states). Auth guard on import modal.
+- **style.css** — Added `.import-tabs`, `.import-tab`, `.import-tab--active`, `.portfolio-header-row`, `.portfolio-import-btn`, `.import-modal-overlay`, `.import-modal`, `.import-modal-header`, `.import-modal-close`, `.import-modal-body` styles with responsive mobile overrides.
+- **Storage optimizations** — `image_uri` always empty on new listings (~80 bytes/row saved), prices cache auto-purged after 30 days via cron, batch imports capped at 500 items, health endpoint monitors row counts for listings/prices/portfolios.
+- SW bumped to v41.
+
+---
+
 ## 2026-03-09: Cloudflare security hardening — rate limiting, orange-cloud, security headers, JSON-LD (SW v40)
 
 - **Cloudflare Rate Limiting** — Added WAF rate limiting rule via `http_ratelimit` phase: 20 requests per 10 seconds per IP on `/api/*` endpoints. Block action with 10-second mitigation timeout. Uses `cf.colo.id` + `ip.src` characteristics (free tier compatible). Complements the in-memory rate limiter on the Worker.

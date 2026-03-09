@@ -5,7 +5,7 @@ Cloudflare Worker that serves as the unified backend for investMTG — combining
 ## Role in the stack
 
 - the front end is the root-level SPA (vanilla JS, React 18.3.1 via self-hosted vendor bundles) deployed directly to GitHub Pages from the repository root — no build step
-- the Seller Dashboard now uses a step-based listing wizard that queries Scryfall's printings API directly (browser-side, not proxied) for card search and set selection, auto-confirms on blur/Enter, and submits bulk CSV listings via `/api/listings` sequentially
+- the Seller Dashboard now uses a step-based listing wizard that queries Scryfall's printings API directly (browser-side, not proxied) for card search and set selection, auto-confirms on blur/Enter, and submits bulk imports via `/api/listings/batch` (single batch call, max 500)
 - `POST /api/listings` validates `body.price == null` (not `!body.price`) to allow `price=0` for trade-only listings
 - the worker remains the secure layer for proxied API access, server-side data, and protected integrations
 - the domain can continue to sit behind Cloudflare while the front-end files are served from GitHub Pages
@@ -45,7 +45,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 ### Data endpoints
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/health` | GET | health check |
+| `/api/health` | GET | health check with storage stats (listings/prices/portfolios row counts), version 3.1.0 |
 | `/api/ticker` | GET | tracked card prices |
 | `/api/featured` | GET | featured cards (12 high-value staples incl. dual lands, Gaea's Cradle, Tabernacle) |
 | `/api/trending` | GET | trending cards (12 market movers incl. The One Ring, Ragavan, Dockside) |
@@ -54,7 +54,9 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/card/:id` | GET | card detail proxy/cache |
 | `/api/movers/:cat` | GET | market movers by category |
 | `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
-| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings |
+| `/api/portfolio/batch` | POST | batch portfolio import — auth required, max 500 items, D1 batch() in chunks of 50, INSERT OR REPLACE |
+| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings (POST always sets image_uri='', storage optimization) |
+| `/api/listings/batch` | POST | batch listing creation — auth required, max 500, D1 batch() in chunks of 50, image_uri always empty |
 | `/api/sellers` | GET/POST | seller profiles (POST requires auth; returns `{ seller }` on success) |
 | `/api/stores` | GET | verified Guam stores |
 | `/api/events` | GET | community events |
@@ -101,9 +103,9 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 | Cron | UTC | Purpose |
 |------|-----|---------|
-| `0 3 * * *` | Daily at 3:00 AM | Purge expired rows from `auth_sessions` |
+| `0 3 * * *` | Daily at 3:00 AM | 1) Purge expired rows from `auth_sessions` 2) Purge stale `prices` cache entries older than 30 days |
 
-Defined in `wrangler.toml` under `[triggers]`. The `scheduled()` handler in `worker.js` runs the cleanup.
+Defined in `wrangler.toml` under `[triggers]`. The `scheduled()` handler in `worker.js` runs both cleanup tasks.
 
 ## Security
 

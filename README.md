@@ -65,13 +65,14 @@ Key characteristics:
 ### Portfolio
 - portfolio positions with reference values
 - server-side CRUD via `/api/portfolio` with session cookie persistence
+- bulk import from CSV (Manabox, DragonShield, Deckbox, TCGplayer) or text (MTGA format, simple names) via `/api/portfolio/batch`
 - localStorage fallback for unauthenticated sessions
 
 ### Seller flow
 - step-based listing wizard: (1) search card name with auto-confirm on blur/Enter, (2) browse and select a printing from visual grid or list, (3) fill listing details with card summary preview
 - printings grid/list view toggle with card images, set codes, rarity, and market prices
 - guided Guam listing workflow with Scryfall-powered autocomplete and printings search
-- CSV/Manabox bulk import for listing multiple cards at once
+- CSV/Text/MTGA bulk import for listing multiple cards at once via `/api/listings/batch` (max 500)
 - meetup zone and island delivery framing
 - full CRUD via `/api/sellers` and `/api/listings`
 
@@ -159,6 +160,7 @@ investmtg/
 │   ├── config.js                   # centralized constants
 │   ├── events-config.js            # getEventsAsync() with static fallback
 │   ├── helpers.js
+│   ├── import-parser.js            # shared CSV/text/MTGA parser for bulk imports
 │   ├── marketplace-data.js         # Promise-based listings from /api/listings
 │   ├── sanitize.js
 │   └── stores.js                   # getStoresAsync() with static fallback

@@ -94,9 +94,9 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/HomeView.js` | `#home` | Featured, trending, budget sections in horizontal scrolling carousels (12 cards each) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()`. |
-| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
+| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio`, Import button + modal (CSV/Text/MTGA via import-parser.js, batch submit via `/api/portfolio/batch`) |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
-| `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
+| `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
 | `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (card-style layout: colored dot + abbreviation + full name + price per condition), all conditions displayed, checkout gated until all conditions chosen |
 | `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
@@ -130,7 +130,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 
 | File | Purpose |
 |------|---------|
-| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), and 20+ backend proxy functions for all API endpoints |
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), `createListingsBatch()`, `addToPortfolioBatch()`, and 20+ backend proxy functions for all API endpoints |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
@@ -144,6 +144,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `utils/justtcg-api.js` | JustTCG integration via Worker proxy |
 | `utils/topdeck-api.js` | TopDeck.gg integration via Worker proxy |
 | `utils/moxfield-api.js` | Moxfield decklist integration via Worker CORS proxy |
+| `utils/import-parser.js` | Shared bulk import parser: `parseManaboxCSV()` (CSV with Manabox/DragonShield/Deckbox/TCGplayer aliases), `parseTextList()` (MTGA format, simple names, qty-prefixed), `parseCSVLine()`, `findCol()`. Returns `{ cards, errors }`. |
 
 ## Worker architecture
 
@@ -164,7 +165,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ### Worker routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/health` | GET | Health check |
+| `/api/health` | GET | Health check with storage stats (listings, prices, portfolios row counts) |
 | `/api/ticker` | GET | Tracked card prices (KV-cached, 5min TTL) |
 | `/api/featured` | GET | Featured cards (KV-cached, 1hr TTL) |
 | `/api/trending` | GET | Trending cards (KV-cached, 30min TTL) |
@@ -173,7 +174,9 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/card/:id` | GET | Card detail proxy/cache |
 | `/api/movers/:cat` | GET | Market movers by category |
 | `/api/portfolio` | GET/POST/DELETE | Portfolio CRUD |
-| `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings |
+| `/api/portfolio/batch` | POST | Batch portfolio import (auth required, max 500 items, D1 batch insert in chunks of 50) |
+| `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings (POST always sets image_uri='', storage optimization) |
+| `/api/listings/batch` | POST | Batch listing creation (auth required, max 500, D1 batch in chunks of 50, image_uri always empty) |
 | `/api/sellers` | GET/POST | Seller profiles |
 | `/api/stores` | GET | Verified Guam stores |
 | `/api/events` | GET | Community events |

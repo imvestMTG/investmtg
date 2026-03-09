@@ -25,7 +25,9 @@
  *   /api/card/:id         — Card detail with D1-cached pricing
  *   /api/movers/:cat      — Market movers data
  *   /api/portfolio        — Portfolio CRUD (auth user or anonymous session)
+ *   /api/portfolio/batch  — Batch portfolio import (auth required, max 500)
  *   /api/listings         — Marketplace listings CRUD (write routes require auth)
+ *   /api/listings/batch   — Batch listing creation (auth required, max 500)
  *   /api/sellers          — Seller registration + management (write routes require auth)
  *   /api/stores           — Local stores from D1
  *   /api/events           — Community events from D1
@@ -787,6 +789,126 @@ async function handlePortfolio(request, env) {
   return json({ error: 'Method not allowed' }, 405, request);
 }
 
+/* ── Batch portfolio import ── */
+
+async function handlePortfolioBatch(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required — bulk import needs a persistent account' }, 401, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return json({ error: 'items array required' }, 400, request);
+  }
+
+  if (body.items.length > 500) {
+    return json({ error: 'Maximum 500 items per batch' }, 400, request);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  let created = 0;
+
+  // Process in chunks of 50
+  const chunks = [];
+  for (let i = 0; i < body.items.length; i += 50) {
+    chunks.push(body.items.slice(i, i + 50));
+  }
+
+  for (const chunk of chunks) {
+    try {
+      const stmts = chunk.map(item => {
+        if (!item.card_name) return null;
+        return env.DB.prepare(
+          'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          auth.userId,
+          null,
+          item.card_id || '',
+          item.card_name,
+          item.quantity || 1,
+          item.added_price || null,
+          now
+        );
+      }).filter(s => s !== null);
+
+      if (stmts.length > 0) {
+        await env.DB.batch(stmts);
+        created += stmts.length;
+      }
+    } catch (e) {
+      console.error('[Batch Portfolio] Chunk failed:', e.message);
+    }
+  }
+
+  return json({ success: true, created }, 201, request);
+}
+
+/* ── Batch listing creation ── */
+
+async function handleListingsBatch(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.listings) || body.listings.length === 0) {
+    return json({ error: 'listings array required' }, 400, request);
+  }
+
+  if (body.listings.length > 500) {
+    return json({ error: 'Maximum 500 listings per batch' }, 400, request);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  let created = 0;
+  let failed = 0;
+
+  // Process in chunks of 50 for D1 batch limits
+  const chunks = [];
+  for (let i = 0; i < body.listings.length; i += 50) {
+    chunks.push(body.listings.slice(i, i + 50));
+  }
+
+  for (const chunk of chunks) {
+    try {
+      const stmts = chunk.map(item => {
+        if (!item.card_name || item.price == null || !item.condition || !item.seller_name) {
+          failed++;
+          return null;
+        }
+        return env.DB.prepare(
+          'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          auth.userId,
+          item.seller_name,
+          item.seller_contact || '',
+          item.seller_store || '',
+          item.card_id || '',
+          item.card_name,
+          item.set_name || '',
+          item.condition,
+          item.language || 'English',
+          item.price,
+          '',  // image_uri always empty — storage optimization
+          item.notes || '',
+          'active',
+          null,
+          now,
+          now
+        );
+      }).filter(s => s !== null);
+
+      if (stmts.length > 0) {
+        await env.DB.batch(stmts);
+        created += stmts.length;
+      }
+    } catch (e) {
+      console.error('[Batch Listings] Chunk failed:', e.message);
+      failed += chunk.length;
+    }
+  }
+
+  return json({ success: true, created, failed }, 201, request);
+}
+
 /* ── Listing routes ── */
 
 async function handleListings(request, env) {
@@ -856,7 +978,7 @@ async function handleListings(request, env) {
       body.condition,
       body.language || 'English',
       body.price,
-      body.image_uri || '',
+      '',  // image_uri always empty — storage optimization v41
       body.notes || '',
       'active',
       null,
@@ -1586,8 +1708,22 @@ async function handleGenericProxy(request) {
 /* ── Health check ── */
 async function handleHealth(request, env) {
   try {
-    await env.DB.prepare('SELECT 1').first();
-    return json({ status: 'ok', db: 'connected', version: '3.0.0' }, 200, request);
+    const [dbCheck, listingCount, priceCount, portfolioCount] = await Promise.all([
+      env.DB.prepare('SELECT 1').first(),
+      env.DB.prepare('SELECT COUNT(*) as cnt FROM listings').first(),
+      env.DB.prepare('SELECT COUNT(*) as cnt FROM prices').first(),
+      env.DB.prepare('SELECT COUNT(*) as cnt FROM portfolios').first(),
+    ]);
+    return json({
+      status: 'ok',
+      db: 'connected',
+      version: '3.1.0',
+      storage: {
+        listings: listingCount?.cnt || 0,
+        prices: priceCount?.cnt || 0,
+        portfolios: portfolioCount?.cnt || 0,
+      }
+    }, 200, request);
   } catch (e) {
     return json({ status: 'error', db: 'disconnected', error: e.message }, 500, request);
   }
@@ -1627,6 +1763,8 @@ export default {
       if (path === '/api/search')                           return handleSearch(request, env);
       if (path.startsWith('/api/card/'))                    return handleCardDetail(request, env, path.replace('/api/card/', ''));
       if (path.startsWith('/api/movers'))                   return handleMovers(request, env, path.split('/').pop() || 'valuable');
+      if (path === '/api/listings/batch' && request.method === 'POST') return handleListingsBatch(request, env);
+      if (path === '/api/portfolio/batch' && request.method === 'POST') return handlePortfolioBatch(request, env);
       if (path.startsWith('/api/portfolio'))                return handlePortfolio(request, env);
       if (path.startsWith('/api/listings'))                 return handleListings(request, env);
       if (path.startsWith('/api/sellers'))                  return handleSellers(request, env);
@@ -1661,9 +1799,16 @@ export default {
   async scheduled(event, env, ctx) {
     const now = Math.floor(Date.now() / 1000);
     // Purge expired auth sessions
-    const result = await env.DB.prepare(
+    const authResult = await env.DB.prepare(
       'DELETE FROM auth_sessions WHERE expires_at <= ?'
     ).bind(now).run();
-    console.log('[Cron] Purged ' + (result.meta?.changes || 0) + ' expired auth sessions');
+    console.log('[Cron] Purged ' + (authResult.meta?.changes || 0) + ' expired auth sessions');
+
+    // Purge stale price cache entries (>30 days old)
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
+    const priceResult = await env.DB.prepare(
+      'DELETE FROM prices WHERE updated_at < ?'
+    ).bind(thirtyDaysAgo).run();
+    console.log('[Cron] Purged ' + (priceResult.meta?.changes || 0) + ' stale price cache entries (>30 days old)');
   },
 };

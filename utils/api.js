@@ -322,6 +322,24 @@ export function deleteListing(id) {
   });
 }
 
+/** POST /api/listings/batch — { listings: [...] } */
+export function createListingsBatch(listings) {
+  return backendFetch('/api/listings/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ listings: listings })
+  });
+}
+
+/** POST /api/portfolio/batch — { items: [...] } */
+export function addToPortfolioBatch(items) {
+  return backendFetch('/api/portfolio/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items })
+  });
+}
+
 /* ── Sellers ───────────────────────────────────────────────────────────── */
 
 /** GET /api/sellers — { registered: bool, seller?: {...}, listings?: [...] } */

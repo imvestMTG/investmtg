@@ -1,9 +1,10 @@
 /* PortfolioView.js — Portfolio with live prices from backend */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
-import { PortfolioIcon } from './shared/Icons.js';
-import { fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI } from '../utils/api.js';
+import { PortfolioIcon, UploadIcon, AlertCircleIcon, CheckCircleIcon, XIcon } from './shared/Icons.js';
+import { fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI, addToPortfolioBatch } from '../utils/api.js';
 import { storageGet, storageSet } from '../utils/storage.js';
+import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 var h = React.createElement;
 
 var PRICE_CACHE_KEY = 'investmtg-portfolio-prices';
@@ -19,6 +20,227 @@ function savePriceCache(data) {
   storageSet(PRICE_CACHE_KEY, { ts: Date.now(), data: data });
 }
 
+function PortfolioImportModal(props) {
+  var onClose = props.onClose;
+  var onSuccess = props.onSuccess;
+  var isAuth = props.isAuth;
+
+  var ref1 = React.useState('csv');
+  var importTab = ref1[0], setImportTab = ref1[1];
+
+  var ref2 = React.useState('');
+  var inputText = ref2[0], setInputText = ref2[1];
+
+  var ref3 = React.useState(null);
+  var parsedResult = ref3[0], setParsedResult = ref3[1];
+
+  var ref4 = React.useState(false);
+  var submitting = ref4[0], setSubmitting = ref4[1];
+
+  var ref5 = React.useState(null);
+  var resultMsg = ref5[0], setResultMsg = ref5[1];
+
+  if (!isAuth) {
+    return h('div', { className: 'import-modal-overlay', onClick: onClose },
+      h('div', { className: 'import-modal', onClick: function(e) { e.stopPropagation(); } },
+        h('div', { className: 'import-modal-header' },
+          h('h3', null, 'Import to Portfolio'),
+          h('button', { className: 'import-modal-close', onClick: onClose }, h(XIcon, null))
+        ),
+        h('p', { style: { padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-muted)' } },
+          'Sign in to import cards to your portfolio.'
+        )
+      )
+    );
+  }
+
+  function handleFileUpload(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var text = evt.target.result;
+      setInputText(text);
+      var result = parseManaboxCSV(text);
+      setParsedResult(result);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleParse() {
+    if (!inputText.trim()) return;
+    var result = importTab === 'text' ? parseTextList(inputText) : parseManaboxCSV(inputText);
+    setParsedResult(result);
+  }
+
+  function handleImport() {
+    if (!parsedResult || parsedResult.cards.length === 0) return;
+    setSubmitting(true);
+
+    var items = parsedResult.cards.slice(0, 500).map(function(card) {
+      return {
+        card_id: card.scryfallId || '',
+        card_name: card.cardName,
+        quantity: 1,
+        added_price: card.price || 0
+      };
+    });
+
+    addToPortfolioBatch(items).then(function(result) {
+      setSubmitting(false);
+      setResultMsg('Successfully imported ' + (result.created || items.length) + ' cards.');
+      if (onSuccess) onSuccess();
+    }).catch(function() {
+      setSubmitting(false);
+      setResultMsg('Import failed. Please try again.');
+    });
+  }
+
+  var cardCount = parsedResult ? parsedResult.cards.length : 0;
+
+  return h('div', { className: 'import-modal-overlay', onClick: onClose },
+    h('div', { className: 'import-modal', onClick: function(e) { e.stopPropagation(); } },
+      h('div', { className: 'import-modal-header' },
+        h('h3', null, 'Import to Portfolio'),
+        h('button', { className: 'import-modal-close', onClick: onClose }, h(XIcon, null))
+      ),
+      h('div', { className: 'import-modal-body' },
+        resultMsg
+          ? h('div', { style: { textAlign: 'center', padding: 'var(--space-6)' } },
+              h(CheckCircleIcon, null),
+              h('p', { style: { marginTop: 'var(--space-3)' } }, resultMsg),
+              h('button', { className: 'btn btn-primary', onClick: onClose, style: { marginTop: 'var(--space-4)' } }, 'Done')
+            )
+          : h(React.Fragment, null,
+              // Tabs
+              h('div', { className: 'import-tabs' },
+                h('button', {
+                  type: 'button',
+                  className: 'import-tab' + (importTab === 'csv' ? ' import-tab--active' : ''),
+                  onClick: function() { setImportTab('csv'); setParsedResult(null); }
+                }, 'CSV Import'),
+                h('button', {
+                  type: 'button',
+                  className: 'import-tab' + (importTab === 'text' ? ' import-tab--active' : ''),
+                  onClick: function() { setImportTab('text'); setParsedResult(null); }
+                }, 'Text / MTGA')
+              ),
+
+              // CSV tab — file upload + textarea
+              importTab === 'csv' && h(React.Fragment, null,
+                h('div', { className: 'form-group' },
+                  h('label', { className: 'form-label' }, 'Upload CSV File'),
+                  h('div', { className: 'bulk-upload-zone' },
+                    h('input', {
+                      type: 'file',
+                      accept: '.csv,.txt',
+                      onChange: handleFileUpload,
+                      className: 'bulk-file-input',
+                      id: 'portfolio-file-input'
+                    }),
+                    h('label', { htmlFor: 'portfolio-file-input', className: 'bulk-upload-label' },
+                      h(UploadIcon, null),
+                      h('span', null, 'Choose CSV file'),
+                      h('span', { className: 'bulk-upload-hint' }, 'Manabox, DragonShield, Deckbox, or TCGplayer')
+                    )
+                  )
+                ),
+                h('div', { className: 'bulk-divider' },
+                  h('span', null, 'or paste CSV text')
+                ),
+                h('div', { className: 'form-group' },
+                  h('textarea', {
+                    className: 'form-input bulk-csv-textarea',
+                    rows: 5,
+                    placeholder: 'Name,Set Name,Quantity,Condition\nLightning Bolt,Alpha,1,NM\nCounterspell,Ice Age,4,LP',
+                    value: inputText,
+                    onChange: function(e) { setInputText(e.target.value); setParsedResult(null); }
+                  })
+                )
+              ),
+
+              // Text tab
+              importTab === 'text' && h('div', { className: 'form-group' },
+                h('label', { className: 'form-label' }, 'Paste Card List'),
+                h('textarea', {
+                  className: 'form-input bulk-csv-textarea',
+                  rows: 8,
+                  placeholder: '4 Lightning Bolt (LEA) 123\n1 Counterspell (ICE)\nSol Ring\n3x Swords to Plowshares',
+                  value: inputText,
+                  onChange: function(e) { setInputText(e.target.value); setParsedResult(null); }
+                })
+              ),
+
+              // Parse button
+              !parsedResult && inputText.trim() && h('button', {
+                type: 'button',
+                className: 'btn btn-secondary btn-sm',
+                onClick: handleParse,
+                style: { marginTop: 'var(--space-2)' }
+              }, 'Parse'),
+
+              // Results
+              parsedResult && cardCount > 0 && h('div', { className: 'bulk-preview', style: { marginTop: 'var(--space-4)' } },
+                cardCount > 500 && h('div', { className: 'bulk-warnings' },
+                  h(AlertCircleIcon, null),
+                  h('p', { className: 'bulk-warning-text' }, 'Maximum 500 cards. Only the first 500 will be imported.')
+                ),
+                h('div', { className: 'bulk-preview-summary' },
+                  h(CheckCircleIcon, null),
+                  h('span', null, Math.min(cardCount, 500) + ' card' + (Math.min(cardCount, 500) !== 1 ? 's' : '') + ' ready to import')
+                ),
+                h('div', { className: 'bulk-preview-table-wrap' },
+                  h('table', { className: 'bulk-preview-table' },
+                    h('thead', null,
+                      h('tr', null,
+                        h('th', null, 'Card Name'),
+                        h('th', null, 'Set'),
+                        h('th', null, 'Qty')
+                      )
+                    ),
+                    h('tbody', null,
+                      parsedResult.cards.slice(0, 15).map(function(card, i) {
+                        return h('tr', { key: i },
+                          h('td', null, card.cardName),
+                          h('td', null, card.setName || card.setCode || '\u2014'),
+                          h('td', null, '1')
+                        );
+                      }),
+                      cardCount > 15 && h('tr', null,
+                        h('td', { colSpan: 3, style: { textAlign: 'center', color: 'var(--color-text-muted)' } },
+                          '\u2026 and ' + (Math.min(cardCount, 500) - 15) + ' more'
+                        )
+                      )
+                    )
+                  )
+                )
+              ),
+
+              parsedResult && parsedResult.errors.length > 0 && h('div', { className: 'bulk-warnings', style: { marginTop: 'var(--space-3)' } },
+                h(AlertCircleIcon, null),
+                h('div', null,
+                  parsedResult.errors.slice(0, 5).map(function(err, i) {
+                    return h('p', { key: i, className: 'bulk-warning-text' }, err);
+                  })
+                )
+              ),
+
+              // Import button
+              parsedResult && cardCount > 0 && !resultMsg && h('div', { className: 'listing-form-actions', style: { marginTop: 'var(--space-4)' } },
+                h('button', { type: 'button', className: 'btn btn-secondary', onClick: onClose }, 'Cancel'),
+                h('button', {
+                  type: 'button',
+                  className: 'btn btn-primary',
+                  disabled: submitting,
+                  onClick: handleImport
+                }, submitting ? 'Importing\u2026' : 'Import ' + Math.min(cardCount, 500) + ' Card' + (Math.min(cardCount, 500) !== 1 ? 's' : ''))
+              )
+            )
+      )
+    )
+  );
+}
+
 export function PortfolioView(props) {
   var state = props.state;
   var updatePortfolio = props.updatePortfolio;
@@ -28,6 +250,9 @@ export function PortfolioView(props) {
   var livePrices = ref1[0], setLivePrices = ref1[1];
   var ref2 = React.useState(false);
   var pricesLoaded = ref2[0], setPricesLoaded = ref2[1];
+
+  var ref3 = React.useState(false);
+  var showImport = ref3[0], setShowImport = ref3[1];
 
   React.useEffect(function() {
     if (portfolio.length === 0) return;
@@ -125,18 +350,51 @@ export function PortfolioView(props) {
 
   if (portfolio.length === 0) {
     return h('div', { className: 'container portfolio-page' },
-      h('h1', { className: 'page-heading' }, 'My Portfolio'),
+      h('div', { className: 'portfolio-header-row' },
+        h('h1', { className: 'page-heading' }, 'My Portfolio'),
+        h('button', {
+          className: 'btn btn-secondary btn-sm portfolio-import-btn',
+          onClick: function() { setShowImport(true); }
+        }, h(UploadIcon, null), ' Import')
+      ),
       h('div', { className: 'empty-state' },
         h('div', { className: 'empty-state-icon' }, h(PortfolioIcon, null)),
         h('h3', null, 'Your portfolio is empty'),
         h('p', null, 'Search for cards and click "Track" to add them to your portfolio.'),
         h('a', { href: '#search', className: 'btn btn-primary' }, 'Browse Cards')
-      )
+      ),
+      showImport && h(PortfolioImportModal, {
+        onClose: function() { setShowImport(false); },
+        onSuccess: function() {
+          fetchPortfolio().then(function(data) {
+            var items = (data && data.items) ? data.items : [];
+            var updatedPortfolio = items.map(function(item) {
+              return {
+                id: item.card_id,
+                name: item.card_name,
+                set: item.set_name || '',
+                qty: item.quantity || 1,
+                buyPrice: item.added_price || 0,
+                currentPrice: parseFloat(item.price_usd) || parseFloat(item.price_usd_foil) || 0,
+                image: item.image_small || null
+              };
+            });
+            if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
+          }).catch(function() {});
+        },
+        isAuth: !!state.user
+      })
     );
   }
 
   return h('div', { className: 'container portfolio-page' },
-    h('h1', { className: 'page-heading' }, 'My Portfolio'),
+    h('div', { className: 'portfolio-header-row' },
+      h('h1', { className: 'page-heading' }, 'My Portfolio'),
+      h('button', {
+        className: 'btn btn-secondary btn-sm portfolio-import-btn',
+        onClick: function() { setShowImport(true); }
+      }, h(UploadIcon, null), ' Import')
+    ),
     h('div', { className: 'portfolio-kpis' },
       h('div', { className: 'kpi-card' },
         h('div', { className: 'kpi-label' }, 'Total Cost'),
@@ -213,6 +471,27 @@ export function PortfolioView(props) {
     ),
     h('p', { className: 'price-source', style: { marginTop: 'var(--space-4)' } },
       'Gain/Loss calculated from your buy price vs. live market data. Prices update every 5 minutes.'
-    )
+    ),
+    showImport && h(PortfolioImportModal, {
+      onClose: function() { setShowImport(false); },
+      onSuccess: function() {
+        fetchPortfolio().then(function(data) {
+          var items = (data && data.items) ? data.items : [];
+          var updatedPortfolio = items.map(function(item) {
+            return {
+              id: item.card_id,
+              name: item.card_name,
+              set: item.set_name || '',
+              qty: item.quantity || 1,
+              buyPrice: item.added_price || 0,
+              currentPrice: parseFloat(item.price_usd) || parseFloat(item.price_usd_foil) || 0,
+              image: item.image_small || null
+            };
+          });
+          if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
+        }).catch(function() {});
+      },
+      isAuth: !!state.user
+    })
   );
 }

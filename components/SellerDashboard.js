@@ -6,7 +6,8 @@ import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
-import { fetchSeller, registerSeller, createListing, deleteListing, fetchListings } from '../utils/api.js';
+import { fetchSeller, registerSeller, createListing, createListingsBatch, deleteListing, fetchListings } from '../utils/api.js';
+import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 import { storageGet } from '../utils/storage.js';
 import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
@@ -688,142 +689,6 @@ function ListingForm(props) {
   );
 }
 
-// ===== CSV / MANABOX BULK IMPORT =====
-function parseManaboxCSV(csvText) {
-  var lines = csvText.split(/\r?\n/).filter(function(l) { return l.trim(); });
-  if (lines.length < 2) return { cards: [], errors: ['CSV must have a header row and at least one data row'] };
-
-  // Parse header — Manabox uses comma-separated with possible quoted fields
-  var header = parseCSVLine(lines[0]).map(function(h) { return h.toLowerCase().trim(); });
-
-  // Find column indices — support Manabox column names
-  var nameIdx = findCol(header, ['name', 'card name', 'card_name', 'cardname']);
-  var setIdx = findCol(header, ['set name', 'set_name', 'setname', 'set', 'edition']);
-  var setCodeIdx = findCol(header, ['set code', 'set_code', 'setcode']);
-  var qtyIdx = findCol(header, ['quantity', 'qty', 'count']);
-  var condIdx = findCol(header, ['condition', 'cond']);
-  var foilIdx = findCol(header, ['foil']);
-  var priceIdx = findCol(header, ['purchase price', 'price', 'purchase_price', 'cost']);
-  var scryfallIdx = findCol(header, ['scryfall id', 'scryfall_id', 'scryfallid']);
-
-  if (nameIdx === -1) {
-    return { cards: [], errors: ['Could not find a "Name" or "Card Name" column in CSV header. Found columns: ' + header.join(', ')] };
-  }
-
-  var cards = [];
-  var parseErrors = [];
-
-  for (var i = 1; i < lines.length; i++) {
-    var cols = parseCSVLine(lines[i]);
-    var name = (cols[nameIdx] || '').trim();
-    if (!name) {
-      parseErrors.push('Row ' + (i + 1) + ': empty card name, skipped');
-      continue;
-    }
-
-    var qty = 1;
-    if (qtyIdx !== -1 && cols[qtyIdx]) {
-      var parsedQty = parseInt(cols[qtyIdx], 10);
-      if (!isNaN(parsedQty) && parsedQty > 0) qty = parsedQty;
-    }
-
-    var condition = 'NM';
-    if (condIdx !== -1 && cols[condIdx]) {
-      var rawCond = cols[condIdx].trim().toUpperCase();
-      if (['NM', 'LP', 'MP', 'HP', 'DMG'].indexOf(rawCond) !== -1) {
-        condition = rawCond;
-      } else if (rawCond === 'NEAR MINT' || rawCond === 'MINT') {
-        condition = 'NM';
-      } else if (rawCond === 'LIGHTLY PLAYED' || rawCond === 'LIGHT PLAY') {
-        condition = 'LP';
-      } else if (rawCond === 'MODERATELY PLAYED' || rawCond === 'MODERATE PLAY') {
-        condition = 'MP';
-      } else if (rawCond === 'HEAVILY PLAYED' || rawCond === 'HEAVY PLAY') {
-        condition = 'HP';
-      } else if (rawCond === 'DAMAGED') {
-        condition = 'DMG';
-      }
-    }
-
-    var price = 0;
-    if (priceIdx !== -1 && cols[priceIdx]) {
-      var rawPrice = cols[priceIdx].replace(/[^0-9.]/g, '');
-      var parsedPrice = parseFloat(rawPrice);
-      if (!isNaN(parsedPrice) && parsedPrice > 0) price = parsedPrice;
-    }
-
-    var setName = '';
-    if (setIdx !== -1 && cols[setIdx]) setName = cols[setIdx].trim();
-
-    var setCode = '';
-    if (setCodeIdx !== -1 && cols[setCodeIdx]) setCode = cols[setCodeIdx].trim();
-
-    var foil = false;
-    if (foilIdx !== -1 && cols[foilIdx]) {
-      var rawFoil = cols[foilIdx].trim().toLowerCase();
-      foil = rawFoil === 'true' || rawFoil === 'yes' || rawFoil === '1' || rawFoil === 'foil';
-    }
-
-    var scryfallId = '';
-    if (scryfallIdx !== -1 && cols[scryfallIdx]) scryfallId = cols[scryfallIdx].trim();
-
-    // Expand quantity into individual cards for bulk creation
-    for (var q = 0; q < qty; q++) {
-      cards.push({
-        cardName: name,
-        setName: setName,
-        setCode: setCode,
-        condition: condition,
-        price: price,
-        foil: foil,
-        scryfallId: scryfallId,
-        notes: foil ? 'Foil' : ''
-      });
-    }
-  }
-
-  return { cards: cards, errors: parseErrors };
-}
-
-function findCol(header, aliases) {
-  for (var i = 0; i < aliases.length; i++) {
-    var idx = header.indexOf(aliases[i]);
-    if (idx !== -1) return idx;
-  }
-  return -1;
-}
-
-function parseCSVLine(line) {
-  var cols = [];
-  var current = '';
-  var inQuotes = false;
-  for (var i = 0; i < line.length; i++) {
-    var ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        cols.push(current);
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-  }
-  cols.push(current);
-  return cols;
-}
 
 function BulkImportForm(props) {
   var onBulkSave = props.onBulkSave;
@@ -851,6 +716,9 @@ function BulkImportForm(props) {
   var ref7 = React.useState(null);
   var progress = ref7[0], setProgress = ref7[1];
 
+  var ref8 = React.useState('csv');
+  var importTab = ref8[0], setImportTab = ref8[1];
+
   function handleFileUpload(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -866,7 +734,7 @@ function BulkImportForm(props) {
 
   function handleParseText() {
     if (!csvText.trim()) return;
-    var result = parseManaboxCSV(csvText);
+    var result = importTab === 'text' ? parseTextList(csvText) : parseManaboxCSV(csvText);
     setParsedResult(result);
   }
 
@@ -876,50 +744,25 @@ function BulkImportForm(props) {
     setProgress({ done: 0, total: parsedResult.cards.length, failed: 0 });
 
     var cards = parsedResult.cards.map(function(card) {
-      return Object.assign({}, card, {
-        type: listingType,
-        price: card.price > 0 ? card.price : (parseFloat(defaultPrice) || 0),
-        contact: contact || seller.contact || ''
-      });
-    });
-
-    // Submit cards sequentially to respect rate limits
-    var idx = 0;
-    var failedCount = 0;
-
-    function submitNext() {
-      if (idx >= cards.length) {
-        setSubmitting(false);
-        setProgress(function(p) { return Object.assign({}, p, { done: cards.length, failed: failedCount }); });
-        onBulkSave(cards.length - failedCount);
-        return;
-      }
-      var card = cards[idx];
-      var backendData = {
+      return {
         card_name: card.cardName || '',
-        price: card.price || 0,
+        price: card.price > 0 ? card.price : (parseFloat(defaultPrice) || 0),
         condition: card.condition || 'NM',
         seller_name: seller.name || '',
-        seller_contact: card.contact || seller.contact || '',
+        seller_contact: contact || seller.contact || '',
         set_name: card.setName || '',
-        notes: card.notes || '',
-        image_uri: null
+        notes: card.notes || ''
       };
+    });
 
-      createListing(backendData).then(function() {
-        idx++;
-        setProgress(function(p) { return Object.assign({}, p, { done: idx }); });
-        // Small delay between submissions
-        setTimeout(submitNext, 200);
-      }).catch(function() {
-        failedCount++;
-        idx++;
-        setProgress(function(p) { return Object.assign({}, p, { done: idx, failed: failedCount }); });
-        setTimeout(submitNext, 200);
-      });
-    }
-
-    submitNext();
+    createListingsBatch(cards).then(function(result) {
+      setSubmitting(false);
+      setProgress({ done: result.created || cards.length, total: cards.length, failed: result.failed || 0 });
+      onBulkSave(result.created || cards.length);
+    }).catch(function(err) {
+      setSubmitting(false);
+      setProgress(function(p) { return Object.assign({}, p, { done: p.total, failed: p.total }); });
+    });
   }
 
   var cardCount = parsedResult ? parsedResult.cards.length : 0;
@@ -928,14 +771,32 @@ function BulkImportForm(props) {
     h('h3', { className: 'listing-form-title' },
       h(LayersIcon, null), ' Bulk Import'
     ),
-    h('p', { className: 'bulk-import-desc' },
-      'Import multiple cards at once from a CSV file. Supports ',
-      h('strong', null, 'Manabox'),
-      ' export format and standard CSV with columns like Name, Set, Quantity, Condition, Price.'
+    // Import format tabs
+    h('div', { className: 'import-tabs' },
+      h('button', {
+        type: 'button',
+        className: 'import-tab' + (importTab === 'csv' ? ' import-tab--active' : ''),
+        onClick: function() { setImportTab('csv'); setParsedResult(null); }
+      }, 'CSV Import'),
+      h('button', {
+        type: 'button',
+        className: 'import-tab' + (importTab === 'text' ? ' import-tab--active' : ''),
+        onClick: function() { setImportTab('text'); setParsedResult(null); }
+      }, 'Text / MTGA')
     ),
 
-    // File upload
-    h('div', { className: 'form-group' },
+    importTab === 'csv'
+      ? h('p', { className: 'bulk-import-desc' },
+          'Import multiple cards from a CSV file. Supports ',
+          h('strong', null, 'Manabox'), ', ', h('strong', null, 'DragonShield'), ', ',
+          h('strong', null, 'Deckbox'), ', and ', h('strong', null, 'TCGplayer'), ' exports.'
+        )
+      : h('p', { className: 'bulk-import-desc' },
+          'Paste a card list in MTGA format, simple names, or quantity-prefixed lines.'
+        ),
+
+    // File upload (CSV tab only)
+    importTab === 'csv' && h('div', { className: 'form-group' },
       h('label', { className: 'form-label' }, 'Upload CSV File'),
       h('div', { className: 'bulk-upload-zone' },
         h('input', {
@@ -953,12 +814,12 @@ function BulkImportForm(props) {
       )
     ),
 
-    // Or paste CSV text
-    h('div', { className: 'bulk-divider' },
+    // Or paste CSV text (CSV tab only)
+    importTab === 'csv' && h('div', { className: 'bulk-divider' },
       h('span', null, 'or paste CSV text below')
     ),
 
-    h('div', { className: 'form-group' },
+    importTab === 'csv' && h('div', { className: 'form-group' },
       h('textarea', {
         className: 'form-input bulk-csv-textarea',
         rows: 6,
@@ -972,6 +833,23 @@ function BulkImportForm(props) {
         onClick: handleParseText,
         style: { marginTop: 'var(--space-2)' }
       }, 'Parse CSV')
+    ),
+
+    // Text tab textarea
+    importTab === 'text' && h('div', { className: 'form-group' },
+      h('textarea', {
+        className: 'form-input bulk-csv-textarea',
+        rows: 6,
+        placeholder: '4 Lightning Bolt (LEA) 123\n1 Counterspell (ICE)\nSol Ring\n3x Swords to Plowshares',
+        value: csvText,
+        onChange: function(e) { setCsvText(e.target.value); setParsedResult(null); }
+      }),
+      !parsedResult && csvText.trim() && h('button', {
+        type: 'button',
+        className: 'btn btn-secondary btn-sm',
+        onClick: handleParseText,
+        style: { marginTop: 'var(--space-2)' }
+      }, 'Parse')
     ),
 
     // Parse results preview
@@ -988,6 +866,11 @@ function BulkImportForm(props) {
       cardCount > 0 && h('div', { className: 'bulk-preview-summary' },
         h(CheckCircleIcon, null),
         h('span', null, cardCount + ' card' + (cardCount !== 1 ? 's' : '') + ' ready to import')
+      ),
+
+      cardCount > 500 && h('div', { className: 'bulk-warnings' },
+        h(AlertCircleIcon, null),
+        h('p', { className: 'bulk-warning-text' }, 'Maximum 500 cards per import. Only the first 500 will be imported.')
       ),
 
       cardCount > 0 && h('div', { className: 'bulk-preview-table-wrap' },
