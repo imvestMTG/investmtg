@@ -365,6 +365,7 @@ function App() {
       }),
       route.page === 'portfolio' && h(PortfolioView, {
         state: gs.state,
+        user: authUser,
         updatePortfolio: gs.updatePortfolio
       }),
       route.page === 'cart' && h(CartView, {

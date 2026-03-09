@@ -243,6 +243,7 @@ function PortfolioImportModal(props) {
 
 export function PortfolioView(props) {
   var state = props.state;
+  var authUser = props.user;
   var updatePortfolio = props.updatePortfolio;
   var portfolio = state.portfolio;
 
@@ -382,7 +383,7 @@ export function PortfolioView(props) {
             if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
           }).catch(function() {});
         },
-        isAuth: !!state.user
+        isAuth: !!authUser
       })
     );
   }
@@ -491,7 +492,7 @@ export function PortfolioView(props) {
           if (updatedPortfolio.length > 0) updatePortfolio(updatedPortfolio);
         }).catch(function() {});
       },
-      isAuth: !!state.user
+      isAuth: !!authUser
     })
   );
 }

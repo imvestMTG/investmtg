@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-09: Portfolio import auth gate fix (SW v43)
+
+- **app.js** — `PortfolioView` now receives the same `authUser` object used by the Header and SellerDashboard. This removes the auth-state mismatch where the portfolio route only saw global portfolio data but not the live signed-in user.
+- **components/PortfolioView.js** — Import modal auth gating now keys off `props.user` instead of `state.user`. Root cause: `state.user` was never populated in the global state object, so the import flow always evaluated as signed out even when OAuth had succeeded and the Header showed an authenticated session.
+- **Result** — Signed-in users can open the portfolio import flow without being incorrectly blocked by the "Sign in to import cards to your portfolio." message.
+- SW bumped to v43.
+
+---
+
 ## 2026-03-09: Portfolio header layout fix (SW v42)
 
 - **style.css** — Removed `flex-direction: column` responsive override on `.portfolio-header-row` at `@media (max-width: 767px)`. The heading + Import button now stay inline at all viewport widths. The previous rule caused the Import button to stack below "My Portfolio" on narrower browser windows (e.g., when a sidebar was open).
