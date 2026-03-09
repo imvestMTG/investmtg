@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-09: Portfolio import modal UI hardening (SW v44)
+
+- **components/PortfolioView.js** — Converted the portfolio import dialog to the shared modal structure (`mp-modal-overlay`, `mp-modal`, `mp-modal-close`) so it renders through the same overlay/card pattern already used by the stable listing modal. Added a mount cleanup effect that locks `body` and `html` scrolling while the modal is open, then restores the previous overflow values on close.
+- **style.css** — Simplified the import modal CSS into a shared-modal override layer instead of a separate full overlay system. Kept the import modal at `z-index: 10000`, added safe-area padding, iOS-friendly scrolling (`-webkit-overflow-scrolling: touch`), a `100dvh`-aware max-height, and a mobile top-aligned layout to reduce Safari/iPad fixed-overlay rendering issues.
+- **Local QA** — Verified the signed-out import modal now renders as a centered overlay card on desktop and a correctly padded top-aligned modal on mobile, rather than appearing inline or under the sticky header.
+- SW bumped to v44.
+
+---
+
 ## 2026-03-09: Portfolio import auth gate fix (SW v43)
 
 - **app.js** — `PortfolioView` now receives the same `authUser` object used by the Header and SellerDashboard. This removes the auth-state mismatch where the portfolio route only saw global portfolio data but not the live signed-in user.

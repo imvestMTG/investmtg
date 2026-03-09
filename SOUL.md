@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v44** — Portfolio import modal UI hardening: moved the import dialog onto the shared mp-modal overlay/card system, added scroll locking while open, safe-area padding, and mobile/Safari-friendly sizing so the modal renders as a proper overlay instead of appearing inline or under sticky UI |
 | 2026-03-09 | **v43** — Portfolio import auth gate fix: PortfolioView now receives authUser from App, and the import modal uses props.user instead of nonexistent state.user so signed-in users are no longer falsely blocked |
 | 2026-03-09 | **v42** — Portfolio header layout fix: removed flex-direction:column responsive override so Import button stays inline at all widths |
 | 2026-03-09 | **v41** — Import system + storage optimization: shared import-parser.js (CSV/text/MTGA parsing), batch endpoints (POST /api/listings/batch + /api/portfolio/batch, max 500), SellerDashboard CSV/Text tabs with batch import, PortfolioView import modal, prices cache 30-day TTL cron cleanup, image_uri storage optimization, health endpoint storage monitoring |

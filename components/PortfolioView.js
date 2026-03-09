@@ -25,6 +25,17 @@ function PortfolioImportModal(props) {
   var onSuccess = props.onSuccess;
   var isAuth = props.isAuth;
 
+  React.useEffect(function() {
+    var prevBodyOverflow = document.body.style.overflow;
+    var prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return function() {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
+
   var ref1 = React.useState('csv');
   var importTab = ref1[0], setImportTab = ref1[1];
 
@@ -41,11 +52,11 @@ function PortfolioImportModal(props) {
   var resultMsg = ref5[0], setResultMsg = ref5[1];
 
   if (!isAuth) {
-    return h('div', { className: 'import-modal-overlay', onClick: onClose },
-      h('div', { className: 'import-modal', onClick: function(e) { e.stopPropagation(); } },
+    return h('div', { className: 'mp-modal-overlay open import-modal-overlay', onClick: onClose },
+      h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
         h('div', { className: 'import-modal-header' },
           h('h3', null, 'Import to Portfolio'),
-          h('button', { className: 'import-modal-close', onClick: onClose }, h(XIcon, null))
+          h('button', { className: 'mp-modal-close import-modal-close', onClick: onClose }, h(XIcon, null))
         ),
         h('p', { style: { padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-muted)' } },
           'Sign in to import cards to your portfolio.'
@@ -98,11 +109,11 @@ function PortfolioImportModal(props) {
 
   var cardCount = parsedResult ? parsedResult.cards.length : 0;
 
-  return h('div', { className: 'import-modal-overlay', onClick: onClose },
-    h('div', { className: 'import-modal', onClick: function(e) { e.stopPropagation(); } },
+  return h('div', { className: 'mp-modal-overlay open import-modal-overlay', onClick: onClose },
+    h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
       h('div', { className: 'import-modal-header' },
         h('h3', null, 'Import to Portfolio'),
-        h('button', { className: 'import-modal-close', onClick: onClose }, h(XIcon, null))
+        h('button', { className: 'mp-modal-close import-modal-close', onClick: onClose }, h(XIcon, null))
       ),
       h('div', { className: 'import-modal-body' },
         resultMsg
