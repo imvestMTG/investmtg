@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-09 | **v42** — Portfolio header layout fix: removed flex-direction:column responsive override so Import button stays inline at all widths |
 | 2026-03-09 | **v41** — Import system + storage optimization: shared import-parser.js (CSV/text/MTGA parsing), batch endpoints (POST /api/listings/batch + /api/portfolio/batch, max 500), SellerDashboard CSV/Text tabs with batch import, PortfolioView import modal, prices cache 30-day TTL cron cleanup, image_uri storage optimization, health endpoint storage monitoring |
 | 2026-03-09 | **v40** — Cloudflare security hardening: WAF rate limiting on /api/* (20 req/10s per IP), orange-cloud www CNAME (CDN + DDoS), Transform Rules for 6 security headers (HSTS, X-Frame-Options, etc.), LocalBusiness JSON-LD for Guam local search |
 | 2026-03-09 | **v39** — Audit hardening: SSL full_strict, always_online enabled, security headers on Worker API, daily cron for auth session cleanup, schema.sql synced with production D1, robots.txt added |

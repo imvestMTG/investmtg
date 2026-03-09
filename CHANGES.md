@@ -1,5 +1,12 @@
 # investMTG — Changelog
 
+## 2026-03-09: Portfolio header layout fix (SW v42)
+
+- **style.css** — Removed `flex-direction: column` responsive override on `.portfolio-header-row` at `@media (max-width: 767px)`. The heading + Import button now stay inline at all viewport widths. The previous rule caused the Import button to stack below "My Portfolio" on narrower browser windows (e.g., when a sidebar was open).
+- SW bumped to v42.
+
+---
+
 ## 2026-03-09: Import system + storage optimization (SW v41)
 
 - **utils/import-parser.js** (NEW) — Shared parser module extracted from SellerDashboard.js inline parsers. Exports `parseManaboxCSV()`, `parseTextList()`, `parseCSVLine()`, `findCol()`. CSV parser supports Manabox, DragonShield, Deckbox, and TCGplayer column aliases. Text parser handles MTGA format ("4 Lightning Bolt (LEA) 123"), simple card names, and quantity-prefixed lines ("4x Sol Ring"). Both return standardized `{ cards, errors }` shape.
