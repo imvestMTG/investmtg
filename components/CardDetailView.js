@@ -1,6 +1,6 @@
 /* CardDetailView.js — Card detail with backend pricing + other printings */
 import React from 'react';
-import { backendGetCard, getCardPrintings } from '../utils/api.js';
+import { backendGetCard, getCardPrintings, addToPortfolioAPI } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
@@ -105,6 +105,10 @@ export function CardDetailView(props) {
       var existing = portfolio.find(function(item) { return item.id === card.id; });
       if (!existing) {
         updatePortfolio(portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+        // Sync to D1 backend (fire-and-forget)
+        addToPortfolioAPI({ card_id: card.id, card_name: card.name, quantity: 1, added_price: price }).catch(function(err) {
+          console.warn('[investMTG] Portfolio backend sync failed:', err.message);
+        });
         showToast('Added to portfolio', 'success');
       } else {
         showToast('Already in portfolio', 'default');

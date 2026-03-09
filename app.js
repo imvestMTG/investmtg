@@ -2,7 +2,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { getInitialMarketplaceData } from './utils/marketplace-data.js';
-import { fetchPortfolio, fetchListings, fetchCart, createListing } from './utils/api.js';
+import { fetchPortfolio, addToPortfolioAPI, fetchListings, fetchCart, createListing } from './utils/api.js';
 import { checkAuth, signIn, signOut, onAuthChange } from './utils/auth.js';
 import { storageGet, storageSet } from './utils/storage.js';
 import { Ticker } from './components/Ticker.js';
@@ -216,11 +216,11 @@ function App() {
     var portfolioFallback = storageGet('investmtg-portfolio', []);
     var cartFallback = storageGet('investmtg-cart', []);
 
-    // Fetch portfolio from backend; fall back to localStorage
+    // Fetch portfolio from backend and merge with localStorage
     var portfolioPromise = fetchPortfolio().then(function(data) {
       var items = (data && data.items) ? data.items : [];
       // Map backend portfolio shape to frontend shape
-      return items.map(function(item) {
+      var backendItems = items.map(function(item) {
         return {
           id: item.card_id,
           name: item.card_name,
@@ -231,6 +231,25 @@ function App() {
           image: item.image_small || null
         };
       });
+
+      // Merge: start with backend items, add any localStorage-only items
+      var backendIds = {};
+      backendItems.forEach(function(item) { backendIds[item.id] = true; });
+      var orphans = portfolioFallback.filter(function(item) {
+        return item.id && !backendIds[item.id];
+      });
+
+      // Push orphan localStorage items to D1 (fire-and-forget migration)
+      orphans.forEach(function(item) {
+        addToPortfolioAPI({
+          card_id: item.id,
+          card_name: item.name || '',
+          quantity: item.qty || 1,
+          added_price: item.buyPrice || 0
+        }).catch(function() { /* silent — best effort migration */ });
+      });
+
+      return backendItems.concat(orphans);
     }).catch(function() {
       return portfolioFallback;
     });

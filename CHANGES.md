@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-09: Fix portfolio data persistence (SW v38)
+
+- **CardDetailView.js** — The "Track" button now syncs to the D1 backend via `addToPortfolioAPI()` (fire-and-forget) in addition to updating localStorage. Previously, tracked cards were only stored in localStorage and never written to D1, meaning a page refresh could wipe the portfolio when the backend returned an empty result set.
+- **app.js** — Portfolio initialization now merges backend (D1) and localStorage data instead of replacing one with the other. On load: fetches D1 portfolio, identifies any localStorage-only items ("orphans"), pushes orphans to D1 via fire-and-forget `addToPortfolioAPI()` calls, and returns the merged set. This migrates existing users' localStorage portfolios to D1 automatically. Import updated to include `addToPortfolioAPI`.
+- **Root cause:** `CardDetailView.addToPortfolio()` only called `updatePortfolio()` (localStorage write) but never `addToPortfolioAPI()` (D1 write). On refresh, `fetchPortfolio()` returned empty from D1, which overwrote localStorage with `[]`, erasing all tracked cards.
+- SW bumped to v38.
+
+---
+
 ## 2026-03-09: Fix selling cards not in stock (SW v37)
 
 - **CardDetailView.js** — Removed direct "Add to Cart" button that allowed any Scryfall card to be purchased without seller inventory. Replaced with "Find Sellers" button that navigates to the Guam Marketplace (#store). Cards can now only be purchased through community listings that have a real seller, condition, and price. Portfolio tracking and watchlist features remain unchanged.

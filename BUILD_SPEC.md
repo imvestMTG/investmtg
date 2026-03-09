@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v37`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v38`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -84,6 +84,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 - `normalizeCard()` in `utils/api.js` converts D1 flat shape (`price_usd`, `image_small`) to Scryfall shape (`prices.usd`, `image_uris`) so all components use one consistent shape
 - localStorage access exclusively through `utils/storage.js` — no raw `localStorage` calls anywhere else
 - localStorage fallback for portfolio and session recovery only
+- Portfolio uses dual-write (D1 + localStorage) with merge-on-load: backend is source of truth, localStorage orphans are auto-migrated to D1
 
 ## Components
 
@@ -92,7 +93,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 |------|-------|---------|
 | `components/HomeView.js` | `#home` | Featured, trending, budget sections in horizontal scrolling carousels (12 cards each) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
-| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). |
+| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()`. |
 | `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio` |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
 | `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Manabox bulk import |
