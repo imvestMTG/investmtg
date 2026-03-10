@@ -4349,6 +4349,28 @@ a.cart-item-set.cart-item-link:hover {
 
 .seller-profile-actions {
   margin-top: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.seller-danger-zone {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-error);
+}
+
+.seller-danger-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-error);
+  margin-bottom: var(--space-2);
+}
+
+.seller-danger-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
 }
 
 .seller-rep-inline {

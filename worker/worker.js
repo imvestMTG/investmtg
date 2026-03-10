@@ -1069,6 +1069,61 @@ async function handleSellers(request, env) {
     return json({ success: true, seller: newSeller }, 201, request);
   }
 
+  // PUT /api/sellers — update seller profile
+  if (method === 'PUT') {
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+    const body = await request.json().catch(() => null);
+    if (!body || !body.name) return json({ error: 'name required' }, 400, request);
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM sellers WHERE user_id = ?'
+    ).bind(auth.userId).first();
+    if (!existing) return json({ error: 'Seller profile not found' }, 404, request);
+
+    await env.DB.prepare(
+      'UPDATE sellers SET name = ?, contact = ?, store_affiliation = ?, bio = ? WHERE user_id = ?'
+    ).bind(
+      body.name.slice(0, 100),
+      (body.contact || '').slice(0, 200),
+      body.store_affiliation || null,
+      (body.bio || '').slice(0, 500) || null,
+      auth.userId
+    ).run();
+
+    const updated = await env.DB.prepare(
+      'SELECT * FROM sellers WHERE user_id = ?'
+    ).bind(auth.userId).first();
+
+    return json({ success: true, seller: updated }, 200, request);
+  }
+
+  // DELETE /api/sellers — delete seller account + all listings
+  if (method === 'DELETE') {
+    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM sellers WHERE user_id = ?'
+    ).bind(auth.userId).first();
+    if (!existing) return json({ error: 'Seller profile not found' }, 404, request);
+
+    // Delete all listings belonging to this seller
+    await env.DB.prepare(
+      'DELETE FROM listings WHERE user_id = ?'
+    ).bind(auth.userId).run();
+
+    // Delete seller profile
+    await env.DB.prepare(
+      'DELETE FROM sellers WHERE user_id = ?'
+    ).bind(auth.userId).run();
+
+    // Downgrade user role back to buyer
+    await env.DB.prepare('UPDATE users SET role = ? WHERE id = ? AND role = ?')
+      .bind('buyer', auth.userId, 'seller').run();
+
+    return json({ success: true }, 200, request);
+  }
+
   return json({ error: 'Method not allowed' }, 405, request);
 }
 

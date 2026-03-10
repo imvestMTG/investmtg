@@ -40,7 +40,11 @@ export function Header(props) {
   }
 
   function nav(hash) {
-    window.location.hash = hash;
+    if (window.location.hash === '#' + hash || (hash === '' && (window.location.hash === '' || window.location.hash === '#'))) {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else {
+      window.location.hash = hash;
+    }
     setMobileOpen(false);
   }
 

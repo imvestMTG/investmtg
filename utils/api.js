@@ -356,6 +356,20 @@ export function registerSeller(data) {
   });
 }
 
+/** PUT /api/sellers — update seller profile { name, contact?, store_affiliation?, bio? } */
+export function updateSeller(data) {
+  return backendFetch('/api/sellers', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+/** DELETE /api/sellers — delete seller account + all listings */
+export function deleteSeller() {
+  return backendFetch('/api/sellers', { method: 'DELETE' });
+}
+
 /* ── Cart ──────────────────────────────────────────────────────────────── */
 
 /** GET /api/cart — { items: [...] } */
