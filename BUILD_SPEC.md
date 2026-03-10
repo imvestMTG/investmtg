@@ -299,6 +299,32 @@ No install step. No build step. The root SPA uses native ES modules and import m
 ### Worker
 The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact.
 
+## Tests
+
+| File | Purpose |
+|------|---------|
+| `tests/smoke-test.sh` | Fast pre-push smoke test (33 checks). Covers frontend assets, DOM integrity, payment code, SW version, API health, PayPal/SumUp integration, orders validation, CORS. Runs in ~15 seconds. |
+| `tests/debug-tool.sh` | Comprehensive diagnostic tool (97 checks across 24 sections). Covers everything in the smoke test plus: all JS modules, proxy routes (JustTCG via `tcgplayerId`, CORS), PayPal create-order end-to-end, SumUp checkout end-to-end, full CSP audit (11 domains), secret scan, DNS resolution (3 domains), TLS version detection, D1 database health & row counts, response times (7 endpoints), asset sizes, code style enforcement (var-only, no arrows), URL centralization, and dual-write integrity. |
+
+**Usage:**
+```bash
+bash tests/smoke-test.sh           # fast — run before every push
+bash tests/debug-tool.sh           # full — run for diagnostics
+bash tests/debug-tool.sh frontend  # run only specific sections
+bash tests/debug-tool.sh api payments
+```
+
+**Rate limit note:** Run smoke test and debug tool with ~30 seconds between them. Back-to-back runs trigger Cloudflare HTTP 1015 rate limits.
+
+### Data source segmentation
+
+| Source | API key | Used where | Data provided |
+|--------|---------|------------|---------------|
+| Scryfall | None (free) | Site-wide — every page | Card names, images, oracle text, types, mana costs, set info, legalities, rarity, `prices.usd` (TCGplayer market price), `tcgplayer_id` |
+| JustTCG | Yes (server-side) | CartView, ListingModal only | Condition-specific pricing: NM, LP, MP, HP, DMG. Requires `tcgplayerId` (provided by Scryfall on every card) |
+
+This segmentation keeps cost down: 99% of page loads use only Scryfall (free). JustTCG fires only on cart view and listing creation.
+
 ## Development commands
 
 ### Front end
@@ -322,6 +348,7 @@ npx wrangler deploy    # deploy to production
 ## Release checklist
 
 Before considering a release complete:
+- run `bash tests/smoke-test.sh` (33/33 must pass)
 - update `README.md`
 - update `BUILD_SPEC.md`
 - update `CHANGES.md`

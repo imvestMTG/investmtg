@@ -76,7 +76,12 @@ Required updates after release-impacting work:
 ### 7. QA before every push
 No code reaches `main` without passing QA. Every push must include verification, not just implementation.
 
-**Pre-push QA checklist** (minimum):
+**Automated test tools** (run these first):
+- `bash tests/smoke-test.sh` — 33 checks, ~15 seconds. Covers frontend assets, DOM, payment code, SW, API health, PayPal/SumUp, CORS. **Run before every push.**
+- `bash tests/debug-tool.sh` — 97 checks across 24 sections. Full diagnostics including proxy routes, CSP audit, secret scan, DNS, TLS, DB health, response times, code style, URL centralization, dual-write integrity. **Run for troubleshooting or after significant changes.**
+- Run the two tools with ~30 seconds between them to avoid Cloudflare rate limits.
+
+**Additional manual checks** (when the automated tools can’t cover it):
 1. **CSP alignment** — Run `grep -roh 'https://[a-zA-Z0-9._-]*' --include='*.js' . | sort -u` against the `connect-src` in `index.html`. Every external domain the frontend fetches from must be in the CSP. A single missing entry silently kills all calls to that domain with zero visible error.
    - *Why this exists: v19 — sign-in was broken for an entire session because `api.investmtg.com` was missing from CSP after the domain migration. The backend was 100% working; the browser was blocking the requests before they ever left.*
 2. **URL centralization** — Run `grep -rn 'https://' --include='*.js' . | grep -v vendor | grep -v worker | grep -v node_modules`. Every backend URL in frontend code must come from `config.js PROXY_BASE`. No hardcoded proxy URLs.
@@ -186,6 +191,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **Debug tool fixes** — JustTCG test changed from `scryfallId` (404) to `tcgplayerId=282800` (native key, returns 200). TLS detection fallback added for curl builds where `%{ssl_version}` is empty. Results: 97/97 passed, 0 warnings. |
 | 2026-03-10 | **v51** — Fix portfolio DELETE for signed-in users: Worker `portfolioScope()` used `p.user_id` table alias in DELETE queries (invalid without JOIN), causing D1 `no such column` error — cards were never actually removed from backend. Added `bare` property without alias prefix for DELETE statements. Worker redeployed. |
 | 2026-03-10 | **v50** — Fix portfolio card removal race condition: useEffect dependency changed from `[portfolio.length]` to `[]` (mount-only), removed `updatePortfolio()` from fetch response to prevent GET/DELETE race resurrecting removed cards |
 | 2026-03-10 | **v49** — Revert homepage redesign to original v46 sleek layout; keep Worker camelCase mapping + workers_dev=false + dead import cleanup |

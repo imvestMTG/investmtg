@@ -171,17 +171,44 @@ investmtg/
 │   ├── seed.sql
 │   └── README.md
 # frontend-v2/ removed in v20 optimization pass
+├── tests/
+│   ├── debug-tool.sh               # 24-section diagnostic tool (97 checks)
+│   └── smoke-test.sh               # fast pre-push smoke test (33 checks)
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
 ├── style.css
 ├── base.css
-├── sw.js                           # service worker v27 (PWA offline support + auto-reload + image caching)
+├── sw.js                           # service worker v52 (PWA offline support + auto-reload + image caching)
 ├── manifest.json
 ├── README.md
 ├── BUILD_SPEC.md
 ├── CHANGES.md
 └── SOUL.md
 ```
+
+## Testing
+
+Two automated test tools live in `tests/`:
+
+### Smoke test (fast, pre-push)
+```bash
+bash tests/smoke-test.sh
+```
+33 checks covering frontend assets, DOM integrity, payment integration code, service worker, API health, PayPal/SumUp integration, orders validation, and CORS. Runs in ~15 seconds. Use before every push.
+
+### Debug tool (comprehensive diagnostics)
+```bash
+bash tests/debug-tool.sh
+```
+97 checks across 24 sections: frontend static assets, JS modules, DOM integrity, payment code, service worker versioning, API health & data routes, auth, proxy routes (JustTCG, CORS), payment end-to-end (PayPal create-order, SumUp checkout), CSP audit, CORS headers, secret scan, DNS resolution, TLS version, database health & integrity, response times, asset sizes, code style (var-only, no arrows), URL centralization, and dual-write integrity.
+
+**Important:** Run smoke test and debug tool with a ~30-second gap between them to avoid triggering Cloudflare rate limits (HTTP 1015).
+
+### Data source segmentation
+
+The site cleanly segments data responsibilities:
+- **Scryfall** (free, no API key) — card names, images, oracle text, type lines, mana costs, set info, legalities, rarity, and `prices.usd` (TCGplayer market price). Used site-wide on every page.
+- **JustTCG** (API key, rate-limited) — condition-specific pricing (NM, LP, MP, HP, DMG). Called only in CartView and ListingModal — two low-traffic, high-intent actions. Scryfall provides `tcgplayer_id` on every card, which is the native key JustTCG requires for lookups.
 
 ## Deployment
 
@@ -237,6 +264,7 @@ npx wrangler dev
 - The root-level SPA is the production front end. `frontend-v2/` was removed in v20 (dead code cleanup).
 - Cardmarket is excluded from the modern buyer experience.
 - No deployment is considered complete until `README.md`, `BUILD_SPEC.md`, `CHANGES.md`, `SOUL.md`, and `worker/README.md` are updated in the same session.
+- Run `bash tests/smoke-test.sh` before every push. Run `bash tests/debug-tool.sh` for full diagnostics.
 
 ---
 

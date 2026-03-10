@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-10: Debug tool fixes — JustTCG test + TLS detection
+
+- **tests/debug-tool.sh** — Fixed JustTCG proxy check returning false WARN (HTTP 404). Root cause: the test used `scryfallId=3fa40ef1-...` but JustTCG's API does not support Scryfall UUID lookups — it requires `tcgplayerId`. Changed to `tcgplayerId=282800` (Sheoldred, the Apocalypse) which returns HTTP 200 with full condition pricing data. This aligns with how the production code works: Scryfall provides `tcgplayer_id` on every card, and `fetchConditionPrices()` in `utils/api.js` passes it as the preferred key.
+- **tests/debug-tool.sh** — Fixed TLS version detection always showing WARN. Root cause: `curl -w "%{ssl_version}"` returns empty on some curl builds (including curl 8.14.1/OpenSSL 3.5.1). Added a fallback that parses TLS version from `curl -sv` verbose output (`SSL connection using TLSv1.3 / ...`). Site correctly reports TLSv1.3.
+- Debug tool results: **97 passed, 0 warnings, 0 failures** (previously 95 passed, 2 warnings).
+- Smoke test: 33/33 passed.
+- No SW bump needed (tests only, no frontend/worker changes).
+
+---
+
 ## 2026-03-10: Fix portfolio DELETE for signed-in users (SW v51)
 
 - **worker/worker.js** — Fixed a bug where removing a card from the portfolio always failed silently for authenticated users. Root cause: `portfolioScope()` returned SQL clauses with a `p.` table alias prefix (`p.user_id = ?`) designed for the SELECT JOIN query. The DELETE statement used the same scope clause, producing `DELETE FROM portfolios WHERE p.user_id = ? AND card_id = ?` — D1/SQLite threw `no such column: p.user_id` because standalone DELETE has no table alias. The error was swallowed by the frontend's fire-and-forget `.catch()`. On next page load, `fetchPortfolio()` returned the never-deleted card from D1, resurrecting it. Fix: added a `bare` property to `portfolioScope()` without the table alias prefix, and switched the DELETE queries to use `scope.bare` instead of `scope.clause`.
