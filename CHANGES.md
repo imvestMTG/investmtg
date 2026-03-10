@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-10: Git workflow upgrade — native push via GitHub CLI
+
+- **Development workflow** — Replaced the manual curl + PAT + Git Trees API push method (6 API calls per push: create blob → create tree → create commit → update ref) with standard `git add` / `git commit` / `git push` using the GitHub CLI (`gh`) with pre-configured credentials (`api_credentials=["github"]`).
+- Git identity configured: `imvestMTG <bloodshutdawn@gmail.com>`.
+- Commits now have proper author metadata instead of API-generated signatures.
+- No SW bump needed (workflow change only, no frontend/worker changes).
+
+---
+
 ## 2026-03-10: Debug tool fixes — JustTCG test + TLS detection
 
 - **tests/debug-tool.sh** — Fixed JustTCG proxy check returning false WARN (HTTP 404). Root cause: the test used `scryfallId=3fa40ef1-...` but JustTCG's API does not support Scryfall UUID lookups — it requires `tcgplayerId`. Changed to `tcgplayerId=282800` (Sheoldred, the Apocalypse) which returns HTTP 200 with full condition pricing data. This aligns with how the production code works: Scryfall provides `tcgplayer_id` on every card, and `fetchConditionPrices()` in `utils/api.js` passes it as the preferred key.

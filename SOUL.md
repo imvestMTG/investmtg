@@ -191,6 +191,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **Git workflow upgrade** — Replaced manual curl + PAT + Git Trees API push method with native `git push` via GitHub CLI (`gh`). Faster, cleaner commit history, less error-prone. |
 | 2026-03-10 | **Debug tool fixes** — JustTCG test changed from `scryfallId` (404) to `tcgplayerId=282800` (native key, returns 200). TLS detection fallback added for curl builds where `%{ssl_version}` is empty. Results: 97/97 passed, 0 warnings. |
 | 2026-03-10 | **v51** — Fix portfolio DELETE for signed-in users: Worker `portfolioScope()` used `p.user_id` table alias in DELETE queries (invalid without JOIN), causing D1 `no such column` error — cards were never actually removed from backend. Added `bare` property without alias prefix for DELETE statements. Worker redeployed. |
 | 2026-03-10 | **v50** — Fix portfolio card removal race condition: useEffect dependency changed from `[portfolio.length]` to `[]` (mount-only), removed `updatePortfolio()` from fetch response to prevent GET/DELETE race resurrecting removed cards |
