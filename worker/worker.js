@@ -1070,9 +1070,9 @@ async function handleSellers(request, env) {
       return !auth && isNew ? withSessionCookie(resp, token) : resp;
     }
 
-    // Also fetch their listings
+    // Also fetch their active listings (exclude removed/sold)
     const listings = await env.DB.prepare(
-      `SELECT * FROM listings WHERE ${scopeClause} ORDER BY created_at DESC`
+      `SELECT * FROM listings WHERE ${scopeClause} AND status = 'active' ORDER BY created_at DESC`
     ).bind(scopeValue).all();
 
     const resp = json({ registered: true, seller, listings: listings.results }, 200, request);

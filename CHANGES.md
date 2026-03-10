@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-11: v56 — Fix seller dashboard delete + clean bad listings
+
+- **worker/worker.js** — `GET /api/sellers` now filters listings with `AND status = 'active'`. Previously returned all listings including `status='removed'`, so deleted listings reappeared immediately after the dashboard refreshed.
+- **D1 cleanup** — Removed 3 test listings with $0.00 prices and missing Scryfall data (no set_name, card_id, or image_uri). These were created during early testing.
+- **sw.js** — v55 → v56
+- Worker redeployed.
+
+---
+
 ## 2026-03-11: v55 — Revert header redesign
 
 - Reverted v53/v54 3-tier header redesign. Restored original Header.js and style.css from v52.
