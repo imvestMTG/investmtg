@@ -1,5 +1,15 @@
 # investMTG — Changelog
 
+## 2026-03-10: Revert homepage redesign — restore original sleek layout (SW v49)
+
+- **components/HomeView.js** — Reverted to the v46 original: clean hero with static stats ("Real Prices", "Guam Built", "Live Data", "100% Free"), no search button in hero bar, no live stats bar, no feature highlights grid, no CTA section. The redesign from Invest-MTG added too many new sections that broke the layout (oversized SVGs, missing grid styling, CTA blob). The original was sleek and worked.
+- **style.css** — Reverted to v46 original. Removed all new CSS (hero-eyebrow, hero-search-btn, live-stats-bar, features-grid, home-cta). Restored original `.hero-stats` / `.hero-stat` / `.hero-stat-value` / `.hero-stat-label` CSS.
+- Worker fixes from v47 are kept: camelCase mapping on GET /api/listings, workers_dev=false.
+- Dead showToast import removal from v47 is kept.
+- SW bumped to v49.
+
+---
+
 ## 2026-03-10: Fix oversized SVG icons on homepage (SW v48)
 
 - **components/HomeView.js** — Added explicit `width: '22', height: '22'` to all feature highlight SVG icons. Previously these SVGs had `viewBox` but no intrinsic dimensions, causing them to expand to fill the entire viewport (each icon rendered at ~500px+).

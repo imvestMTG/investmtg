@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **v49** — Revert homepage redesign to original v46 sleek layout; keep Worker camelCase mapping + workers_dev=false + dead import cleanup |
 | 2026-03-10 | **v48** — Fix oversized SVG icons on homepage: added explicit width/height to feature highlight SVGs, constrained icon containers with min/max sizing + overflow hidden |
 | 2026-03-10 | **v47** — Repo consolidation: HomeView redesign (eyebrow badge, live stats bar from /api/health, feature highlights grid, CTA section, hero search button), Worker camelCase mapping on GET /api/listings, workers_dev=false security fix, dead showToast import removed |
 | 2026-03-10 | **v46** — Seller Dashboard Profile tab UX redesign: inline-editable fields (click-to-edit per field), section-based layout (Personal Info, Contact & Store, Account Details, Session, Danger Zone), collapsible danger zone with type-to-confirm DELETE gate, mobile-responsive |
