@@ -333,6 +333,10 @@ if should_run "dns"; then
 
   header "17. DNS — TLS"
   TLS_VER=$(curl -s -o /dev/null -w "%{ssl_version}" "$SITE/" 2>/dev/null)
+  if [ -z "$TLS_VER" ]; then
+    # Fallback: parse from verbose output (some curl builds leave %{ssl_version} empty)
+    TLS_VER=$(curl -sv -o /dev/null "$SITE/" 2>&1 | grep -oP 'SSL connection using \K[^ ]+')
+  fi
   if [ -n "$TLS_VER" ]; then
     pass "TLS version: $TLS_VER"
   else
