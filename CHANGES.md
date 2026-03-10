@@ -1,5 +1,30 @@
 # investMTG — Changelog
 
+## 2026-03-10: Seller Dashboard Profile tab UX redesign (SW v46)
+
+- **components/SellerDashboard.js** — Complete redesign of the Profile tab with inline-editable fields following e-commerce best practices:
+  - Replaced the read-only table + "Edit Profile" button with click-to-edit fields. Each field (name, contact, store, bio) can be edited in-place — click the field, edit, hit Save or Enter. Changes are saved individually via the PUT /api/sellers endpoint.
+  - Organized into clear sections: Personal Information, Contact & Store, Account Details (read-only), Session, and Danger Zone.
+  - Each section has an icon header, title, and description for visual hierarchy.
+  - Danger Zone is now a collapsible section with a type-to-confirm "DELETE" safety gate instead of a single-click delete button.
+  - Removed the old `ProfileEditForm` component and `editingProfile` state in favor of per-field `EditableField` component.
+  - New `EditableField` component supports text, textarea, and select field types with keyboard shortcuts (Enter to save, Esc to cancel), inline validation, and saving state.
+- **style.css** — Added ~280 lines of new CSS for the profile page: `.pf-page`, `.pf-section`, `.pf-field` (grid layout with edit hints on hover), `.pf-field--editing` (inline input state), `.pf-readonly-field`, `.pf-session-row`, `.pf-danger` (collapsible danger zone with chevron), `.btn-danger:disabled`. Mobile-responsive with touch-friendly adjustments.
+- SW bumped to v46.
+
+---
+
+## 2026-03-09: Seller Dashboard edit/delete + nav fix (SW v45)
+
+- **components/SellerDashboard.js** — Added Profile tab with edit profile form, log out button, and danger zone with delete account action.
+- **components/Header.js** — Fixed nav dropdown dispatching hashchange when already on same hash.
+- **utils/api.js** — Added `updateSeller(data)` (PUT) and `deleteSeller()` (DELETE) API functions.
+- **worker/worker.js** — Added PUT /api/sellers (update profile) and DELETE /api/sellers (delete account + listings + role downgrade).
+- **style.css** — Added `.seller-profile-actions`, `.seller-danger-zone`, `.seller-danger-title`, `.seller-danger-text` styles.
+- SW bumped to v45.
+
+---
+
 ## 2026-03-09: Portfolio import modal UI hardening (SW v44)
 
 - **components/PortfolioView.js** — Converted the portfolio import dialog to the shared modal structure (`mp-modal-overlay`, `mp-modal`, `mp-modal-close`) so it renders through the same overlay/card pattern already used by the stable listing modal. Added a mount cleanup effect that locks `body` and `html` scrolling while the modal is open, then restores the previous overflow values on close.

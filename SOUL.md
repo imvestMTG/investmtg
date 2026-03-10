@@ -186,6 +186,8 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **v46** — Seller Dashboard Profile tab UX redesign: inline-editable fields (click-to-edit per field), section-based layout (Personal Info, Contact & Store, Account Details, Session, Danger Zone), collapsible danger zone with type-to-confirm DELETE gate, mobile-responsive |
+| 2026-03-09 | **v45** — Seller Dashboard edit/delete: PUT/DELETE /api/sellers endpoints, ProfileEditForm, danger zone delete UI, Header nav same-hash fix |
 | 2026-03-09 | **v44** — Portfolio import modal UI hardening: moved the import dialog onto the shared mp-modal overlay/card system, added scroll locking while open, safe-area padding, and mobile/Safari-friendly sizing so the modal renders as a proper overlay instead of appearing inline or under sticky UI |
 | 2026-03-09 | **v43** — Portfolio import auth gate fix: PortfolioView now receives authUser from App, and the import modal uses props.user instead of nonexistent state.user so signed-in users are no longer falsely blocked |
 | 2026-03-09 | **v42** — Portfolio header layout fix: removed flex-direction:column responsive override so Import button stays inline at all widths |

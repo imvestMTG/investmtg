@@ -1002,124 +1002,171 @@ function AuthPrompt(props) {
   );
 }
 
-// ===== PROFILE EDIT FORM =====
-function ProfileEditForm(props) {
-  var seller = props.seller;
-  var storeOptions = props.storeOptions || STORE_OPTIONS;
+// ===== EDITABLE FIELD =====
+// Inline-editable field: click to edit, Enter/blur to save, Esc to cancel
+function EditableField(props) {
+  var label = props.label;
+  var value = props.value;
+  var placeholder = props.placeholder || 'Not set';
   var onSave = props.onSave;
-  var onCancel = props.onCancel;
+  var fieldType = props.fieldType || 'text'; // 'text' | 'textarea' | 'select'
+  var selectOptions = props.selectOptions;
+  var maxLength = props.maxLength || 200;
+  var required = props.required;
+  var description = props.description;
 
-  var ref1 = React.useState({
-    name: seller.name || '',
-    contact: seller.contact || '',
-    storeId: seller.store_affiliation || '',
-    bio: seller.bio || ''
-  });
-  var form = ref1[0], setForm = ref1[1];
-  var ref2 = React.useState({});
-  var errors = ref2[0], setErrors = ref2[1];
+  var ref1 = React.useState(false);
+  var editing = ref1[0], setEditing = ref1[1];
+  var ref2 = React.useState(value || '');
+  var draft = ref2[0], setDraft = ref2[1];
   var ref3 = React.useState(false);
   var saving = ref3[0], setSaving = ref3[1];
   var ref4 = React.useState(null);
-  var saveError = ref4[0], setSaveError = ref4[1];
+  var error = ref4[0], setError = ref4[1];
+  var inputRef = React.useRef(null);
 
-  function update(key, val) {
-    setForm(function(p) { return Object.assign({}, p, { [key]: val }); });
-    setErrors(function(p) { return Object.assign({}, p, { [key]: '' }); });
+  React.useEffect(function() {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      if (inputRef.current.select && fieldType !== 'select') {
+        inputRef.current.select();
+      }
+    }
+  }, [editing]);
+
+  // Sync external value changes
+  React.useEffect(function() {
+    if (!editing) setDraft(value || '');
+  }, [value]);
+
+  function startEdit() {
+    setDraft(value || '');
+    setError(null);
+    setEditing(true);
   }
 
-  function validate() {
-    var e = {};
-    if (!form.name.trim()) { e.name = 'Seller name is required'; }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  function cancelEdit() {
+    setDraft(value || '');
+    setError(null);
+    setEditing(false);
   }
 
-  function handleSubmit(evt) {
-    evt.preventDefault();
-    if (!validate()) return;
+  function commitEdit() {
+    var trimmed = draft.trim();
+    if (required && !trimmed) {
+      setError(label + ' is required');
+      return;
+    }
+    if (trimmed === (value || '')) {
+      setEditing(false);
+      return;
+    }
     setSaving(true);
-    setSaveError(null);
-    var data = {
-      name: sanitizeInput(form.name.trim(), 100),
-      contact: sanitizeInput(form.contact.trim(), 200),
-      store_affiliation: form.storeId || null,
-      bio: sanitizeInput(form.bio.trim(), 500) || null
-    };
-    onSave(data).catch(function(err) {
-      setSaveError('Failed to update profile. Please try again.');
+    setError(null);
+    onSave(trimmed).then(function() {
+      setEditing(false);
+    }).catch(function() {
+      setError('Failed to save. Please try again.');
     }).finally(function() {
       setSaving(false);
     });
   }
 
-  return h('div', { className: 'seller-profile-card' },
-    saveError && h('p', { className: 'form-error', style: { marginBottom: 'var(--space-4)' } }, saveError),
-    h('form', { onSubmit: handleSubmit, className: 'checkout-form' },
-      h('div', { className: 'form-group' },
-        h('label', { className: 'form-label', htmlFor: 'edit-name' }, 'Seller Name'),
-        h('input', {
-          id: 'edit-name',
-          type: 'text',
-          className: 'form-input' + (errors.name ? ' error' : ''),
-          placeholder: 'Your display name',
-          value: form.name,
-          maxLength: 100,
-          onChange: function(e) { update('name', e.target.value); }
-        }),
-        errors.name && h('p', { className: 'form-error' }, errors.name)
-      ),
-      h('div', { className: 'form-group' },
-        h('label', { className: 'form-label', htmlFor: 'edit-contact' }, 'Preferred Contact'),
-        h('input', {
-          id: 'edit-contact',
-          type: 'text',
-          className: 'form-input',
-          placeholder: 'Instagram handle, email, or phone',
-          value: form.contact,
-          maxLength: 200,
-          onChange: function(e) { update('contact', e.target.value); }
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      cancelEdit();
+    } else if (e.key === 'Enter' && fieldType !== 'textarea') {
+      e.preventDefault();
+      commitEdit();
+    }
+  }
+
+  if (editing) {
+    var inputEl;
+    if (fieldType === 'textarea') {
+      inputEl = h('textarea', {
+        ref: inputRef,
+        className: 'pf-edit-input pf-edit-textarea',
+        value: draft,
+        maxLength: maxLength,
+        rows: 3,
+        placeholder: placeholder,
+        disabled: saving,
+        onChange: function(e) { setDraft(e.target.value); },
+        onKeyDown: handleKeyDown
+      });
+    } else if (fieldType === 'select') {
+      inputEl = h('select', {
+        ref: inputRef,
+        className: 'pf-edit-input',
+        value: draft,
+        disabled: saving,
+        onChange: function(e) { setDraft(e.target.value); }
+      },
+        h('option', { value: '' }, 'No affiliation'),
+        (selectOptions || []).map(function(s) {
+          return h('option', { key: s.id, value: s.id }, s.name);
         })
-      ),
-      h('div', { className: 'form-group' },
-        h('label', { className: 'form-label', htmlFor: 'edit-store' }, 'Store Affiliation (optional)'),
-        h('select', {
-          id: 'edit-store',
-          className: 'form-input',
-          value: form.storeId,
-          onChange: function(e) { update('storeId', e.target.value); }
-        },
-          h('option', { value: '' }, 'No affiliation'),
-          storeOptions.map(function(s) {
-            return h('option', { key: s.id, value: s.id }, s.name);
-          })
-        )
-      ),
-      h('div', { className: 'form-group' },
-        h('label', { className: 'form-label', htmlFor: 'edit-bio' }, 'Bio (optional)'),
-        h('textarea', {
-          id: 'edit-bio',
-          className: 'form-input',
-          placeholder: 'Tell buyers about yourself...',
-          value: form.bio,
-          maxLength: 500,
-          rows: 3,
-          onChange: function(e) { update('bio', e.target.value); }
-        })
-      ),
-      h('div', { className: 'seller-profile-actions' },
-        h('button', {
-          type: 'submit',
-          className: 'btn btn-primary btn-sm',
-          disabled: saving
-        }, saving ? 'Saving...' : 'Save Changes'),
+      );
+    } else {
+      inputEl = h('input', {
+        ref: inputRef,
+        type: 'text',
+        className: 'pf-edit-input',
+        value: draft,
+        maxLength: maxLength,
+        placeholder: placeholder,
+        disabled: saving,
+        onChange: function(e) { setDraft(e.target.value); },
+        onKeyDown: handleKeyDown
+      });
+    }
+
+    return h('div', { className: 'pf-field pf-field--editing' },
+      h('div', { className: 'pf-field-label' }, label),
+      inputEl,
+      error && h('p', { className: 'pf-field-error' }, error),
+      h('div', { className: 'pf-field-actions' },
         h('button', {
           type: 'button',
-          className: 'btn btn-secondary btn-sm',
-          onClick: onCancel,
-          disabled: saving
+          className: 'btn btn-primary btn-sm',
+          disabled: saving,
+          onClick: commitEdit
+        }, saving ? 'Saving\u2026' : 'Save'),
+        h('button', {
+          type: 'button',
+          className: 'btn btn-ghost btn-sm',
+          disabled: saving,
+          onClick: cancelEdit
         }, 'Cancel')
       )
+    );
+  }
+
+  // Read-only view
+  var displayValue = value || '';
+  if (fieldType === 'select' && selectOptions) {
+    var match = selectOptions.find(function(s) { return s.id === value; });
+    displayValue = match ? match.name : 'No affiliation';
+  }
+
+  return h('div', {
+    className: 'pf-field',
+    onClick: startEdit,
+    tabIndex: 0,
+    role: 'button',
+    onKeyDown: function(e) { if (e.key === 'Enter') startEdit(); }
+  },
+    h('div', { className: 'pf-field-label' },
+      label,
+      required && h('span', { className: 'pf-required' }, '*')
+    ),
+    h('div', { className: 'pf-field-value' + (!displayValue ? ' pf-field-value--empty' : '') },
+      displayValue || placeholder
+    ),
+    description && h('div', { className: 'pf-field-desc' }, description),
+    h('div', { className: 'pf-field-edit-hint' },
+      h(EditIcon, null)
     )
   );
 }
@@ -1148,8 +1195,11 @@ export function SellerDashboard(props) {
   var ref5 = React.useState(null);
   var confirmAction = ref5[0], setConfirmAction = ref5[1];
 
-  var refEditing = React.useState(false);
-  var editingProfile = refEditing[0], setEditingProfile = refEditing[1];
+  var refDelConfirm = React.useState('');
+  var deleteConfirmText = refDelConfirm[0], setDeleteConfirmText = refDelConfirm[1];
+
+  var refShowDelete = React.useState(false);
+  var showDeleteExpanded = refShowDelete[0], setShowDeleteExpanded = refShowDelete[1];
 
   // Dynamic seller listings from backend
   var ref6 = React.useState([]);
@@ -1267,31 +1317,27 @@ export function SellerDashboard(props) {
     });
   }
 
-  function handleUpdateProfile(data) {
+  // Save a single field: merges into current seller and PUTs to backend
+  function handleSaveField(fieldName, newValue) {
+    var data = {};
+    data[fieldName] = fieldName === 'store_affiliation' ? (newValue || null) : sanitizeInput(newValue, fieldName === 'bio' ? 500 : fieldName === 'name' ? 100 : 200);
     return updateSeller(data).then(function(result) {
       var updated = result && result.seller ? result.seller : result;
       setSeller(updated);
-      setEditingProfile(false);
       flash('Profile updated.');
     });
   }
 
   function handleDeleteAccount() {
-    setConfirmAction({
-      title: 'Delete Seller Account',
-      message: 'This will permanently delete your seller profile and all ' + sellerListings.length + ' listing' + (sellerListings.length !== 1 ? 's' : '') + '. This cannot be undone.',
-      onConfirm: function() {
-        deleteSeller().then(function() {
-          setSeller(null);
-          setSellerListings([]);
-          setConfirmAction(null);
-          flash('Seller account deleted.');
-          if (refreshMarketplace) refreshMarketplace();
-        }).catch(function() {
-          flash('Failed to delete account. Please try again.');
-          setConfirmAction(null);
-        });
-      }
+    deleteSeller().then(function() {
+      setSeller(null);
+      setSellerListings([]);
+      setDeleteConfirmText('');
+      setShowDeleteExpanded(false);
+      flash('Seller account deleted.');
+      if (refreshMarketplace) refreshMarketplace();
+    }).catch(function() {
+      flash('Failed to delete account. Please try again.');
     });
   }
 
@@ -1544,64 +1590,157 @@ export function SellerDashboard(props) {
     }),
 
     // ===== PROFILE TAB =====
-    activeTab === 'profile' && h('div', { className: 'seller-tab-content' },
-      h('h2', { className: 'seller-section-title' }, 'Your Profile'),
-      editingProfile
-        ? h(ProfileEditForm, {
-            seller: seller,
-            storeOptions: storeOptions,
-            onSave: handleUpdateProfile,
-            onCancel: function() { setEditingProfile(false); }
+    activeTab === 'profile' && h('div', { className: 'seller-tab-content pf-page' },
+
+      // ---- Personal Information section ----
+      h('div', { className: 'pf-section' },
+        h('div', { className: 'pf-section-header' },
+          h(UserIcon, null),
+          h('div', null,
+            h('h3', { className: 'pf-section-title' }, 'Personal Information'),
+            h('p', { className: 'pf-section-desc' }, 'Click any field to edit. Changes save individually.')
+          )
+        ),
+        h('div', { className: 'pf-fields' },
+          h(EditableField, {
+            label: 'Seller Name',
+            value: seller.name,
+            placeholder: 'Enter your display name',
+            required: true,
+            maxLength: 100,
+            description: 'Visible to buyers on your listings.',
+            onSave: function(v) { return handleSaveField('name', v); }
+          }),
+          h(EditableField, {
+            label: 'Bio',
+            value: seller.bio || '',
+            placeholder: 'Tell buyers about yourself\u2026',
+            fieldType: 'textarea',
+            maxLength: 500,
+            description: 'A short intro shown on your seller profile.',
+            onSave: function(v) { return handleSaveField('bio', v); }
           })
-        : h('div', { className: 'seller-profile-card' },
-            h('div', { className: 'order-info-table' },
-              h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Seller Name'),
-                h('span', { className: 'order-info-value' }, seller.name)
-              ),
-              h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Contact'),
-                h('span', { className: 'order-info-value' }, seller.contact || '\u2014')
-              ),
-              h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Store'),
-                h('span', { className: 'order-info-value' }, storeLabel)
-              ),
-              (seller.bio) && h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Bio'),
-                h('span', { className: 'order-info-value' }, seller.bio)
-              ),
-              h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Reputation Score'),
-                h('span', { className: 'order-info-value' },
-                  h('span', { className: 'seller-rep-inline' },
-                    h(ShieldIcon, null), ' ', reputationScore, ' / 100'
-                  )
-                )
-              ),
-              h('div', { className: 'order-info-row' },
-                h('span', { className: 'order-info-label' }, 'Seller ID'),
-                h('span', { className: 'order-info-value', style: { fontFamily: 'monospace', fontSize: 'var(--text-xs)' } },
-                  seller.id
-                )
-              )
-            ),
-            h('div', { className: 'seller-profile-actions' },
-              h('button', { className: 'btn btn-primary btn-sm', onClick: function() { setEditingProfile(true); } },
-                h(EditIcon, null), ' Edit Profile'
-              ),
-              h('button', { className: 'btn btn-secondary btn-sm', onClick: handleLogout },
-                'Log Out'
-              )
-            ),
-            h('div', { className: 'seller-danger-zone' },
-              h('h3', { className: 'seller-danger-title' }, 'Danger Zone'),
-              h('p', { className: 'seller-danger-text' }, 'Permanently delete your seller account and all listings. This cannot be undone.'),
-              h('button', { className: 'btn btn-danger btn-sm', onClick: handleDeleteAccount },
-                h(TrashIcon, null), ' Delete Seller Account'
+        )
+      ),
+
+      // ---- Contact & Store section ----
+      h('div', { className: 'pf-section' },
+        h('div', { className: 'pf-section-header' },
+          h(TagIcon, null),
+          h('div', null,
+            h('h3', { className: 'pf-section-title' }, 'Contact & Store'),
+            h('p', { className: 'pf-section-desc' }, 'How buyers reach you and your store affiliation.')
+          )
+        ),
+        h('div', { className: 'pf-fields' },
+          h(EditableField, {
+            label: 'Preferred Contact',
+            value: seller.contact || '',
+            placeholder: 'Instagram, email, or phone',
+            maxLength: 200,
+            description: 'Shared with buyers when they purchase your cards.',
+            onSave: function(v) { return handleSaveField('contact', v); }
+          }),
+          h(EditableField, {
+            label: 'Store Affiliation',
+            value: seller.store_affiliation || '',
+            fieldType: 'select',
+            selectOptions: storeOptions,
+            placeholder: 'No affiliation',
+            description: 'Link your profile to a local game store.',
+            onSave: function(v) { return handleSaveField('store_affiliation', v); }
+          })
+        )
+      ),
+
+      // ---- Account Details section (read-only) ----
+      h('div', { className: 'pf-section' },
+        h('div', { className: 'pf-section-header' },
+          h(ShieldIcon, null),
+          h('div', null,
+            h('h3', { className: 'pf-section-title' }, 'Account Details')
+          )
+        ),
+        h('div', { className: 'pf-readonly-fields' },
+          h('div', { className: 'pf-readonly-field' },
+            h('div', { className: 'pf-field-label' }, 'Reputation Score'),
+            h('div', { className: 'pf-field-value' },
+              h('span', { className: 'seller-rep-inline' },
+                h(ShieldIcon, null), ' ', reputationScore, ' / 100'
               )
             )
+          ),
+          h('div', { className: 'pf-readonly-field' },
+            h('div', { className: 'pf-field-label' }, 'Seller ID'),
+            h('div', { className: 'pf-field-value', style: { fontFamily: 'monospace', fontSize: 'var(--text-xs)' } },
+              seller.id
+            )
+          ),
+          h('div', { className: 'pf-readonly-field' },
+            h('div', { className: 'pf-field-label' }, 'Member Since'),
+            h('div', { className: 'pf-field-value' },
+              new Date(joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            )
           )
+        )
+      ),
+
+      // ---- Session section ----
+      h('div', { className: 'pf-section' },
+        h('div', { className: 'pf-section-header' },
+          h(AlertCircleIcon, null),
+          h('div', null,
+            h('h3', { className: 'pf-section-title' }, 'Session')
+          )
+        ),
+        h('div', { className: 'pf-session-row' },
+          h('div', null,
+            h('div', { className: 'pf-field-label' }, 'Seller Session'),
+            h('div', { className: 'pf-field-desc' }, 'Log out to end your current seller session.')
+          ),
+          h('button', { className: 'btn btn-secondary btn-sm', onClick: handleLogout },
+            'Log Out'
+          )
+        )
+      ),
+
+      // ---- Danger Zone ----
+      h('div', { className: 'pf-danger' },
+        h('div', { className: 'pf-danger-header', onClick: function() { setShowDeleteExpanded(!showDeleteExpanded); setDeleteConfirmText(''); } },
+          h('div', null,
+            h('h3', { className: 'seller-danger-title' }, 'Danger Zone'),
+            h('p', { className: 'seller-danger-text' }, 'Irreversible actions for your seller account.')
+          ),
+          h('span', { className: 'pf-danger-chevron' + (showDeleteExpanded ? ' pf-danger-chevron--open' : '') }, '\u25BC')
+        ),
+        showDeleteExpanded && h('div', { className: 'pf-danger-body' },
+          h('p', { className: 'pf-danger-warning' },
+            'This will permanently delete your seller profile and all ',
+            h('strong', null, sellerListings.length),
+            ' listing' + (sellerListings.length !== 1 ? 's' : '') + '. This action cannot be undone.'
+          ),
+          h('label', { className: 'pf-field-label', htmlFor: 'delete-confirm', style: { marginBottom: 'var(--space-2)' } },
+            'Type "DELETE" to confirm:'
+          ),
+          h('input', {
+            id: 'delete-confirm',
+            type: 'text',
+            className: 'pf-edit-input',
+            placeholder: 'DELETE',
+            value: deleteConfirmText,
+            onChange: function(e) { setDeleteConfirmText(e.target.value); },
+            style: { maxWidth: '200px' }
+          }),
+          h('button', {
+            className: 'btn btn-danger btn-sm',
+            disabled: deleteConfirmText !== 'DELETE',
+            onClick: handleDeleteAccount,
+            style: { marginTop: 'var(--space-3)' }
+          },
+            h(TrashIcon, null), ' Delete Seller Account'
+          )
+        )
+      )
     )
   );
 }
