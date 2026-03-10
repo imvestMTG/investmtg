@@ -195,7 +195,7 @@ if should_run "api"; then
 
   header "9. API — Proxy Routes"
   # JustTCG proxy
-  JT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API/justtcg?path=/v1/cards&scryfallId=3fa40ef1-30d1-4dbe-a203-9fa2f3a8fce1&condition=NM" 2>/dev/null)
+  JT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API/justtcg?path=/v1/cards&tcgplayerId=282800&condition=NM" 2>/dev/null)
   if [ "$JT_STATUS" = "200" ]; then pass "JustTCG proxy (HTTP $JT_STATUS)"
   else warn "JustTCG proxy — HTTP $JT_STATUS (may be rate-limited)"; fi
 
