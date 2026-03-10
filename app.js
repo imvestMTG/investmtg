@@ -10,7 +10,7 @@ import { Header } from './components/Header.js';
 import { HomeView } from './components/HomeView.js';
 import { Footer } from './components/Footer.js';
 import { BackToTop } from './components/shared/BackToTop.js';
-import { ToastContainer, showToast } from './components/shared/Toast.js';
+import { ToastContainer } from './components/shared/Toast.js';
 import { CookieNotice } from './components/CookieNotice.js';
 import { TermsGate } from './components/TermsGate.js';
 import { ErrorBoundary } from './components/shared/ErrorBoundary.js';

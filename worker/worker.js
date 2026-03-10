@@ -952,7 +952,36 @@ async function handleListings(request, env) {
 
     const countRow = await env.DB.prepare(countQuery).bind(...countParams).first();
 
-    return json({ listings: rows.results, total: countRow?.total || 0, limit, offset }, 200, request);
+    // Map snake_case DB columns to camelCase for frontend
+    const mapped = rows.results.map(r => ({
+      id: r.id,
+      seller: r.seller_name,
+      contact: r.seller_contact,
+      store: r.seller_store,
+      cardId: r.card_id,
+      cardName: r.card_name,
+      setName: r.set_name,
+      condition: r.condition,
+      language: r.language,
+      price: r.price,
+      image: r.image_uri || '',
+      notes: r.notes,
+      status: r.status,
+      type: r.price > 0 ? 'sale' : 'trade',
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      userId: r.user_id,
+      // Keep snake_case aliases for backward compat
+      card_id: r.card_id,
+      card_name: r.card_name,
+      set_name: r.set_name,
+      image_uri: r.image_uri,
+      seller_name: r.seller_name,
+      seller_contact: r.seller_contact,
+      created_at: r.created_at,
+    }));
+
+    return json({ listings: mapped, total: countRow?.total || 0, limit, offset }, 200, request);
   }
 
   const auth = await getAuthUser(request, env);

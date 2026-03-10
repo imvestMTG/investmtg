@@ -55,7 +55,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/movers/:cat` | GET | market movers by category |
 | `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
 | `/api/portfolio/batch` | POST | batch portfolio import — auth required, max 500 items, D1 batch() in chunks of 50, INSERT OR REPLACE |
-| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings (POST always sets image_uri='', storage optimization) |
+| `/api/listings` | GET/POST/PUT/DELETE | marketplace listings — GET maps snake_case DB columns to camelCase for frontend (cardId, cardName, setName, seller, etc.) with backward-compat snake_case aliases. POST always sets image_uri='', storage optimization |
 | `/api/listings/batch` | POST | batch listing creation — auth required, max 500, D1 batch() in chunks of 50, image_uri always empty |
 | `/api/sellers` | GET/POST | seller profiles (POST requires auth; returns `{ seller }` on success) |
 | `/api/stores` | GET | verified Guam stores |

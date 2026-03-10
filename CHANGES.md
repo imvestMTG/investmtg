@@ -1,5 +1,24 @@
 # investMTG — Changelog
 
+## 2026-03-10: Repo consolidation — HomeView redesign + Worker fixes (SW v47)
+
+Cherry-picked real fixes from the `Invest-MTG` repo (created by Claude Code) back into the primary `investmtg` repo.
+
+- **components/HomeView.js** — Complete homepage redesign:
+  - Added "Guam's #1 MTG Platform" hero eyebrow badge with gold pill styling.
+  - Hero tagline now has responsive line break (`<br>`) for desktop readability.
+  - Added gold "Search" button inside the hero search bar.
+  - Replaced static hero stats ("Real Prices", "Guam Built", etc.) with a live stats bar that fetches from `/api/health` and displays real counts: Marketplace Listings, Cards Tracked, Active Sellers, and Users.
+  - Added 4-card feature highlights grid: Live Price Tracking, Local Marketplace, Portfolio Tracker, cEDH Meta & Events — each with SVG icon, title, and description.
+  - Added CTA section at bottom: "Start Tracking Your Collection" with Browse Cards and My Portfolio buttons.
+- **style.css** — Added ~230 lines of new CSS: `.hero-eyebrow`, `.hero-br`, `.hero-search-btn` (positioned inside search input), `.live-stats-bar` + `.live-stat-*` (responsive grid with icon+value+label), `.features-grid` + `.feature-highlight` (4-column responsive grid with hover effects), `.home-cta-*` (gradient CTA section with primary/secondary buttons). Updated `.hero-search input` padding-right for search button. Removed dead `.hero-stats` / `.hero-stat` / `.hero-stat-value` / `.hero-stat-label` CSS. Updated `.hero-stats` animation reference to `.live-stats-bar`.
+- **worker/worker.js** — GET `/api/listings` now maps snake_case DB columns to camelCase for frontend (id, seller, contact, store, cardId, cardName, setName, etc.) while preserving snake_case aliases for backward compatibility.
+- **worker/wrangler.toml** — Set `workers_dev = false` (security fix — disables the public `.workers.dev` fallback URL).
+- **app.js** — Removed dead `showToast` import (only `ToastContainer` is used).
+- SW bumped to v47.
+
+---
+
 ## 2026-03-10: Seller Dashboard Profile tab UX redesign (SW v46)
 
 - **components/SellerDashboard.js** — Complete redesign of the Profile tab with inline-editable fields following e-commerce best practices:
