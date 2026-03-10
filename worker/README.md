@@ -17,6 +17,7 @@ Cloudflare Worker that serves as the unified backend for investMTG — combining
 ```text
 Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  Scryfall API
                                     │                    ──→  JustTCG API
+                                    │                    ──→  MTGStocks API
                                     │                    ──→  TopDeck.gg API
                                     │                    ──→  Pollinations AI
                                     │                    ──→  Google OAuth
@@ -84,6 +85,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | Route | Target | Purpose | Notes |
 |-------|--------|---------|-------|
 | `/justtcg` | api.justtcg.com | condition pricing | API key injected server-side |
+| `/mtgstocks` | api.mtgstocks.com | price history | KV-cached 24hr. Requires `?print_id=N`. Returns print info + TCGplayer price history. |
 | `/topdeck` | topdeck.gg API | tournament data | API key injected server-side |
 | `/chatbot` | text.pollinations.ai | chat relay | rate-limited |
 | `/?target=` | allowlisted hosts | generic proxy | Adds `User-Agent: investMTG/1.0 (Cloudflare Worker)` header; use sparingly and keep allowlisted |

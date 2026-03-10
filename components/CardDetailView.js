@@ -1,6 +1,6 @@
 /* CardDetailView.js — Card detail with backend pricing + other printings */
 import React from 'react';
-import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem } from '../utils/api.js';
+import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
@@ -33,6 +33,10 @@ export function CardDetailView(props) {
   var userLists = ref7[0], setUserLists = ref7[1];
   var ref8 = React.useState(false);
   var showAddToList = ref8[0], setShowAddToList = ref8[1];
+  var ref9 = React.useState(null);
+  var jtcgDetail = ref9[0], setJtcgDetail = ref9[1];
+  var ref10 = React.useState(true);
+  var jtcgLoading = ref10[0], setJtcgLoading = ref10[1];
 
   React.useEffect(function() {
     fetchLists().then(function(data) { setUserLists(data.lists || []); }).catch(function() {});
@@ -101,6 +105,16 @@ export function CardDetailView(props) {
       setLoading(false);
     });
   }, [cardId]);
+
+  /* Fetch JustTCG condition data when card loads */
+  React.useEffect(function() {
+    if (!card) { setJtcgDetail(null); setJtcgLoading(true); return; }
+    setJtcgLoading(true);
+    fetchJustTCGDetail({ scryfallId: card.id }).then(function(detail) {
+      setJtcgDetail(detail);
+      setJtcgLoading(false);
+    }).catch(function() { setJtcgLoading(false); });
+  }, [card && card.id]);
 
   function goToMarketplace() {
     window.location.hash = 'store';
@@ -230,8 +244,108 @@ export function CardDetailView(props) {
         h('p', { className: 'price-source' },
           'Prices from ',
           h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
-          ' \u00B7 Updated daily \u00B7 ',
+          ' + ',
+          h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG'),
+          ' \u00B7 Updated regularly \u00B7 ',
           h('a', { href: '#pricing', style: { color: 'inherit', textDecoration: 'underline' } }, 'How we source prices')
+        ),
+
+        /* ── JustTCG Condition Breakdown ── */
+        h('div', { className: 'cd-jtcg-section' },
+          h('h3', { className: 'cd-jtcg-title' }, 'Condition Prices'),
+          jtcgLoading
+            ? h('div', { className: 'cd-jtcg-loading' }, 'Loading condition data\u2026')
+            : jtcgDetail && jtcgDetail.conditions
+              ? h('div', { className: 'cd-jtcg-grid' },
+                  ['NM', 'LP', 'MP', 'HP', 'DMG'].map(function(cond) {
+                    var data = jtcgDetail.conditions[cond];
+                    if (!data) return h('div', { key: cond, className: 'cd-cond-card cd-cond-na' },
+                      h('div', { className: 'cd-cond-label' }, cond),
+                      h('div', { className: 'cd-cond-price' }, 'N/A')
+                    );
+                    var change = data.change7d;
+                    var changeClass = change > 0 ? 'cd-change-up' : change < 0 ? 'cd-change-down' : 'cd-change-flat';
+                    var prefix = change > 0 ? '+' : '';
+                    return h('div', { key: cond, className: 'cd-cond-card cond-badge-' + cond.toLowerCase() },
+                      h('div', { className: 'cd-cond-label' }, cond),
+                      h('div', { className: 'cd-cond-price' }, formatUSD(data.price)),
+                      h('div', { className: 'cd-cond-change ' + changeClass }, prefix + change.toFixed(1) + '% 7d')
+                    );
+                  })
+                )
+              : h('div', { className: 'cd-jtcg-empty' }, 'Condition pricing not available for this card.'),
+
+          /* Price trend stats */
+          jtcgDetail && jtcgDetail.conditions && jtcgDetail.conditions.NM
+            ? h('div', { className: 'cd-trend-row' },
+                (function() {
+                  var nm = jtcgDetail.conditions.NM;
+                  var items = [
+                    { label: '24h', val: nm.change24h },
+                    { label: '7d', val: nm.change7d },
+                    { label: '30d', val: nm.change30d },
+                    { label: '90d', val: nm.change90d }
+                  ];
+                  return items.map(function(item) {
+                    var cls = item.val > 0 ? 'cd-change-up' : item.val < 0 ? 'cd-change-down' : 'cd-change-flat';
+                    var prefix = item.val > 0 ? '+' : '';
+                    return h('div', { key: item.label, className: 'cd-trend-item' },
+                      h('div', { className: 'cd-trend-label' }, item.label),
+                      h('div', { className: 'cd-trend-val ' + cls }, prefix + item.val.toFixed(1) + '%')
+                    );
+                  });
+                })()
+              )
+            : null,
+
+          /* 30-day sparkline chart */
+          jtcgDetail && jtcgDetail.conditions && jtcgDetail.conditions.NM && jtcgDetail.conditions.NM.history30d.length > 1
+            ? (function() {
+                var pts = jtcgDetail.conditions.NM.history30d;
+                var prices = pts.map(function(p) { return p.p; });
+                var minP = Math.min.apply(null, prices);
+                var maxP = Math.max.apply(null, prices);
+                var range = maxP - minP || 1;
+                var w = 280;
+                var ht = 60;
+                var pathParts = prices.map(function(p, i) {
+                  var x = (i / (prices.length - 1)) * w;
+                  var y = ht - 4 - ((p - minP) / range) * (ht - 8);
+                  return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+                });
+                var color = prices[prices.length - 1] >= prices[0] ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef4444)';
+                var nm = jtcgDetail.conditions.NM;
+                return h('div', { className: 'cd-chart-wrap' },
+                  h('div', { className: 'cd-chart-header' },
+                    h('span', null, '30-Day NM Price Trend'),
+                    h('span', { className: 'cd-chart-range' },
+                      formatUSD(nm.min30d) + ' \u2013 ' + formatUSD(nm.max30d)
+                    )
+                  ),
+                  h('svg', { width: '100%', height: ht, viewBox: '0 0 ' + w + ' ' + ht, preserveAspectRatio: 'none', className: 'cd-chart-svg' },
+                    h('path', { d: pathParts.join(''), fill: 'none', stroke: color, strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' })
+                  )
+                );
+              })()
+            : null,
+
+          /* All-time stats */
+          jtcgDetail && jtcgDetail.conditions && jtcgDetail.conditions.NM && jtcgDetail.conditions.NM.allTimeLow != null
+            ? h('div', { className: 'cd-alltime' },
+                h('div', { className: 'cd-alltime-item' },
+                  h('span', { className: 'cd-alltime-label' }, 'All-time low'),
+                  h('span', { className: 'cd-alltime-val cd-change-down' }, formatUSD(jtcgDetail.conditions.NM.allTimeLow))
+                ),
+                h('div', { className: 'cd-alltime-item' },
+                  h('span', { className: 'cd-alltime-label' }, 'All-time high'),
+                  h('span', { className: 'cd-alltime-val cd-change-up' }, formatUSD(jtcgDetail.conditions.NM.allTimeHigh))
+                ),
+                jtcgDetail.conditions.NM.min1y != null && h('div', { className: 'cd-alltime-item' },
+                  h('span', { className: 'cd-alltime-label' }, '52-week range'),
+                  h('span', { className: 'cd-alltime-val' }, formatUSD(jtcgDetail.conditions.NM.min1y) + ' \u2013 ' + formatUSD(jtcgDetail.conditions.NM.max1y))
+                )
+              )
+            : null
         ),
 
         h('div', { className: 'card-actions' },

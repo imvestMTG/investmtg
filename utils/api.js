@@ -532,3 +532,72 @@ export function fetchConditionPrices(ids) {
       return {};
     });
 }
+
+/**
+ * Fetch full JustTCG card detail with all condition prices, price changes, and history.
+ * Returns { conditions: {NM:{price,change24h,change7d,change30d,change90d,history30d,...},...}, card: {...} }
+ */
+export function fetchJustTCGDetail(ids) {
+  var tcgId = ids && ids.tcgplayerId;
+  var sfId  = ids && ids.scryfallId;
+  if (typeof ids === 'string') { sfId = ids; tcgId = null; }
+  if (!tcgId && !sfId) return Promise.resolve(null);
+  var qs = '?path=/v1/cards'
+    + (tcgId ? '&tcgplayerId=' + encodeURIComponent(tcgId) : '&scryfallId=' + encodeURIComponent(sfId))
+    + '&condition=NM,LP,MP,HP,DMG'
+    + '&include_price_history=true';
+  return fetch(PROXY_BASE + '/justtcg' + qs)
+    .then(function(res) {
+      if (!res.ok) throw new Error('JustTCG error: ' + res.status);
+      return res.json();
+    })
+    .then(function(json) {
+      var cards = json.data || [];
+      if (cards.length === 0) return null;
+      var card = cards[0];
+      var condMap = { 'Near Mint': 'NM', 'Lightly Played': 'LP', 'Moderately Played': 'MP', 'Heavily Played': 'HP', 'Damaged': 'DMG' };
+      var conditions = {};
+      (card.variants || []).forEach(function(v) {
+        var code = condMap[v.condition];
+        if (!code || v.printing !== 'Normal') return;
+        conditions[code] = {
+          price: v.price,
+          change24h: v.priceChange24hr || 0,
+          change7d: v.priceChange7d || 0,
+          change30d: v.priceChange30d || 0,
+          change90d: v.priceChange90d || 0,
+          trendSlope7d: v.trendSlope7d || 0,
+          trendSlope30d: v.trendSlope30d || 0,
+          min7d: v.minPrice7d, max7d: v.maxPrice7d,
+          min30d: v.minPrice30d, max30d: v.maxPrice30d,
+          min1y: v.minPrice1y, max1y: v.maxPrice1y,
+          allTimeLow: v.minPriceAllTime, allTimeLowDate: v.minPriceAllTimeDate,
+          allTimeHigh: v.maxPriceAllTime, allTimeHighDate: v.maxPriceAllTimeDate,
+          history7d: v.priceHistory || [],
+          history30d: v.priceHistory30d || []
+        };
+      });
+      return { conditions: conditions, card: { name: card.name, set: card.set_name, tcgplayerId: card.tcgplayerId, scryfallId: card.scryfallId } };
+    })
+    .catch(function(err) {
+      console.warn('[investMTG] JustTCG detail fetch failed:', err.message);
+      return null;
+    });
+}
+
+/**
+ * Fetch MTGStocks price history for a card.
+ * @param {string|number} printId — MTGStocks print ID
+ */
+export function fetchMTGStocksHistory(printId) {
+  if (!printId) return Promise.resolve(null);
+  return fetch(PROXY_BASE + '/mtgstocks?print_id=' + encodeURIComponent(printId))
+    .then(function(res) {
+      if (!res.ok) throw new Error('MTGStocks error: ' + res.status);
+      return res.json();
+    })
+    .catch(function(err) {
+      console.warn('[investMTG] MTGStocks fetch failed:', err.message);
+      return null;
+    });
+}

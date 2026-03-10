@@ -496,6 +496,46 @@ export function PortfolioView(props) {
   var cardMetadata = ref9[0], setCardMetadata = ref9[1];
   var ref10 = React.useState(0);
   var unassignedCount = ref10[0], setUnassignedCount = ref10[1];
+  var ref11 = React.useState({ key: 'name', dir: 'asc' });
+  var pfSort = ref11[0], setPfSort = ref11[1];
+
+  function togglePfSort(key) {
+    setPfSort(function(prev) {
+      if (prev.key === key) return { key: key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      var defaultDir = (key === 'name' || key === 'set' || key === 'condition') ? 'asc' : 'desc';
+      return { key: key, dir: defaultDir };
+    });
+  }
+
+  function sortItems(items) {
+    return items.slice().sort(function(a, b) {
+      var dir = pfSort.dir === 'asc' ? 1 : -1;
+      var va, vb;
+      if (pfSort.key === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+      else if (pfSort.key === 'set') { va = (a.set || '').toLowerCase(); vb = (b.set || '').toLowerCase(); }
+      else if (pfSort.key === 'condition') { va = a.condition || 'NM'; vb = b.condition || 'NM'; }
+      else if (pfSort.key === 'qty') { va = a.qty || 1; vb = b.qty || 1; }
+      else if (pfSort.key === 'buyPrice') { va = a.buyPrice || 0; vb = b.buyPrice || 0; }
+      else if (pfSort.key === 'currentPrice') { va = a.currentPrice || 0; vb = b.currentPrice || 0; }
+      else if (pfSort.key === 'gain') { va = (a.currentPrice - a.buyPrice) * (a.qty || 1); vb = (b.currentPrice - b.buyPrice) * (b.qty || 1); }
+      else { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function SortTh(thProps) {
+    var sortKey = thProps.sortKey;
+    var label = thProps.label;
+    var isActive = pfSort.key === sortKey;
+    var arrow = isActive ? (pfSort.dir === 'asc' ? ' \u2191' : ' \u2193') : ' \u2195';
+    return h('th', {
+      className: 'pf-sortable-th' + (isActive ? ' pf-th-active' : ''),
+      onClick: function() { togglePfSort(sortKey); },
+      style: { cursor: 'pointer', userSelect: 'none' }
+    }, label + arrow);
+  }
 
   function loadBinders() {
     if (!authUser) return;
@@ -657,15 +697,20 @@ export function PortfolioView(props) {
 
   /* Render a card table (used for both flat and grouped views) */
   function renderCardTable(items) {
+    var sorted = sortItems(items);
     return h('table', { className: 'portfolio-table' },
       h('thead', null, h('tr', null,
-        h('th', null, 'Card'), h('th', null, 'Set'), h('th', null, 'Cond'),
-        h('th', null, 'Qty'), h('th', null, 'Buy Price'), h('th', null, 'Current'),
-        h('th', null, 'Gain/Loss'),
+        h(SortTh, { sortKey: 'name', label: 'Card' }),
+        h(SortTh, { sortKey: 'set', label: 'Set' }),
+        h(SortTh, { sortKey: 'condition', label: 'Cond' }),
+        h(SortTh, { sortKey: 'qty', label: 'Qty' }),
+        h(SortTh, { sortKey: 'buyPrice', label: 'Buy Price' }),
+        h(SortTh, { sortKey: 'currentPrice', label: 'Current' }),
+        h(SortTh, { sortKey: 'gain', label: 'Gain/Loss' }),
         authUser && h('th', null, 'Binder'),
         h('th', null, 'Actions')
       )),
-      h('tbody', null, items.map(function(item) {
+      h('tbody', null, sorted.map(function(item) {
         var gain = (item.currentPrice - item.buyPrice) * item.qty;
         var gainPct = item.buyPrice > 0 ? ((item.currentPrice - item.buyPrice) / item.buyPrice * 100) : 0;
         return h('tr', { key: item.id },

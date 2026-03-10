@@ -65,6 +65,7 @@ const ALLOWED_PROXY_HOSTS = [
   'edhtop16.com',
   'api.scryfall.com',
   'api2.moxfield.com',
+  'api.mtgstocks.com',
 ];
 
 // Cache TTLs (seconds)
@@ -73,6 +74,7 @@ const TTL_FEATURED = 3600;    // 1 hour
 const TTL_TRENDING = 1800;    // 30 minutes
 const TTL_BUDGET = 3600;      // 1 hour
 const TTL_MOVERS = 1800;      // 30 minutes
+const TTL_MTGSTOCKS = 86400;  // 24 hours (price history doesn't change fast)
 const TTL_PRICE = 600;        // 10 minutes for individual card prices
 
 const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -729,9 +731,10 @@ async function handleMovers(request, env, category) {
   // Curated movers lists by category
   const lists = {
     valuable: [
-      'Black Lotus', 'Ancestral Recall', 'Time Walk', 'Mox Sapphire', 'Mox Ruby',
-      'Mox Pearl', 'Mox Jet', 'Mox Emerald', 'Timetwister', 'Underground Sea',
-      'Volcanic Island', 'Tropical Island', 'Tundra', 'Bayou', 'Savannah', 'Badlands',
+      'Mox Emerald', 'Time Walk', "Mishra's Workshop", 'The Tabernacle at Pendrell Vale',
+      'Mox Jet', 'Timetwister', 'Mox Pearl', 'Candelabra of Tawnos',
+      'Mox Sapphire', 'Underground Sea', 'Volcanic Island', 'Tropical Island',
+      'Tundra', 'Bayou', 'Badlands', 'Savannah',
     ],
     modern: [
       'Ragavan, Nimble Pilferer', 'The One Ring', 'Orcish Bowmasters',
@@ -2204,6 +2207,51 @@ async function handleChatbot(request) {
   } catch { return json({ error: 'Chat service unavailable' }, 502, request); }
 }
 
+/* ── MTGStocks proxy ── */
+async function handleMTGStocks(request, env) {
+  const url = new URL(request.url);
+  const printId = url.searchParams.get('print_id');
+  if (!printId) return json({ error: 'print_id required' }, 400, request);
+
+  // Check KV cache
+  const cacheKey = `mtgstocks:${printId}`;
+  const cached = await env.CACHE.get(cacheKey, 'json');
+  if (cached) return json(cached, 200, request);
+
+  // Fetch from MTGStocks API
+  try {
+    const [printResp, priceResp] = await Promise.all([
+      fetch(`https://api.mtgstocks.com/prints/${printId}`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'investMTG/1.0' }
+      }),
+      fetch(`https://api.mtgstocks.com/prints/${printId}/prices/tcgplayer`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'investMTG/1.0' }
+      })
+    ]);
+
+    if (!printResp.ok) return json({ error: 'MTGStocks card not found' }, 404, request);
+
+    const printData = await printResp.json();
+    const priceData = priceResp.ok ? await priceResp.json() : null;
+
+    const result = {
+      id: printData.id,
+      name: printData.name,
+      set_name: printData.card_set?.name || '',
+      scryfallId: printData.scryfallId || null,
+      all_time_high: printData.all_time_high || null,
+      all_time_low: printData.all_time_low || null,
+      tcgplayer: printData.tcgplayer || null,
+      prices: priceData || null
+    };
+
+    await env.CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: TTL_MTGSTOCKS });
+    return json(result, 200, request);
+  } catch (e) {
+    return json({ error: 'MTGStocks fetch failed: ' + e.message }, 502, request);
+  }
+}
+
 async function handleGenericProxy(request) {
   const url = new URL(request.url);
   const target = url.searchParams.get('target');
@@ -2381,6 +2429,7 @@ export default {
 
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);
+      if (path === '/mtgstocks' || path.startsWith('/mtgstocks')) return handleMTGStocks(request, env);
       if (path.startsWith('/topdeck'))                         return handleTopDeck(request, env);
       if (path === '/chatbot')                                 return handleChatbot(request);
       if (url.searchParams.has('target'))                      return handleGenericProxy(request);

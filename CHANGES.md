@@ -1,5 +1,39 @@
 # investMTG — Changelog
 
+## 2026-03-11: v59 — Sortable tables + JustTCG/MTGStocks data integration
+
+- **components/MarketMoversView.js** — Complete rewrite to sortable data table:
+  - Sortable columns: Rank, Card, Price, 7D/30D/90D change. Click column headers to toggle asc/desc.
+  - JustTCG condition data loaded progressively per card (NM price + 7d/30d/90d % change).
+  - 30-day SVG sparkline chart column showing price trend.
+  - SortArrow and Sparkline helper components.
+  - Replaces old card-list layout with proper `<table>` structure.
+- **components/CardDetailView.js** — JustTCG condition breakdown section:
+  - Condition price grid (NM/LP/MP/HP/DMG) with 7-day % change per condition.
+  - Price trend stats row (24h/7d/30d/90d % change for NM).
+  - 30-day NM price trend SVG sparkline with min/max range.
+  - All-time high/low + 52-week range stats.
+- **components/PortfolioView.js** — Sortable table headers:
+  - All portfolio table columns (Card, Set, Cond, Qty, Buy Price, Current, Gain/Loss) now clickable to sort asc/desc.
+  - SortTh component with active state highlighting and directional arrow indicators.
+  - sortItems() function handles all sort keys including computed gain/loss.
+- **utils/api.js** — 2 new API functions:
+  - `fetchJustTCGDetail(ids)` — full JustTCG card data with all conditions, price changes (24h/7d/30d/90d), 30d price history, all-time/1y min/max.
+  - `fetchMTGStocksHistory(printId)` — MTGStocks price history proxy (requires print_id mapping).
+- **worker/worker.js** — MTGStocks proxy handler:
+  - `handleMTGStocks()` — proxies to `api.mtgstocks.com/prints/{id}` and `/prints/{id}/prices/tcgplayer`, KV-cached 24hr.
+  - `/mtgstocks` route added.
+  - `api.mtgstocks.com` added to `ALLOWED_PROXY_HOSTS`.
+  - `TTL_MTGSTOCKS = 86400` constant.
+  - N/A fix: replaced Black Lotus/Ancestral Recall/Mox Ruby (no USD prices) with Mishra's Workshop/Tabernacle/Candelabra in valuable movers list.
+- **style.css** — ~350 lines added:
+  - Market Movers: mv-table-wrap, mv-table, mv-th (sortable headers), mv-row, mv-td, mv-card-img/info/name/set, mv-sort-arrow, mv-change (up/down/flat/na), mv-sparkline + mobile responsive.
+  - Card Detail: cd-jtcg-section, cd-jtcg-grid (5-col condition grid), cd-cond-card, cd-cond-label/price/change, cd-trend-row, cd-chart-wrap/svg, cd-alltime + mobile responsive.
+  - Portfolio: pf-sortable-th, pf-th-active.
+- **sw.js** — v58 → v59
+
+---
+
 ## 2026-03-11: v58 — Portfolio upgrade (binders, conditions, lists)
 
 - **worker/worker.js** — Major portfolio system overhaul:
