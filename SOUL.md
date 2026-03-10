@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **v51** — Fix portfolio DELETE for signed-in users: Worker `portfolioScope()` used `p.user_id` table alias in DELETE queries (invalid without JOIN), causing D1 `no such column` error — cards were never actually removed from backend. Added `bare` property without alias prefix for DELETE statements. Worker redeployed. |
 | 2026-03-10 | **v50** — Fix portfolio card removal race condition: useEffect dependency changed from `[portfolio.length]` to `[]` (mount-only), removed `updatePortfolio()` from fetch response to prevent GET/DELETE race resurrecting removed cards |
 | 2026-03-10 | **v49** — Revert homepage redesign to original v46 sleek layout; keep Worker camelCase mapping + workers_dev=false + dead import cleanup |
 | 2026-03-10 | **v48** — Fix oversized SVG icons on homepage: added explicit width/height to feature highlight SVGs, constrained icon containers with min/max sizing + overflow hidden |

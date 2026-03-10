@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-10: Fix portfolio DELETE for signed-in users (SW v51)
+
+- **worker/worker.js** — Fixed a bug where removing a card from the portfolio always failed silently for authenticated users. Root cause: `portfolioScope()` returned SQL clauses with a `p.` table alias prefix (`p.user_id = ?`) designed for the SELECT JOIN query. The DELETE statement used the same scope clause, producing `DELETE FROM portfolios WHERE p.user_id = ? AND card_id = ?` — D1/SQLite threw `no such column: p.user_id` because standalone DELETE has no table alias. The error was swallowed by the frontend's fire-and-forget `.catch()`. On next page load, `fetchPortfolio()` returned the never-deleted card from D1, resurrecting it. Fix: added a `bare` property to `portfolioScope()` without the table alias prefix, and switched the DELETE queries to use `scope.bare` instead of `scope.clause`.
+- Worker redeployed to `api.investmtg.com`.
+- SW bumped to v51.
+
+---
+
 ## 2026-03-10: Fix portfolio card removal race condition (SW v50)
 
 - **components/PortfolioView.js** — Fixed a bug where removing a card from the portfolio would cause it to reappear. Root cause: the `useEffect` that fetches portfolio data from D1 had `[portfolio.length]` as its dependency. When the user removed a card, `portfolio.length` changed, triggering a re-fetch. The `fetchPortfolio()` GET request raced against the `removeFromPortfolioAPI()` DELETE — the GET returned stale data (card still present) and `updatePortfolio()` overwrote the local state, resurrecting the removed card. Fix: changed dependency to `[]` (mount-only) and removed the `updatePortfolio()` call from the fetch response handler — the effect now only updates the price map, never overwrites portfolio items.

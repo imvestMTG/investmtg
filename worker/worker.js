@@ -318,7 +318,9 @@ async function migrateAnonymousDataToUser(env, sessionToken, userId) {
 }
 
 function portfolioScope(auth, token) {
-  return auth ? { clause: 'p.user_id = ?', value: auth.userId } : { clause: 'p.session_token = ?', value: token };
+  return auth
+    ? { clause: 'p.user_id = ?', bare: 'user_id = ?', value: auth.userId }
+    : { clause: 'p.session_token = ?', bare: 'session_token = ?', value: token };
 }
 
 function listingOwnerScope(auth) {
@@ -779,9 +781,9 @@ async function handlePortfolio(request, env) {
     const parts = url.pathname.split('/');
     const cardId = parts[parts.length - 1];
     if (!cardId || cardId === 'portfolio') {
-      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.clause}`).bind(scope.value).run();
+      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.bare}`).bind(scope.value).run();
     } else {
-      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.clause} AND card_id = ?`).bind(scope.value, cardId).run();
+      await env.DB.prepare(`DELETE FROM portfolios WHERE ${scope.bare} AND card_id = ?`).bind(scope.value, cardId).run();
     }
     return json({ success: true }, 200, request);
   }
