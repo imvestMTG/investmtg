@@ -193,6 +193,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-11 | **v58** — Portfolio upgrade: User-created binders with CRUD, card condition tracking (NM/LP/MP/HP/DMG) with condition-adjusted pricing (NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%), virtual lists (Wishlist/Buylist/Trade) with card management. 3 new D1 tables (binders, lists, list_items) + 2 new portfolio columns. Complete PortfolioView rewrite with tabbed UI, group-by controls, binder chip filters. CardDetailView gains inline condition selector and "Add to List" dropdown. 12 new API functions. |
 | 2026-03-11 | **v57** — Dynamic carousel refresh: Homepage carousels (Featured, Trending, Budget Staples) now auto-rotate daily via Scryfall queries (commander-legal, paper-only, EDHREC-ranked). Day-seeded page rotation ensures fresh content. KV-cached with 25hr TTL. Admin manual trigger endpoint added. |
 | 2026-03-11 | **v56** — Fix seller dashboard delete: `GET /api/sellers` now filters `AND status = 'active'` so deleted listings no longer reappear. Cleaned 3 test listings with $0.00 prices and missing Scryfall data. |
 | 2026-03-10 | **Efficiency upgrades** — 5 new dev tools: `tests/full-qa.sh` (combined QA pipeline), `tests/code-review.sh` (AI diff review), auto health monitoring (6 endpoints every 6hr), Google Sheets release tracker (56 historical releases), Cloudflare connector test (not usable for this zone). |

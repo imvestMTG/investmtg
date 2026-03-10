@@ -785,9 +785,13 @@ async function handlePortfolio(request, env) {
     const body = await request.json().catch(() => null);
     if (!body || !body.card_id) return json({ error: 'card_id required' }, 400, request);
 
+    const validConditions = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+    const condition = validConditions.includes(body.condition) ? body.condition : 'NM';
+    const binderId = body.binder_id ? parseInt(body.binder_id) : null;
+
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(
-      'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at, condition, binder_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       auth ? auth.userId : null,
       auth ? null : token,
@@ -795,11 +799,42 @@ async function handlePortfolio(request, env) {
       body.card_name || '',
       body.quantity || 1,
       body.added_price || null,
-      now
+      now,
+      condition,
+      binderId
     ).run();
 
     const resp = json({ success: true, message: 'Added to portfolio' }, 201, request);
     return !auth && isNew ? withSessionCookie(resp, token) : resp;
+  }
+
+  if (method === 'PUT') {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.card_id) return json({ error: 'card_id required' }, 400, request);
+
+    const updates = [];
+    const binds = [];
+    const validConditions = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+    if (body.condition && validConditions.includes(body.condition)) {
+      updates.push('condition = ?'); binds.push(body.condition);
+    }
+    if (body.binder_id !== undefined) {
+      updates.push('binder_id = ?'); binds.push(body.binder_id ? parseInt(body.binder_id) : null);
+    }
+    if (body.quantity !== undefined) {
+      updates.push('quantity = ?'); binds.push(parseInt(body.quantity) || 1);
+    }
+    if (body.added_price !== undefined) {
+      updates.push('added_price = ?'); binds.push(parseFloat(body.added_price) || 0);
+    }
+    if (updates.length === 0) return json({ error: 'No fields to update' }, 400, request);
+
+    binds.push(scope.value, body.card_id);
+    await env.DB.prepare(
+      `UPDATE portfolios SET ${updates.join(', ')} WHERE ${scope.bare} AND card_id = ?`
+    ).bind(...binds).run();
+
+    return json({ success: true }, 200, request);
   }
 
   if (method === 'DELETE') {
@@ -842,10 +877,12 @@ async function handlePortfolioBatch(request, env) {
 
   for (const chunk of chunks) {
     try {
+      const validConds = ['NM', 'LP', 'MP', 'HP', 'DMG'];
       const stmts = chunk.map(item => {
         if (!item.card_name) return null;
+        const cond = validConds.includes(item.condition) ? item.condition : 'NM';
         return env.DB.prepare(
-          'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at, condition, binder_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           auth.userId,
           null,
@@ -853,7 +890,9 @@ async function handlePortfolioBatch(request, env) {
           item.card_name,
           item.quantity || 1,
           item.added_price || null,
-          now
+          now,
+          cond,
+          item.binder_id ? parseInt(item.binder_id) : null
         );
       }).filter(s => s !== null);
 
@@ -867,6 +906,203 @@ async function handlePortfolioBatch(request, env) {
   }
 
   return json({ success: true, created }, 201, request);
+}
+
+/* ══════════════════════════════════════
+   BINDERS — User-created portfolio folders
+   ══════════════════════════════════════ */
+
+async function handleBinders(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  const method = request.method;
+  const url = new URL(request.url);
+  const parts = url.pathname.split('/');
+  const binderId = parts.length >= 4 ? parts[3] : null;
+
+  if (method === 'GET') {
+    const rows = await env.DB.prepare(
+      'SELECT * FROM binders WHERE user_id = ? ORDER BY sort_order ASC, name ASC'
+    ).bind(auth.userId).all();
+    // Also count cards per binder
+    const counts = await env.DB.prepare(
+      `SELECT binder_id, COUNT(*) as count FROM portfolios
+       WHERE user_id = ? AND binder_id IS NOT NULL
+       GROUP BY binder_id`
+    ).bind(auth.userId).all();
+    const countMap = {};
+    (counts.results || []).forEach(r => { countMap[r.binder_id] = r.count; });
+    const binders = (rows.results || []).map(b => Object.assign({}, b, { card_count: countMap[b.id] || 0 }));
+    // Also count unbindered cards
+    const unassigned = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM portfolios WHERE user_id = ? AND (binder_id IS NULL OR binder_id = 0)'
+    ).bind(auth.userId).first();
+    return json({ binders, unassigned_count: unassigned ? unassigned.count : 0 }, 200, request);
+  }
+
+  if (method === 'POST') {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.name || !body.name.trim()) return json({ error: 'name required' }, 400, request);
+    const now = Math.floor(Date.now() / 1000);
+    const result = await env.DB.prepare(
+      'INSERT INTO binders (user_id, name, color, icon, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(
+      auth.userId, body.name.trim(), body.color || '#D4A843', body.icon || 'folder',
+      body.sort_order || 0, now, now
+    ).run();
+    return json({ success: true, id: result.meta.last_row_id }, 201, request);
+  }
+
+  if (method === 'PUT' && binderId) {
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'Body required' }, 400, request);
+    const updates = []; const binds = [];
+    if (body.name) { updates.push('name = ?'); binds.push(body.name.trim()); }
+    if (body.color) { updates.push('color = ?'); binds.push(body.color); }
+    if (body.icon) { updates.push('icon = ?'); binds.push(body.icon); }
+    if (body.sort_order !== undefined) { updates.push('sort_order = ?'); binds.push(parseInt(body.sort_order)); }
+    if (updates.length === 0) return json({ error: 'No fields to update' }, 400, request);
+    updates.push('updated_at = ?'); binds.push(Math.floor(Date.now() / 1000));
+    binds.push(auth.userId, parseInt(binderId));
+    await env.DB.prepare(
+      `UPDATE binders SET ${updates.join(', ')} WHERE user_id = ? AND id = ?`
+    ).bind(...binds).run();
+    return json({ success: true }, 200, request);
+  }
+
+  if (method === 'DELETE' && binderId) {
+    // Unassign cards from this binder first
+    await env.DB.prepare(
+      'UPDATE portfolios SET binder_id = NULL WHERE user_id = ? AND binder_id = ?'
+    ).bind(auth.userId, parseInt(binderId)).run();
+    await env.DB.prepare(
+      'DELETE FROM binders WHERE user_id = ? AND id = ?'
+    ).bind(auth.userId, parseInt(binderId)).run();
+    return json({ success: true }, 200, request);
+  }
+
+  return json({ error: 'Method not allowed' }, 405, request);
+}
+
+/* ══════════════════════════════════════
+   LISTS — Virtual tracking (Wishlist, Buylist, Trade)
+   ══════════════════════════════════════ */
+
+async function handleLists(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  const method = request.method;
+  const url = new URL(request.url);
+  const parts = url.pathname.split('/');
+  // /api/lists/:id/items/:itemId
+  const listId = parts.length >= 4 ? parts[3] : null;
+  const isItems = parts.length >= 5 && parts[4] === 'items';
+  const itemId = parts.length >= 6 ? parts[5] : null;
+
+  // ── List item operations ──
+  if (isItems && listId) {
+    // Verify list ownership
+    const list = await env.DB.prepare(
+      'SELECT id FROM lists WHERE id = ? AND user_id = ?'
+    ).bind(parseInt(listId), auth.userId).first();
+    if (!list) return json({ error: 'List not found' }, 404, request);
+
+    if (method === 'GET') {
+      const rows = await env.DB.prepare(
+        `SELECT li.*, pr.price_usd, pr.price_usd_foil, pr.image_small, pr.set_name
+         FROM list_items li
+         LEFT JOIN prices pr ON li.card_id = pr.card_id
+         WHERE li.list_id = ? AND li.user_id = ?
+         ORDER BY li.added_at DESC`
+      ).bind(parseInt(listId), auth.userId).all();
+      return json({ items: rows.results || [] }, 200, request);
+    }
+
+    if (method === 'POST') {
+      const body = await request.json().catch(() => null);
+      if (!body || !body.card_id) return json({ error: 'card_id required' }, 400, request);
+      const validConds = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+      const now = Math.floor(Date.now() / 1000);
+      await env.DB.prepare(
+        'INSERT OR REPLACE INTO list_items (list_id, user_id, card_id, card_name, quantity, target_price, condition, notes, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(
+        parseInt(listId), auth.userId, body.card_id, body.card_name || '',
+        body.quantity || 1, body.target_price || null,
+        validConds.includes(body.condition) ? body.condition : 'NM',
+        body.notes || '', now
+      ).run();
+      return json({ success: true }, 201, request);
+    }
+
+    if (method === 'DELETE' && itemId) {
+      await env.DB.prepare(
+        'DELETE FROM list_items WHERE id = ? AND list_id = ? AND user_id = ?'
+      ).bind(parseInt(itemId), parseInt(listId), auth.userId).run();
+      return json({ success: true }, 200, request);
+    }
+
+    return json({ error: 'Method not allowed' }, 405, request);
+  }
+
+  // ── List CRUD ──
+  if (method === 'GET') {
+    const rows = await env.DB.prepare(
+      'SELECT * FROM lists WHERE user_id = ? ORDER BY sort_order ASC, name ASC'
+    ).bind(auth.userId).all();
+    // Count items per list
+    const counts = await env.DB.prepare(
+      'SELECT list_id, COUNT(*) as count FROM list_items WHERE user_id = ? GROUP BY list_id'
+    ).bind(auth.userId).all();
+    const countMap = {};
+    (counts.results || []).forEach(r => { countMap[r.list_id] = r.count; });
+    const lists = (rows.results || []).map(l => Object.assign({}, l, { item_count: countMap[l.id] || 0 }));
+    return json({ lists }, 200, request);
+  }
+
+  if (method === 'POST') {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.name || !body.name.trim()) return json({ error: 'name required' }, 400, request);
+    const validTypes = ['wishlist', 'buylist', 'tradelist', 'custom'];
+    const now = Math.floor(Date.now() / 1000);
+    const result = await env.DB.prepare(
+      'INSERT INTO lists (user_id, name, list_type, description, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(
+      auth.userId, body.name.trim(),
+      validTypes.includes(body.list_type) ? body.list_type : 'custom',
+      body.description || '', body.sort_order || 0, now, now
+    ).run();
+    return json({ success: true, id: result.meta.last_row_id }, 201, request);
+  }
+
+  if (method === 'PUT' && listId) {
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'Body required' }, 400, request);
+    const updates = []; const binds = [];
+    if (body.name) { updates.push('name = ?'); binds.push(body.name.trim()); }
+    if (body.list_type) { updates.push('list_type = ?'); binds.push(body.list_type); }
+    if (body.description !== undefined) { updates.push('description = ?'); binds.push(body.description); }
+    if (body.sort_order !== undefined) { updates.push('sort_order = ?'); binds.push(parseInt(body.sort_order)); }
+    if (updates.length === 0) return json({ error: 'No fields to update' }, 400, request);
+    updates.push('updated_at = ?'); binds.push(Math.floor(Date.now() / 1000));
+    binds.push(auth.userId, parseInt(listId));
+    await env.DB.prepare(
+      `UPDATE lists SET ${updates.join(', ')} WHERE user_id = ? AND id = ?`
+    ).bind(...binds).run();
+    return json({ success: true }, 200, request);
+  }
+
+  if (method === 'DELETE' && listId) {
+    // Delete items first, then the list
+    await env.DB.prepare(
+      'DELETE FROM list_items WHERE list_id = ? AND user_id = ?'
+    ).bind(parseInt(listId), auth.userId).run();
+    await env.DB.prepare(
+      'DELETE FROM lists WHERE id = ? AND user_id = ?'
+    ).bind(parseInt(listId), auth.userId).run();
+    return json({ success: true }, 200, request);
+  }
+
+  return json({ error: 'Method not allowed' }, 405, request);
 }
 
 /* ── Batch listing creation ── */
@@ -2110,6 +2346,8 @@ export default {
       if (path === '/api/portfolio/batch' && request.method === 'POST') return handlePortfolioBatch(request, env);
       if (path.startsWith('/api/portfolio'))                return handlePortfolio(request, env);
       if (path.startsWith('/api/listings'))                 return handleListings(request, env);
+      if (path.startsWith('/api/binders'))                  return handleBinders(request, env);
+      if (path.startsWith('/api/lists'))                    return handleLists(request, env);
       if (path.startsWith('/api/sellers'))                  return handleSellers(request, env);
       if (path === '/api/stores')                           return handleStores(request, env);
       if (path === '/api/events')                           return handleEvents(request, env);

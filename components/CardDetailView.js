@@ -1,6 +1,6 @@
 /* CardDetailView.js — Card detail with backend pricing + other printings */
 import React from 'react';
-import { backendGetCard, getCardPrintings, addToPortfolioAPI } from '../utils/api.js';
+import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
@@ -27,6 +27,16 @@ export function CardDetailView(props) {
   var printings = ref4[0], setPrintings = ref4[1];
   var ref5 = React.useState(false);
   var showAllPrintings = ref5[0], setShowAllPrintings = ref5[1];
+  var ref6 = React.useState('NM');
+  var trackCondition = ref6[0], setTrackCondition = ref6[1];
+  var ref7 = React.useState([]);
+  var userLists = ref7[0], setUserLists = ref7[1];
+  var ref8 = React.useState(false);
+  var showAddToList = ref8[0], setShowAddToList = ref8[1];
+
+  React.useEffect(function() {
+    fetchLists().then(function(data) { setUserLists(data.lists || []); }).catch(function() {});
+  }, []);
 
   /* ── Diagnostic: verify props on mount ── */
   React.useEffect(function() {
@@ -104,9 +114,9 @@ export function CardDetailView(props) {
       var price = getCardPrice(card);
       var existing = portfolio.find(function(item) { return item.id === card.id; });
       if (!existing) {
-        updatePortfolio(portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small') }]));
+        updatePortfolio(portfolio.concat([{ id: card.id, name: card.name, set: card.set_name, buyPrice: price, currentPrice: price, qty: 1, image: getScryfallImageUrl(card, 'small'), condition: trackCondition }]));
         // Sync to D1 backend (fire-and-forget)
-        addToPortfolioAPI({ card_id: card.id, card_name: card.name, quantity: 1, added_price: price }).catch(function(err) {
+        addToPortfolioAPI({ card_id: card.id, card_name: card.name, quantity: 1, added_price: price, condition: trackCondition }).catch(function(err) {
           console.warn('[investMTG] Portfolio backend sync failed:', err.message);
         });
         showToast('Added to portfolio', 'success');
@@ -228,8 +238,36 @@ export function CardDetailView(props) {
           h('button', { className: 'btn btn-primary', onClick: goToMarketplace },
             h(ShoppingCartIcon, null), ' Find Sellers'
           ),
-          h('button', { className: 'btn btn-secondary', onClick: addToPortfolio },
-            h(PortfolioIcon, null), ' Track'
+          h('div', { className: 'card-track-group' },
+            h('button', { className: 'btn btn-secondary', onClick: addToPortfolio },
+              h(PortfolioIcon, null), ' Track'
+            ),
+            h('select', {
+              className: 'cond-select cond-select-inline',
+              value: trackCondition,
+              onChange: function(e) { setTrackCondition(e.target.value); },
+              title: 'Card condition'
+            },
+              ['NM', 'LP', 'MP', 'HP', 'DMG'].map(function(c) {
+                return h('option', { key: c, value: c }, c);
+              })
+            )
+          ),
+          userLists.length > 0 && h('div', { className: 'card-list-add', style: { position: 'relative' } },
+            h('button', { className: 'btn btn-secondary btn-sm', onClick: function() { setShowAddToList(!showAddToList); } }, '+ List'),
+            showAddToList && h('div', { className: 'card-list-dropdown' },
+              userLists.map(function(list) {
+                return h('button', {
+                  key: list.id, className: 'card-list-dropdown-item',
+                  onClick: function() {
+                    addListItem(list.id, { card_id: card.id, card_name: card.name, condition: trackCondition }).then(function() {
+                      showToast('Added to ' + list.name, 'success');
+                      setShowAddToList(false);
+                    }).catch(function() { showToast('Already in list', 'default'); setShowAddToList(false); });
+                  }
+                }, list.name, h('span', { className: 'pf-list-type-tag', style: { marginLeft: '6px' } }, list.list_type));
+              })
+            )
           ),
           h('button', {
             className: 'btn btn-ghost',

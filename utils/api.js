@@ -273,6 +273,89 @@ export function removeFromPortfolioAPI(cardId) {
   });
 }
 
+/** PUT /api/portfolio — { card_id, condition?, binder_id?, quantity?, added_price? } */
+export function updatePortfolioItem(data) {
+  return backendFetch('/api/portfolio', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+/* ── Binders CRUD ─────────────────────────────────────────────────────── */
+
+export function fetchBinders() {
+  return backendFetch('/api/binders');
+}
+
+export function createBinder(data) {
+  return backendFetch('/api/binders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+export function updateBinder(id, data) {
+  return backendFetch('/api/binders/' + encodeURIComponent(id), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+export function deleteBinder(id) {
+  return backendFetch('/api/binders/' + encodeURIComponent(id), {
+    method: 'DELETE'
+  });
+}
+
+/* ── Lists CRUD ───────────────────────────────────────────────────────── */
+
+export function fetchLists() {
+  return backendFetch('/api/lists');
+}
+
+export function createList(data) {
+  return backendFetch('/api/lists', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+export function updateList(id, data) {
+  return backendFetch('/api/lists/' + encodeURIComponent(id), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+export function deleteList(id) {
+  return backendFetch('/api/lists/' + encodeURIComponent(id), {
+    method: 'DELETE'
+  });
+}
+
+export function fetchListItems(listId) {
+  return backendFetch('/api/lists/' + encodeURIComponent(listId) + '/items');
+}
+
+export function addListItem(listId, data) {
+  return backendFetch('/api/lists/' + encodeURIComponent(listId) + '/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+export function removeListItem(listId, itemId) {
+  return backendFetch('/api/lists/' + encodeURIComponent(listId) + '/items/' + encodeURIComponent(itemId), {
+    method: 'DELETE'
+  });
+}
+
 /* ── Listings CRUD ─────────────────────────────────────────────────────── */
 
 /**

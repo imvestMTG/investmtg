@@ -93,8 +93,8 @@ These rules apply to all root-level `.js` files and must not be violated:
 |------|-------|---------|
 | `components/HomeView.js` | `#home` | Hero with static stats, community events, card carousels (featured/trending/budget — daily auto-refresh via Scryfall cron) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
-| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()`. |
-| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio`, Import button + modal (CSV/Text/MTGA via import-parser.js, batch submit via `/api/portfolio/batch`). Auth gating for import uses the `authUser` prop passed from `App`, matching the Header/SellerDashboard auth source of truth. The import dialog now reuses the shared `mp-modal` overlay/card pattern, locks page scrolling while open, and applies mobile-safe sizing/padding for Safari/iPad stability. v50 fix: useEffect fetches prices on mount only (`[]` dependency) — no longer re-fetches on portfolio.length changes, preventing a race condition where GET would resurrect cards the user just removed. |
+| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()` with inline condition selector (NM/LP/MP/HP/DMG) and "Add to List" dropdown for quick list assignment. |
+| `components/PortfolioView.js` | `#portfolio` | v58 rewrite (~840 lines). Tabbed interface: Collection tab with binder sidebar (colored chip filters, All Cards/Unassigned built-ins), condition selector per card (NM/LP/MP/HP/DMG with color-coded badges), condition-adjusted pricing (NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%), group-by controls (set/color/type/rarity/condition/binder). Lists tab with full CRUD for Wishlist/Buylist/Trade lists. CreateBinderModal and CreateListModal. Import button + modal still present. |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
 | `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint. Profile tab: inline-editable fields (click-to-edit per field with Save/Cancel), section-based layout (Personal Info, Contact & Store, Account Details, Session), collapsible Danger Zone with type-to-confirm DELETE gate. PUT/DELETE /api/sellers for profile update/account deletion. |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
@@ -130,7 +130,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 
 | File | Purpose |
 |------|---------|
-| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), `createListingsBatch()`, `addToPortfolioBatch()`, and 20+ backend proxy functions for all API endpoints |
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), `createListingsBatch()`, `addToPortfolioBatch()`, and 30+ backend proxy functions. v58 additions: `updatePortfolioItem`, `fetchBinders`, `createBinder`, `updateBinder`, `deleteBinder`, `fetchLists`, `createList`, `updateList`, `deleteList`, `fetchListItems`, `addListItem`, `removeListItem`. |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
@@ -157,7 +157,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
-| D1 Database | `investmtg-db` | 11-table SQLite database |
+| D1 Database | `investmtg-db` | 14-table SQLite database (users, auth_sessions, prices, portfolios, listings, sellers, events, stores, cart_items, orders, order_counters, binders, lists, list_items) |
 | KV Namespace | `INVESTMTG_CACHE` | Edge cache for market and discovery responses |
 | Worker | `investmtg-proxy` | Unified backend + proxy |
 | SumUp | Checkouts API | Online card payment processing via Card Widget |
@@ -173,8 +173,11 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/api/search` | GET | Card search proxy |
 | `/api/card/:id` | GET | Card detail proxy/cache |
 | `/api/movers/:cat` | GET | Market movers by category |
-| `/api/portfolio` | GET/POST/DELETE | Portfolio CRUD |
-| `/api/portfolio/batch` | POST | Batch portfolio import (auth required, max 500 items, D1 batch insert in chunks of 50) |
+| `/api/portfolio` | GET/POST/PUT/DELETE | Portfolio CRUD. POST accepts `condition` (NM/LP/MP/HP/DMG) and `binder_id`. PUT updates condition, binder, quantity, price on existing items. |
+| `/api/portfolio/batch` | POST | Batch portfolio import (auth required, max 500 items, D1 batch insert in chunks of 50). Supports condition and binder_id. |
+| `/api/binders` | GET/POST/PUT/DELETE | Binder CRUD (user-created card organizers with name, color, icon, sort_order). GET returns binders with card counts + unassigned count. |
+| `/api/lists` | GET/POST/PUT/DELETE | Virtual list CRUD (Wishlist, Buylist, Trade). List types: `wishlist`, `buylist`, `trade`. |
+| `/api/lists/:id/items` | GET/POST/DELETE | Manage cards within a list (card_id, card_name, quantity, target_price, condition, notes). UNIQUE on list_id + card_id. |
 | `/api/listings` | GET/POST/PUT/DELETE | Marketplace listings (POST always sets image_uri='', storage optimization) |
 | `/api/listings/batch` | POST | Batch listing creation (auth required, max 500, D1 batch in chunks of 50, image_uri always empty) |
 | `/api/sellers` | GET/POST/PUT/DELETE | Seller profiles: GET (fetch by session), POST (register), PUT (update fields), DELETE (remove account + listings) |

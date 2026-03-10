@@ -54,8 +54,11 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/search` | GET | Scryfall-backed card search |
 | `/api/card/:id` | GET | card detail proxy/cache |
 | `/api/movers/:cat` | GET | market movers by category |
-| `/api/portfolio` | GET/POST/DELETE | portfolio CRUD |
-| `/api/portfolio/batch` | POST | batch portfolio import — auth required, max 500 items, D1 batch() in chunks of 50, INSERT OR REPLACE |
+| `/api/portfolio` | GET/POST/PUT/DELETE | portfolio CRUD. POST accepts `condition` (NM/LP/MP/HP/DMG) and `binder_id`. PUT updates condition, binder, quantity, price on existing items. |
+| `/api/portfolio/batch` | POST | batch portfolio import — auth required, max 500 items, D1 batch() in chunks of 50, INSERT OR REPLACE. Supports condition and binder_id. |
+| `/api/binders` | GET/POST/PUT/DELETE | Binder CRUD (user-created card organizers with name, color, icon, sort_order). GET returns binders with card counts + unassigned count. Auth required. |
+| `/api/lists` | GET/POST/PUT/DELETE | Virtual list CRUD (Wishlist, Buylist, Trade). List types: `wishlist`, `buylist`, `trade`. Auth required. |
+| `/api/lists/:id/items` | GET/POST/DELETE | Manage cards within a list (card_id, card_name, quantity, target_price, condition, notes). UNIQUE on list_id + card_id. Auth required. |
 | `/api/listings` | GET/POST/PUT/DELETE | marketplace listings — GET maps snake_case DB columns to camelCase for frontend (cardId, cardName, setName, seller, etc.) with backward-compat snake_case aliases. POST always sets image_uri='', storage optimization |
 | `/api/listings/batch` | POST | batch listing creation — auth required, max 500, D1 batch() in chunks of 50, image_uri always empty |
 | `/api/sellers` | GET/POST | seller profiles (POST requires auth; returns `{ seller }` on success) |

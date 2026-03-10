@@ -228,7 +228,9 @@ function App() {
           qty: item.quantity || 1,
           buyPrice: item.added_price || 0,
           currentPrice: item.price_usd || 0,
-          image: item.image_small || null
+          image: item.image_small || null,
+          condition: item.condition || 'NM',
+          binder_id: item.binder_id || null
         };
       });
 

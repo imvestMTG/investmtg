@@ -1,5 +1,36 @@
 # investMTG — Changelog
 
+## 2026-03-11: v58 — Portfolio upgrade (binders, conditions, lists)
+
+- **worker/worker.js** — Major portfolio system overhaul:
+  - `POST /api/portfolio` now accepts `condition` (NM/LP/MP/HP/DMG) and `binder_id` fields.
+  - `PUT /api/portfolio` — new endpoint for updating condition, binder, quantity, and price on existing portfolio items.
+  - `POST /api/portfolio/batch` — batch import now supports condition and binder_id.
+  - `GET/POST/PUT/DELETE /api/binders` — full CRUD for user-created binders (name, color, icon, sort_order). Returns binder list with card counts and unassigned count.
+  - `GET/POST/PUT/DELETE /api/lists` — full CRUD for virtual lists (Wishlist, Buylist, Trade). List types: `wishlist`, `buylist`, `trade`.
+  - `GET/POST/DELETE /api/lists/:id/items` — manage cards within lists (card_id, card_name, quantity, target_price, condition, notes). UNIQUE constraint on list_id + card_id.
+- **worker/migrations/v58-portfolio-upgrade.sql** — Schema migration (applied to D1):
+  - New `binders` table (id, user_id, name, color, icon, sort_order, created_at, updated_at).
+  - New `lists` table (id, user_id, name, list_type, description, sort_order, created_at, updated_at).
+  - New `list_items` table (id, list_id, user_id, card_id, card_name, quantity, target_price, condition, notes, added_at).
+  - `portfolios` table: added `condition TEXT DEFAULT 'NM'` and `binder_id INTEGER DEFAULT NULL` columns.
+  - Total D1 tables: 14 (was 11).
+- **components/PortfolioView.js** — Complete rewrite (~840 lines):
+  - Binder sidebar with colored chip filters, "All Cards" and "Unassigned" built-in options.
+  - Condition selector on every card (NM/LP/MP/HP/DMG) with color-coded badges.
+  - Condition-adjusted pricing: NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%.
+  - Group-by controls: set, color, type, rarity, condition, binder.
+  - Tabbed interface: Collection tab + Lists tab.
+  - Lists panel: create/edit/delete lists, add/remove cards, list type selector (Wishlist/Buylist/Trade).
+  - CreateBinderModal and CreateListModal with name, color/icon/type pickers.
+- **components/CardDetailView.js** — Track button now includes inline condition selector dropdown and "Add to List" dropdown for quick list assignment.
+- **utils/api.js** — 12 new API functions: `updatePortfolioItem`, `fetchBinders`, `createBinder`, `updateBinder`, `deleteBinder`, `fetchLists`, `createList`, `updateList`, `deleteList`, `fetchListItems`, `addListItem`, `removeListItem`.
+- **app.js** — Portfolio mapping updated to include condition and binder_id fields.
+- **style.css** — ~400 lines added: pf-tabs, pf-toolbar, pf-chip (binder filters), cond-select, cond-badge (NM/LP/MP/HP/DMG color system), pf-grouped-tables, card-track-group, card-list-dropdown, pf-lists-panel, pf-list-grid, pf-type-selector + mobile responsive.
+- **sw.js** — v57 → v58
+
+---
+
 ## 2026-03-11: v57 — Dynamic carousel refresh (daily auto-rotation)
 
 - **worker/worker.js** — Homepage carousels (Featured, Trending, Budget Staples) now rotate cards daily instead of using static lists.
