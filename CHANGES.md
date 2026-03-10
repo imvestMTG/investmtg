@@ -1,5 +1,13 @@
 # investMTG — Changelog
 
+## 2026-03-10: Fix oversized SVG icons on homepage (SW v48)
+
+- **components/HomeView.js** — Added explicit `width: '22', height: '22'` to all feature highlight SVG icons. Previously these SVGs had `viewBox` but no intrinsic dimensions, causing them to expand to fill the entire viewport (each icon rendered at ~500px+).
+- **style.css** — Added `min-width`, `min-height`, `max-width`, `max-height`, and `overflow: hidden` to `.feature-highlight-icon`, `.feature-highlight-icon svg`, `.live-stat-icon`, and `.live-stat-icon svg` containers. Belt-and-suspenders approach ensures SVGs can never blow out regardless of attribute presence.
+- SW bumped to v48.
+
+---
+
 ## 2026-03-10: Repo consolidation — HomeView redesign + Worker fixes (SW v47)
 
 Cherry-picked real fixes from the `Invest-MTG` repo (created by Claude Code) back into the primary `investmtg` repo.
