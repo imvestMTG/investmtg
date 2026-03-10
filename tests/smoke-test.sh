@@ -141,7 +141,7 @@ echo "── API: PayPal Integration ──"
 PP_CREATE=$(curl -s -X POST "$API/api/paypal/create-order" \
   -H "Content-Type: application/json" \
   -H "Origin: $SITE" \
-  -d '{"order_id":"smoke-test","amount":1.00}')
+  -d "{\"order_id\":\"smoke-$(date +%s)\",\"amount\":1.00}")
 PP_OK=$(echo "$PP_CREATE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ok',''))" 2>/dev/null)
 PP_STATUS=$(echo "$PP_CREATE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null)
 if [ "$PP_OK" = "True" ]; then
@@ -164,10 +164,11 @@ fi
 # ─── 11. API — SumUp Route ───
 echo ""
 echo "── API: SumUp Integration ──"
+SU_REF="smoke-$(date +%s)"
 SU_CREATE=$(curl -s -X POST "$API/api/sumup/checkout" \
   -H "Content-Type: application/json" \
   -H "Origin: $SITE" \
-  -d '{"amount":1.00,"order_id":"smoke-test"}')
+  -d "{\"amount\":1.00,\"order_id\":\"$SU_REF\"}")
 SU_OK=$(echo "$SU_CREATE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ok',''))" 2>/dev/null)
 if [ "$SU_OK" = "True" ]; then
   green "SumUp checkout — ok=True"
