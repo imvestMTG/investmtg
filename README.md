@@ -172,7 +172,9 @@ investmtg/
 │   └── README.md
 # frontend-v2/ removed in v20 optimization pass
 ├── tests/
+│   ├── code-review.sh              # AI code review helper (extracts diff → OpenAI prompt)
 │   ├── debug-tool.sh               # 24-section diagnostic tool (97 checks)
+│   ├── full-qa.sh                  # combined QA pipeline (smoke + debug with gap)
 │   └── smoke-test.sh               # fast pre-push smoke test (33 checks)
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
@@ -188,7 +190,16 @@ investmtg/
 
 ## Testing
 
-Two automated test tools live in `tests/`:
+Four tools live in `tests/`:
+
+### Full QA pipeline (recommended)
+```bash
+bash tests/full-qa.sh              # runs smoke + debug with 35s gap
+bash tests/full-qa.sh --smoke-only # smoke test only
+bash tests/full-qa.sh --debug-only # debug tool only
+bash tests/full-qa.sh --quick      # smoke only, skip gap
+```
+Runs the smoke test, waits 35 seconds (avoids Cloudflare rate limits), then runs the debug tool. The recommended way to run QA — one command covers everything.
 
 ### Smoke test (fast, pre-push)
 ```bash
@@ -202,7 +213,16 @@ bash tests/debug-tool.sh
 ```
 97 checks across 24 sections: frontend static assets, JS modules, DOM integrity, payment code, service worker versioning, API health & data routes, auth, proxy routes (JustTCG, CORS), payment end-to-end (PayPal create-order, SumUp checkout), CSP audit, CORS headers, secret scan, DNS resolution, TLS version, database health & integrity, response times, asset sizes, code style (var-only, no arrows), URL centralization, and dual-write integrity.
 
-**Important:** Run smoke test and debug tool with a ~30-second gap between them to avoid triggering Cloudflare rate limits (HTTP 1015).
+### AI code review
+```bash
+bash tests/code-review.sh          # review staged changes
+bash tests/code-review.sh --all    # all uncommitted changes
+bash tests/code-review.sh --last   # last commit
+bash tests/code-review.sh app.js   # specific file
+```
+Extracts a git diff, saves to `/tmp/investmtg-review-diff.txt`, and prints a review prompt to paste into ChatGPT/OpenAI. Enforces investMTG coding rules (var-only, no arrows, no JSX).
+
+**Important:** Run smoke test and debug tool with a ~30-second gap between them to avoid triggering Cloudflare rate limits (HTTP 1015). The `full-qa.sh` script handles this automatically.
 
 ### Data source segmentation
 
@@ -259,12 +279,17 @@ npx wrangler dev
 - [SumUp](https://www.sumup.com) — online card payment processing via Card Widget
 - [GitHub Pages](https://pages.github.com/) — static site hosting
 
+## Monitoring & Release Tracking
+
+- **Auto health checks** — A recurring task runs every 6 hours checking 6 endpoints (frontend, API health, ticker, search, JustTCG proxy, CORS proxy). Silent when everything passes; sends an alert notification when something breaks.
+- **Release tracker** — [Google Sheets release log](https://docs.google.com/spreadsheets/d/1wncB6NFKkm4gosAAtw-C3L0QjILkG2ROhh4est_PXN8/edit) tracks every deployment: date, commit, SW version, summary, test results, and files changed.
+
 ## Notes
 
 - The root-level SPA is the production front end. `frontend-v2/` was removed in v20 (dead code cleanup).
 - Cardmarket is excluded from the modern buyer experience.
 - No deployment is considered complete until `README.md`, `BUILD_SPEC.md`, `CHANGES.md`, `SOUL.md`, and `worker/README.md` are updated in the same session.
-- Run `bash tests/smoke-test.sh` before every push. Run `bash tests/debug-tool.sh` for full diagnostics.
+- Run `bash tests/full-qa.sh` before every push. Or run smoke and debug tests separately with `bash tests/smoke-test.sh` and `bash tests/debug-tool.sh`.
 
 ---
 

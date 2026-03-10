@@ -1,5 +1,16 @@
 # investMTG — Changelog
 
+## 2026-03-10: Efficiency upgrades — 5 new development tools
+
+- **tests/full-qa.sh** (NEW) — Combined QA pipeline that runs smoke test, waits 35 seconds (Cloudflare rate limit buffer), then runs the debug tool. Supports `--smoke-only`, `--debug-only`, and `--quick` flags. One command replaces the manual two-step test process.
+- **tests/code-review.sh** (NEW) — AI code review helper. Extracts a git diff (staged, all uncommitted, last commit, or specific file), saves to `/tmp/investmtg-review-diff.txt`, and prints a review prompt pre-loaded with investMTG coding rules (var-only, no arrows, no JSX, React.createElement pattern). Designed for paste into ChatGPT/OpenAI.
+- **Auto health monitoring** — Recurring task runs every 6 hours checking 6 endpoints: frontend HTTP 200, API health JSON (status=ok, db=connected), ticker (16 items), search, JustTCG proxy (tcgplayerId=282800), CORS proxy. Silent when all pass; sends "investMTG Health Alert" notification on failure.
+- **Google Sheets release tracker** — [Release log spreadsheet](https://docs.google.com/spreadsheets/d/1wncB6NFKkm4gosAAtw-C3L0QjILkG2ROhh4est_PXN8/edit) pre-populated with all 56 historical releases from CHANGES.md. Columns: Date, Version, Commit, SW Version, Summary, Smoke Test, Debug Tool, Files Changed. Gold-on-dark header styling.
+- **Cloudflare connector** — Tested the Pipedream Cloudflare connector for DNS/cache operations. Returns null for this zone — continuing with direct curl + tokens (documented in investmtg-cloudflare skill).
+- No SW bump needed (development tooling only, no frontend/worker changes).
+
+---
+
 ## 2026-03-10: Git workflow upgrade — native push via GitHub CLI
 
 - **Development workflow** — Replaced the manual curl + PAT + Git Trees API push method (6 API calls per push: create blob → create tree → create commit → update ref) with standard `git add` / `git commit` / `git push` using the GitHub CLI (`gh`) with pre-configured credentials (`api_credentials=["github"]`).

@@ -77,9 +77,11 @@ Required updates after release-impacting work:
 No code reaches `main` without passing QA. Every push must include verification, not just implementation.
 
 **Automated test tools** (run these first):
+- `bash tests/full-qa.sh` — **Recommended.** Runs smoke test, waits 35s, runs debug tool. One command for full QA. Flags: `--smoke-only`, `--debug-only`, `--quick`.
 - `bash tests/smoke-test.sh` — 33 checks, ~15 seconds. Covers frontend assets, DOM, payment code, SW, API health, PayPal/SumUp, CORS. **Run before every push.**
 - `bash tests/debug-tool.sh` — 97 checks across 24 sections. Full diagnostics including proxy routes, CSP audit, secret scan, DNS, TLS, DB health, response times, code style, URL centralization, dual-write integrity. **Run for troubleshooting or after significant changes.**
-- Run the two tools with ~30 seconds between them to avoid Cloudflare rate limits.
+- `bash tests/code-review.sh` — AI code review helper. Extracts diff, prints review prompt for ChatGPT. Flags: `--all`, `--last`, `--staged`, or specific file.
+- Run smoke and debug tools with ~30 seconds between them to avoid Cloudflare rate limits. `full-qa.sh` handles this automatically.
 
 **Additional manual checks** (when the automated tools can’t cover it):
 1. **CSP alignment** — Run `grep -roh 'https://[a-zA-Z0-9._-]*' --include='*.js' . | sort -u` against the `connect-src` in `index.html`. Every external domain the frontend fetches from must be in the CSP. A single missing entry silently kills all calls to that domain with zero visible error.
@@ -191,6 +193,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **Efficiency upgrades** — 5 new dev tools: `tests/full-qa.sh` (combined QA pipeline), `tests/code-review.sh` (AI diff review), auto health monitoring (6 endpoints every 6hr), Google Sheets release tracker (56 historical releases), Cloudflare connector test (not usable for this zone). |
 | 2026-03-10 | **Git workflow upgrade** — Replaced manual curl + PAT + Git Trees API push method with native `git push` via GitHub CLI (`gh`). Faster, cleaner commit history, less error-prone. |
 | 2026-03-10 | **Debug tool fixes** — JustTCG test changed from `scryfallId` (404) to `tcgplayerId=282800` (native key, returns 200). TLS detection fallback added for curl builds where `%{ssl_version}` is empty. Results: 97/97 passed, 0 warnings. |
 | 2026-03-10 | **v51** — Fix portfolio DELETE for signed-in users: Worker `portfolioScope()` used `p.user_id` table alias in DELETE queries (invalid without JOIN), causing D1 `no such column` error — cards were never actually removed from backend. Added `bare` property without alias prefix for DELETE statements. Worker redeployed. |
