@@ -9,7 +9,8 @@
   - Search dispatches `investmtg-search` custom event (same pattern as HomeView hero).
   - Uses `autocomplete()` from `utils/api.js` for real-time card name suggestions.
 - **style.css** — Replaced old header CSS block (~160 lines) with new 3-tier header styles (~300 lines). New CSS classes prefixed `hdr-*` for namespacing. Removed stale classes: `.nav-sell-link`, `.nav-links.open`, `@keyframes slideDown`. Retained `.btn-sign-in`, `.user-menu-wrap`, `.user-avatar`, `.user-dropdown` blocks (still referenced by new Header.js).
-- **sw.js** — v52 → v53
+- **sw.js** — v52 → v54
+- **v54 fix:** Mobile responsive — hide search bar and Sell CTA in header on mobile (both are in the mobile slide-out nav). Compact header padding for mobile. Fixes vertically-stacked header elements on narrow viewports.
 
 ---
 
