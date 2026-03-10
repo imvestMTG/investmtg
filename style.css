@@ -7543,9 +7543,94 @@ a.market-card:hover {
   overflow: hidden;
 }
 
+/* ── PayPal Checkout Styles ── */
+.checkout-paypal-section {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
 
+.checkout-paypal-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
 
+.checkout-paypal-error {
+  padding: var(--space-4);
+  background: rgba(220,38,38,0.08);
+  border-radius: var(--radius-md);
+}
 
+.checkout-paypal-error p {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
+}
+
+.checkout-paypal-ready {
+  text-align: center;
+}
+
+.checkout-paypal-info {
+  margin-bottom: var(--space-5);
+}
+
+.paypal-logo-text {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: inline-block;
+  margin-bottom: var(--space-2);
+}
+
+.checkout-paypal-info p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.btn-paypal {
+  background: #0070ba;
+  color: #fff;
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.btn-paypal:hover {
+  background: #005ea6;
+  transform: translateY(-1px);
+}
+
+.btn-paypal:active {
+  transform: translateY(0);
+  background: #004d8c;
+}
+
+.btn-paypal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner-light {
+  border-color: rgba(255,255,255,0.3);
+  border-top-color: #fff;
+}
 
 /* ===== Card Section + Carousel ===== */
 

@@ -1,4 +1,4 @@
-/* CheckoutView.js — Checkout with SumUp Card Payment + Reserve & Pay at Pickup */
+/* CheckoutView.js — Checkout with SumUp Card Payment + PayPal + Reserve & Pay at Pickup */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
@@ -26,6 +26,25 @@ function loadSumUpSDK() {
     document.head.appendChild(script);
   });
   return sumupSDKPromise;
+}
+
+/* Lazy-load PayPal Web SDK v6 */
+var paypalSDKPromise = null;
+var PAYPAL_CLIENT_ID = 'AWpSVtkSK0TvIhBTYe5mbXIKQC4bHSGiWI4EXnXipAGsH7NfDTnSHulEhLTKobewumlF2UPKcTZd8qxA';
+function loadPayPalSDK() {
+  if (paypalSDKPromise) return paypalSDKPromise;
+  if (window.paypal && typeof window.paypal.createInstance === 'function') return Promise.resolve(window.paypal);
+  paypalSDKPromise = new Promise(function(resolve, reject) {
+    var script = document.createElement('script');
+    script.src = 'https://www.paypal.com/web-sdk/v6/core';
+    script.onload = function() {
+      if (window.paypal) { resolve(window.paypal); }
+      else { reject(new Error('PayPal SDK loaded but window.paypal not found')); }
+    };
+    script.onerror = function() { reject(new Error('Failed to load PayPal SDK')); };
+    document.head.appendChild(script);
+  });
+  return paypalSDKPromise;
 }
 
 export function CheckoutView(props) {
@@ -59,7 +78,7 @@ export function CheckoutView(props) {
   var ref8 = React.useState(false);
   var showConfirm = ref8[0], setShowConfirm = ref8[1];
 
-  // Payment method: 'sumup' or 'reserve'
+  // Payment method: 'sumup', 'paypal', or 'reserve'
   var ref9 = React.useState('sumup');
   var paymentMethod = ref9[0], setPaymentMethod = ref9[1];
 
@@ -75,6 +94,20 @@ export function CheckoutView(props) {
 
   var ref13 = React.useState(false);
   var sumupMounted = ref13[0], setSumupMounted = ref13[1];
+
+  // PayPal state
+  var refPP1 = React.useState(false);
+  var paypalLoading = refPP1[0], setPaypalLoading = refPP1[1];
+
+  var refPP2 = React.useState(null);
+  var paypalError = refPP2[0], setPaypalError = refPP2[1];
+
+  var refPP3 = React.useState(false);
+  var paypalReady = refPP3[0], setPaypalReady = refPP3[1];
+
+  // Refs for PayPal session + instance
+  var paypalSessionRef = React.useRef(null);
+  var paypalSdkRef = React.useRef(null);
 
   var refTos = React.useState(false);
   var tosAccepted = refTos[0], setTosAccepted = refTos[1];
@@ -161,7 +194,7 @@ export function CheckoutView(props) {
       },
       date: new Date().toISOString(),
       paymentMethod: method,
-      status: method === 'sumup' ? 'paid' : 'reserved'
+      status: (method === 'sumup' || method === 'paypal') ? 'paid' : 'reserved'
     };
 
     var orders = storageGet('investmtg-orders', []);
@@ -244,6 +277,108 @@ export function CheckoutView(props) {
     });
   }
 
+  /* ── Initialize PayPal checkout ── */
+  function initPayPalCheckout() {
+    if (paypalReady) return;
+    setPaypalLoading(true);
+    setPaypalError(null);
+
+    loadPayPalSDK().then(function(paypalSdk) {
+      paypalSdkRef.current = paypalSdk;
+      return paypalSdk.createInstance({
+        clientId: PAYPAL_CLIENT_ID,
+        components: ['paypal-payments'],
+        pageType: 'checkout'
+      });
+    }).then(function(sdkInstance) {
+      return sdkInstance.findEligibleMethods({ currencyCode: 'USD' }).then(function(methods) {
+        if (!methods || !methods.paypal || !methods.paypal.eligible) {
+          throw new Error('PayPal is not available for this transaction. Please use another payment method.');
+        }
+
+        var paymentSession = sdkInstance.createPayPalOneTimePaymentSession({
+          onApprove: function(data) {
+            setPaymentProcessing(true);
+            // data.orderID contains the PayPal order ID — capture it
+            var authToken = storageGetRaw('investmtg_auth_token', null);
+            var headers = { 'Content-Type': 'application/json' };
+            if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+
+            fetch(PROXY_BASE + '/api/paypal/capture-order', {
+              method: 'POST',
+              credentials: 'include',
+              headers: headers,
+              body: JSON.stringify({ paypal_order_id: data.orderID })
+            }).then(function(res) { return res.json(); })
+              .then(function(result) {
+                if (result.ok) {
+                  var orderId = result.order_id || data.orderID;
+                  finishOrder(orderId, 'paypal');
+                } else {
+                  setPaypalError(result.detail || result.error || 'Payment capture failed. Please try again.');
+                  setPaymentProcessing(false);
+                }
+              }).catch(function(err) {
+                setPaypalError('Network error during payment capture: ' + err.message);
+                setPaymentProcessing(false);
+              });
+          },
+          onCancel: function() {
+            setPaypalError('Payment was cancelled. You can try again or choose another method.');
+          },
+          onError: function(err) {
+            setPaypalError('PayPal error: ' + (err.message || 'Something went wrong. Please try again.'));
+          }
+        });
+
+        paypalSessionRef.current = paymentSession;
+        setPaypalReady(true);
+        setPaypalLoading(false);
+      });
+    }).catch(function(err) {
+      setPaypalError(err.message || 'Could not initialize PayPal. Please try another payment method.');
+      setPaypalLoading(false);
+    });
+  }
+
+  /* ── PayPal: start the payment flow on button click ── */
+  function startPayPalPayment() {
+    if (!paypalSessionRef.current) {
+      setPaypalError('PayPal not ready. Please wait or try another method.');
+      return;
+    }
+    setPaymentProcessing(true);
+    setPaypalError(null);
+
+    // 1. Create investMTG order on server
+    createServerOrder('paypal').then(function(orderId) {
+      // 2. Create PayPal order on server
+      var authToken = storageGetRaw('investmtg_auth_token', null);
+      var headers = { 'Content-Type': 'application/json' };
+      if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+
+      return fetch(PROXY_BASE + '/api/paypal/create-order', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers,
+        body: JSON.stringify({ order_id: orderId, amount: total })
+      }).then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.ok || !data.paypal_order_id) {
+            throw new Error(data.detail || data.error || 'Failed to create PayPal order');
+          }
+          // 3. Start PayPal popup/redirect with the order
+          return paypalSessionRef.current.start(
+            { presentationMode: 'auto' },
+            function createOrder() { return { orderId: data.paypal_order_id }; }
+          );
+        });
+    }).catch(function(err) {
+      setPaypalError(err.message || 'Could not start PayPal payment.');
+      setPaymentProcessing(false);
+    });
+  }
+
   // Cleanup SumUp widget on unmount
   React.useEffect(function() {
     return function() {
@@ -257,6 +392,13 @@ export function CheckoutView(props) {
   React.useEffect(function() {
     if (step === 4 && paymentMethod === 'sumup' && !sumupCheckoutId && !sumupLoading) {
       initSumUpCheckout();
+    }
+  }, [step, paymentMethod]);
+
+  // When step changes to 4 and paymentMethod is 'paypal', init PayPal
+  React.useEffect(function() {
+    if (step === 4 && paymentMethod === 'paypal' && !paypalReady && !paypalLoading) {
+      initPayPalCheckout();
     }
   }, [step, paymentMethod]);
 
@@ -604,6 +746,34 @@ export function CheckoutView(props) {
           ),
 
           h('label', {
+            className: 'fulfillment-option' + (paymentMethod === 'paypal' ? ' selected' : ''),
+            onClick: function() { setPaymentMethod('paypal'); }
+          },
+            h('input', {
+              type: 'radio',
+              name: 'payment-method',
+              value: 'paypal',
+              checked: paymentMethod === 'paypal',
+              onChange: function() { setPaymentMethod('paypal'); }
+            }),
+            h('div', { className: 'fulfillment-option-content' },
+              h('div', { className: 'fulfillment-option-header' },
+                h('span', { className: 'paypal-logo-icon', style: { fontSize: '1.4em', fontWeight: '700', letterSpacing: '-0.02em' } },
+                  h('span', { style: { color: '#003087' } }, 'Pay'),
+                  h('span', { style: { color: '#009cde' } }, 'Pal')
+                ),
+                h('div', null,
+                  h('div', { className: 'fulfillment-option-title' }, 'PayPal'),
+                  h('div', { className: 'fulfillment-option-price' }, 'PayPal, Venmo, or Pay Later')
+                )
+              ),
+              h('p', { className: 'fulfillment-option-desc' },
+                'Pay securely with your PayPal account, Venmo, or eligible Pay Later options. Your payment details are handled entirely by PayPal.'
+              )
+            )
+          ),
+
+          h('label', {
             className: 'fulfillment-option' + (paymentMethod === 'reserve' ? ' selected' : ''),
             onClick: function() { setPaymentMethod('reserve'); }
           },
@@ -668,6 +838,61 @@ export function CheckoutView(props) {
           )
         ),
 
+        // ── PayPal section (shown when paymentMethod === 'paypal') ──
+        paymentMethod === 'paypal' && h('div', { className: 'checkout-paypal-section' },
+          paypalLoading && h('div', { className: 'checkout-paypal-loading' },
+            h('span', { className: 'spinner' }),
+            h('span', null, ' Connecting to PayPal\u2026')
+          ),
+
+          paypalError && h('div', { className: 'checkout-paypal-error' },
+            h('p', null, paypalError),
+            h('button', {
+              className: 'btn btn-secondary btn-sm',
+              onClick: function() {
+                setPaypalError(null);
+                setPaypalReady(false);
+                setPaypalLoading(false);
+                paypalSessionRef.current = null;
+                paypalSdkRef.current = null;
+                paypalSDKPromise = null;
+                initPayPalCheckout();
+              }
+            }, 'Retry PayPal')
+          ),
+
+          paypalReady && !paypalError && h('div', { className: 'checkout-paypal-ready' },
+            h('div', { className: 'checkout-paypal-info' },
+              h('span', { className: 'paypal-logo-text' },
+                h('span', { style: { color: '#003087', fontWeight: '700' } }, 'Pay'),
+                h('span', { style: { color: '#009cde', fontWeight: '700' } }, 'Pal')
+              ),
+              h('p', null, 'Click the button below to complete your payment securely through PayPal.')
+            ),
+            h('button', {
+              className: 'btn btn-paypal btn-lg',
+              onClick: startPayPalPayment,
+              disabled: paymentProcessing
+            },
+              paymentProcessing
+                ? h('span', null, h('span', { className: 'spinner spinner-light' }), ' Processing\u2026')
+                : h('span', null, 'Pay with ',
+                    h('span', { style: { fontWeight: '700' } },
+                      h('span', { style: { color: '#fff' } }, 'Pay'),
+                      h('span', { style: { color: '#A6D8F0' } }, 'Pal')
+                    ),
+                    ' \u2014 ', formatUSD(total)
+                  )
+            )
+          ),
+
+          (paypalReady || paypalLoading) && h('div', { className: 'payment-security-badges' },
+            h('span', { className: 'security-badge' }, '\uD83D\uDD12 Buyer Protection'),
+            h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Payments'),
+            h('span', { className: 'security-badge' }, '\u2705 Powered by PayPal')
+          )
+        ),
+
         // ── Reserve info (shown when paymentMethod === 'reserve') ──
         paymentMethod === 'reserve' && h('div', { className: 'checkout-reserve-info' },
           h('div', { className: 'checkout-reserve-info-header' },
@@ -703,6 +928,7 @@ export function CheckoutView(props) {
 
           // For reserve: show reserve button
           // For SumUp: the widget handles the submit, but show a fallback button if widget not mounted
+          // For PayPal: the PayPal section above has its own button
           paymentMethod === 'reserve'
             ? h('button', {
                 className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
@@ -713,7 +939,7 @@ export function CheckoutView(props) {
                   ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
                   : h('span', null, '\uD83D\uDD12 Reserve Order \u2014 ', formatUSD(total))
               )
-            : (!sumupMounted && !sumupLoading)
+            : paymentMethod === 'sumup' && (!sumupMounted && !sumupLoading)
               ? h('button', {
                   className: 'btn btn-primary btn-lg',
                   onClick: function() { initSumUpCheckout(); },
@@ -727,9 +953,13 @@ export function CheckoutView(props) {
             ? h('p', { className: 'checkout-payment-note' },
                 '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
               )
-            : h('p', { className: 'checkout-payment-note' },
-                '\uD83D\uDCB3 Your payment is processed securely by SumUp. investMTG never sees your card details.'
-              ),
+            : paymentMethod === 'paypal'
+              ? h('p', { className: 'checkout-payment-note' },
+                  'Your payment is processed securely by PayPal. investMTG never sees your payment details.'
+                )
+              : h('p', { className: 'checkout-payment-note' },
+                  '\uD83D\uDCB3 Your payment is processed securely by SumUp. investMTG never sees your card details.'
+                ),
           h('div', { className: 'payment-security-badges' },
             h('span', { className: 'security-badge' }, '\uD83D\uDD12 SSL Encrypted'),
             h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Checkout'),

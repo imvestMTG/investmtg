@@ -14,6 +14,8 @@
  *   AUTH_SECRET
  *   FRONTEND_URL
  *   SUMUP_SECRET_KEY  — SumUp secret API key for checkout creation
+ *   PAYPAL_CLIENT_ID  — PayPal client ID (Live)
+ *   PAYPAL_CLIENT_SECRET — PayPal client secret (Live)
  *   ADMIN_TOKEN       — Admin bypass token for testing (skips Google OAuth)
  *
  * Routes:
@@ -34,6 +36,8 @@
  *   /api/cart             — Shopping cart CRUD (auth user or anonymous session)
  *   /api/orders           — Order CRUD (POST allows guests with contact_email; GET/GET/:id auth required)
  *   /api/sumup/checkout   — Create SumUp checkout (guests allowed)
+ *   /api/paypal/create-order  — Create PayPal order (guests allowed)
+ *   /api/paypal/capture-order — Capture PayPal payment (guests allowed)
  *   /auth/google          — Start Google OAuth flow
  *   /auth/callback        — Google OAuth callback
  *   /auth/me              — Current authenticated user
@@ -1608,6 +1612,183 @@ async function handleSumUpWebhook(request, env) {
 }
 
 /* ══════════════════════════════════════
+   PAYPAL PAYMENT ROUTES
+   ══════════════════════════════════════
+
+   POST /api/paypal/create-order
+   Creates a PayPal order via Orders v2 API.
+   Returns the PayPal order ID for the frontend SDK.
+
+   POST /api/paypal/capture-order
+   Captures payment after buyer approves.
+   Requires PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET wrangler secrets.
+*/
+
+const PAYPAL_API_BASE = 'https://api-m.paypal.com'; // Live
+
+async function getPayPalAccessToken(env) {
+  const auth = btoa(env.PAYPAL_CLIENT_ID + ':' + env.PAYPAL_CLIENT_SECRET);
+  const resp = await fetch(PAYPAL_API_BASE + '/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + auth,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data.access_token) {
+    throw new Error('PayPal auth failed: ' + (data.error_description || data.error || 'Unknown'));
+  }
+  return data.access_token;
+}
+
+async function handlePayPalCreateOrder(request, env) {
+  if (request.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405, request);
+  }
+
+  if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+    return json({ error: 'PayPal not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET via wrangler secret put.' }, 500, request);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, 400, request);
+  if (!body.amount || body.amount <= 0) return json({ error: 'amount must be > 0' }, 400, request);
+  if (!body.order_id) return json({ error: 'order_id required' }, 400, request);
+
+  const amount = (Math.round(parseFloat(body.amount) * 100) / 100).toFixed(2);
+  if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    return json({ error: 'Invalid amount' }, 400, request);
+  }
+
+  try {
+    const accessToken = await getPayPalAccessToken(env);
+
+    const orderPayload = {
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: body.order_id,
+        description: 'investMTG Order ' + body.order_id,
+        amount: {
+          currency_code: 'USD',
+          value: amount,
+        },
+      }],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            payment_method_preference: 'IMMEDIATE_PAYMENT_REQUIRED',
+            brand_name: 'investMTG',
+            locale: 'en-US',
+            landing_page: 'LOGIN',
+            user_action: 'PAY_NOW',
+            return_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id,
+            cancel_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#checkout',
+          },
+        },
+      },
+    };
+
+    const resp = await fetch(PAYPAL_API_BASE + '/v2/checkout/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken,
+        'PayPal-Request-Id': body.order_id + '-' + Date.now(),
+      },
+      body: JSON.stringify(orderPayload),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || !data.id) {
+      console.error('PayPal create-order error:', resp.status, JSON.stringify(data));
+      const detail = (data.details && data.details[0]) ? data.details[0].description : (data.message || 'Unknown error');
+      return json({ error: 'PayPal order creation failed', detail: detail }, resp.status >= 500 ? 502 : resp.status, request);
+    }
+
+    // Store PayPal order ID on the D1 order
+    if (data.id && body.order_id) {
+      await env.DB.prepare(
+        'UPDATE orders SET checkout_id = ?, payment_status = ?, payment_method = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind('paypal:' + data.id, 'pending', 'paypal', body.order_id).run().catch(function(e) {
+        console.error('Failed to store PayPal order ID:', e.message);
+      });
+    }
+
+    return json({
+      ok: true,
+      id: data.id,
+      status: data.status,
+    }, 201, request);
+  } catch (e) {
+    console.error('PayPal create-order fetch error:', e.message);
+    return json({ error: 'PayPal service unavailable', detail: e.message }, 502, request);
+  }
+}
+
+async function handlePayPalCaptureOrder(request, env) {
+  if (request.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405, request);
+  }
+
+  if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+    return json({ error: 'PayPal not configured' }, 500, request);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, 400, request);
+  if (!body.paypal_order_id) return json({ error: 'paypal_order_id required' }, 400, request);
+
+  try {
+    const accessToken = await getPayPalAccessToken(env);
+
+    const resp = await fetch(PAYPAL_API_BASE + '/v2/checkout/orders/' + body.paypal_order_id + '/capture', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken,
+      },
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      console.error('PayPal capture error:', resp.status, JSON.stringify(data));
+      const detail = (data.details && data.details[0]) ? data.details[0].description : (data.message || 'Unknown error');
+      return json({ error: 'PayPal capture failed', detail: detail }, resp.status >= 500 ? 502 : resp.status, request);
+    }
+
+    // If capture succeeded, update the D1 order
+    if (data.status === 'COMPLETED') {
+      const purchaseUnit = data.purchase_units && data.purchase_units[0];
+      const captureId = (purchaseUnit && purchaseUnit.payments && purchaseUnit.payments.captures && purchaseUnit.payments.captures[0])
+        ? purchaseUnit.payments.captures[0].id : null;
+      const refId = purchaseUnit ? purchaseUnit.reference_id : null;
+
+      if (refId) {
+        await env.DB.prepare(
+          'UPDATE orders SET status = ?, payment_status = ?, sumup_txn_id = ?, updated_at = datetime("now") WHERE id = ?'
+        ).bind('confirmed', 'paid', 'paypal:' + (captureId || data.id), refId).run().catch(function(e) {
+          console.error('Failed to update order after PayPal capture:', e.message);
+        });
+        console.log('PayPal: order ' + refId + ' confirmed, capture ' + (captureId || data.id));
+      }
+    }
+
+    return json({
+      ok: true,
+      status: data.status,
+      payer: data.payer ? { email: data.payer.email_address, name: (data.payer.name ? data.payer.name.given_name : '') } : null,
+    }, 200, request);
+  } catch (e) {
+    console.error('PayPal capture fetch error:', e.message);
+    return json({ error: 'PayPal service unavailable', detail: e.message }, 502, request);
+  }
+}
+
+/* ══════════════════════════════════════
    ORDER PAYMENT STATUS
    ══════════════════════════════════════
 
@@ -1867,6 +2048,8 @@ export default {
       }
       if (path === '/api/sumup/checkout')                    return handleSumUpCheckout(request, env);
       if (path === '/api/sumup-webhook')                      return handleSumUpWebhook(request, env);
+      if (path === '/api/paypal/create-order')                return handlePayPalCreateOrder(request, env);
+      if (path === '/api/paypal/capture-order')               return handlePayPalCaptureOrder(request, env);
 
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);
