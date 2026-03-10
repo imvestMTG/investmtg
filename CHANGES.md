@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-10: v53 — 3-tier header redesign
+
+- **components/Header.js** — Complete rewrite. Old flat nav replaced with 3-tier layout: main header (logo + search bar + actions) + nav row with dropdown groups + mobile slide-out. Based on ChatGPT UX analysis of header usability.
+  - **Tier 2 (main header):** Logo, persistent search bar with Scryfall autocomplete (debounced, keyboard nav), Sell CTA button, cart badge, theme toggle, user avatar/dropdown, mobile hamburger.
+  - **Tier 3 (nav row):** Dropdown groups for Market Data (Movers, cEDH Meta, Top Decks), My Tools (Portfolio, My Orders), Community (Local Stores). Plus direct links: Search, Portfolio, and a Sell CTA.
+  - **Mobile:** Full-screen slide-out nav with grouped sections, search bar, Sell CTA, Sign In button.
+  - Search dispatches `investmtg-search` custom event (same pattern as HomeView hero).
+  - Uses `autocomplete()` from `utils/api.js` for real-time card name suggestions.
+- **style.css** — Replaced old header CSS block (~160 lines) with new 3-tier header styles (~300 lines). New CSS classes prefixed `hdr-*` for namespacing. Removed stale classes: `.nav-sell-link`, `.nav-links.open`, `@keyframes slideDown`. Retained `.btn-sign-in`, `.user-menu-wrap`, `.user-avatar`, `.user-dropdown` blocks (still referenced by new Header.js).
+- **sw.js** — v52 → v53
+
+---
+
 ## 2026-03-10: Efficiency upgrades — 5 new development tools
 
 - **tests/full-qa.sh** (NEW) — Combined QA pipeline that runs smoke test, waits 35 seconds (Cloudflare rate limit buffer), then runs the debug tool. Supports `--smoke-only`, `--debug-only`, and `--quick` flags. One command replaces the manual two-step test process.

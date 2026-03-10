@@ -193,6 +193,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **v53** — 3-tier header redesign: complete Header.js rewrite with persistent search bar (Scryfall autocomplete), dropdown nav groups (Market Data, My Tools, Community), Sell CTA, mobile slide-out nav. New `hdr-*` CSS namespace. Removed stale `.nav-sell-link`, `.nav-links.open` CSS. |
 | 2026-03-10 | **Efficiency upgrades** — 5 new dev tools: `tests/full-qa.sh` (combined QA pipeline), `tests/code-review.sh` (AI diff review), auto health monitoring (6 endpoints every 6hr), Google Sheets release tracker (56 historical releases), Cloudflare connector test (not usable for this zone). |
 | 2026-03-10 | **Git workflow upgrade** — Replaced manual curl + PAT + Git Trees API push method with native `git push` via GitHub CLI (`gh`). Faster, cleaner commit history, less error-prone. |
 | 2026-03-10 | **Debug tool fixes** — JustTCG test changed from `scryfallId` (404) to `tcgplayerId=282800` (native key, returns 200). TLS detection fallback added for curl builds where `%{ssl_version}` is empty. Results: 97/97 passed, 0 warnings. |
