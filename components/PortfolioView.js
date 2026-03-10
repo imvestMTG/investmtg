@@ -299,7 +299,6 @@ export function PortfolioView(props) {
   var showImport = ref3[0], setShowImport = ref3[1];
 
   React.useEffect(function() {
-    if (portfolio.length === 0) return;
     var cancelled = false;
 
     // Apply local price cache for instant display
@@ -309,7 +308,8 @@ export function PortfolioView(props) {
       setPricesLoaded(true);
     }
 
-    // Fetch live portfolio data from backend — includes prices already joined
+    // Fetch live prices from backend (one-time on mount — never re-fetch
+    // on portfolio changes, or removals will race against the GET)
     fetchPortfolio().then(function(data) {
       if (cancelled) return;
       var items = (data && data.items) ? data.items : [];
@@ -321,25 +321,6 @@ export function PortfolioView(props) {
         }
       });
 
-      // Also update the portfolio in global state with the enriched backend data
-      // Map backend shape to frontend shape
-      var updatedPortfolio = items.map(function(item) {
-        return {
-          id: item.card_id,
-          name: item.card_name,
-          set: item.set_name || '',
-          qty: item.quantity || 1,
-          buyPrice: item.added_price || 0,
-          currentPrice: parseFloat(item.price_usd) || parseFloat(item.price_usd_foil) || 0,
-          image: item.image_small || null
-        };
-      });
-
-      // Only update if we got results; otherwise keep what we have
-      if (updatedPortfolio.length > 0) {
-        updatePortfolio(updatedPortfolio);
-      }
-
       setLivePrices(priceMap);
       savePriceCache(priceMap);
       setPricesLoaded(true);
@@ -348,7 +329,7 @@ export function PortfolioView(props) {
     });
 
     return function() { cancelled = true; };
-  }, [portfolio.length]);
+  }, []);
 
   // Enrich portfolio with live prices
   var enriched = portfolio.map(function(item) {

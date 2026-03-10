@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v49`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v50`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -94,7 +94,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/HomeView.js` | `#home` | Hero with static stats, community events, card carousels (featured/trending/budget) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()`. |
-| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio`, Import button + modal (CSV/Text/MTGA via import-parser.js, batch submit via `/api/portfolio/batch`). Auth gating for import uses the `authUser` prop passed from `App`, matching the Header/SellerDashboard auth source of truth. The import dialog now reuses the shared `mp-modal` overlay/card pattern, locks page scrolling while open, and applies mobile-safe sizing/padding for Safari/iPad stability. |
+| `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio`, Import button + modal (CSV/Text/MTGA via import-parser.js, batch submit via `/api/portfolio/batch`). Auth gating for import uses the `authUser` prop passed from `App`, matching the Header/SellerDashboard auth source of truth. The import dialog now reuses the shared `mp-modal` overlay/card pattern, locks page scrolling while open, and applies mobile-safe sizing/padding for Safari/iPad stability. v50 fix: useEffect fetches prices on mount only (`[]` dependency) — no longer re-fetches on portfolio.length changes, preventing a race condition where GET would resurrect cards the user just removed. |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
 | `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint. Profile tab: inline-editable fields (click-to-edit per field with Save/Cancel), section-based layout (Personal Info, Contact & Store, Account Details, Session), collapsible Danger Zone with type-to-confirm DELETE gate. PUT/DELETE /api/sellers for profile update/account deletion. |
 | `components/MarketMoversView.js` | `#movers` | Market movers via `/api/movers/:category` |
@@ -269,7 +269,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── index.html                      # import map + app bootstrap
 ├── style.css                       # all component styles (formatted, ~7500 lines)
 ├── base.css                        # reset, body defaults, confirm modal
-├── sw.js                           # service worker v49
+├── sw.js                           # service worker v50
 ├── manifest.json
 ├── 404.html
 ├── CNAME

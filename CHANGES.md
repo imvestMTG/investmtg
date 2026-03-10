@@ -1,5 +1,12 @@
 # investMTG — Changelog
 
+## 2026-03-10: Fix portfolio card removal race condition (SW v50)
+
+- **components/PortfolioView.js** — Fixed a bug where removing a card from the portfolio would cause it to reappear. Root cause: the `useEffect` that fetches portfolio data from D1 had `[portfolio.length]` as its dependency. When the user removed a card, `portfolio.length` changed, triggering a re-fetch. The `fetchPortfolio()` GET request raced against the `removeFromPortfolioAPI()` DELETE — the GET returned stale data (card still present) and `updatePortfolio()` overwrote the local state, resurrecting the removed card. Fix: changed dependency to `[]` (mount-only) and removed the `updatePortfolio()` call from the fetch response handler — the effect now only updates the price map, never overwrites portfolio items.
+- SW bumped to v50.
+
+---
+
 ## 2026-03-10: Revert homepage redesign — restore original sleek layout (SW v49)
 
 - **components/HomeView.js** — Reverted to the v46 original: clean hero with static stats ("Real Prices", "Guam Built", "Live Data", "100% Free"), no search button in hero bar, no live stats bar, no feature highlights grid, no CTA section. The redesign from Invest-MTG added too many new sections that broke the layout (oversized SVGs, missing grid styling, CTA blob). The original was sleek and worked.

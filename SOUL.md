@@ -186,6 +186,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-10 | **v50** — Fix portfolio card removal race condition: useEffect dependency changed from `[portfolio.length]` to `[]` (mount-only), removed `updatePortfolio()` from fetch response to prevent GET/DELETE race resurrecting removed cards |
 | 2026-03-10 | **v49** — Revert homepage redesign to original v46 sleek layout; keep Worker camelCase mapping + workers_dev=false + dead import cleanup |
 | 2026-03-10 | **v48** — Fix oversized SVG icons on homepage: added explicit width/height to feature highlight SVGs, constrained icon containers with min/max sizing + overflow hidden |
 | 2026-03-10 | **v47** — Repo consolidation: HomeView redesign (eyebrow badge, live stats bar from /api/health, feature highlights grid, CTA section, hero search button), Worker camelCase mapping on GET /api/listings, workers_dev=false security fix, dead showToast import removed |
