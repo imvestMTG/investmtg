@@ -98,28 +98,43 @@ const TICKER_CARDS = [
   { name: 'Wooded Foothills' },
 ];
 
-// Featured cards (high-value staples)
-const FEATURED_CARD_NAMES = [
+// Fallback card lists (used when KV dynamic lists haven't been populated yet)
+const FALLBACK_FEATURED = [
   'Serra\'s Sanctum', 'Tropical Island', 'Underground Sea',
   'Savannah', 'Bayou', 'Volcanic Island',
   'Tundra', 'Badlands', 'Plateau', 'Scrubland',
   'Gaea\'s Cradle', 'The Tabernacle at Pendrell Vale',
 ];
-
-// Trending cards
-const TRENDING_CARD_NAMES = [
+const FALLBACK_TRENDING = [
   'Fatal Push', 'The One Ring', 'Ragavan, Nimble Pilferer',
   'Sheoldred, the Apocalypse', 'Orcish Bowmasters', 'Mana Crypt',
   'Jewel Lotus', 'Dockside Extortionist', 'Fierce Guardianship',
   'Smothering Tithe', 'Cyclonic Rift', 'Atraxa, Grand Unifier',
 ];
-
-// Budget staples
-const BUDGET_CARD_NAMES = [
+const FALLBACK_BUDGET = [
   'Sol Ring', 'Rampant Growth', 'Path to Exile', 'Counterspell',
   'Swords to Plowshares', 'Lightning Bolt', 'Cultivate', 'Arcane Signet',
   'Beast Within', 'Chaos Warp', 'Farseek', 'Command Tower',
 ];
+
+// Scryfall queries for daily carousel refresh (cron picks random page from results)
+const CAROUSEL_QUERIES = {
+  featured: {
+    // Popular expensive commander staples with real USD prices
+    query: 'usd>20 game:paper f:commander has:usd -t:basic -is:digital -is:funny',
+    order: 'edhrec', dir: 'asc', maxPage: 8,
+  },
+  trending: {
+    // Recently printed popular cards with value (last 2 years)
+    query: 'usd>1 game:paper year>=2024 f:commander has:usd -t:basic -is:digital -is:funny',
+    order: 'edhrec', dir: 'asc', maxPage: 8,
+  },
+  budget: {
+    // Cheap popular commander staples
+    query: 'usd<5 usd>0.25 game:paper f:commander has:usd -t:basic -is:digital -is:funny -t:sticker',
+    order: 'edhrec', dir: 'asc', maxPage: 8,
+  },
+};
 
 /* ── CORS helpers ── */
 
@@ -619,26 +634,32 @@ async function handleTicker(request, env) {
 
 /* ── GET /api/featured ── */
 async function handleFeatured(request, env) {
-  const cards = await getCachedCardsByNames(
-    env.DB, env.CACHE, 'featured', FEATURED_CARD_NAMES, TTL_FEATURED
-  );
+  const names = await getDynamicNames(env.CACHE, 'carousel_featured', FALLBACK_FEATURED);
+  const cards = await getCachedCardsByNames(env.DB, env.CACHE, 'featured', names, TTL_FEATURED);
   return json(cards, 200, request);
 }
 
 /* ── GET /api/trending ── */
 async function handleTrending(request, env) {
-  const cards = await getCachedCardsByNames(
-    env.DB, env.CACHE, 'trending', TRENDING_CARD_NAMES, TTL_TRENDING
-  );
+  const names = await getDynamicNames(env.CACHE, 'carousel_trending', FALLBACK_TRENDING);
+  const cards = await getCachedCardsByNames(env.DB, env.CACHE, 'trending', names, TTL_TRENDING);
   return json(cards, 200, request);
 }
 
 /* ── GET /api/budget ── */
 async function handleBudget(request, env) {
-  const cards = await getCachedCardsByNames(
-    env.DB, env.CACHE, 'budget', BUDGET_CARD_NAMES, TTL_BUDGET
-  );
+  const names = await getDynamicNames(env.CACHE, 'carousel_budget', FALLBACK_BUDGET);
+  const cards = await getCachedCardsByNames(env.DB, env.CACHE, 'budget', names, TTL_BUDGET);
   return json(cards, 200, request);
+}
+
+/** Read dynamic card name list from KV, fallback to static array */
+async function getDynamicNames(cache, key, fallback) {
+  try {
+    const stored = await cache.get(key, 'json');
+    if (stored && Array.isArray(stored) && stored.length >= 6) return stored;
+  } catch { /* ignore */ }
+  return fallback;
 }
 
 /* ── GET /api/search?q=...&page=1 ── */
@@ -1997,6 +2018,61 @@ async function handleHealth(request, env) {
 }
 
 /* ══════════════════════════════════════
+   DAILY CAROUSEL REFRESH
+   Queries Scryfall for fresh card picks, stores name lists in KV.
+   Called by the scheduled() cron (daily at 3 AM UTC).
+   ══════════════════════════════════════ */
+
+async function refreshCarousels(env) {
+  const categories = ['featured', 'trending', 'budget'];
+  for (const cat of categories) {
+    try {
+      const names = await fetchCarouselNames(cat);
+      if (names && names.length >= 6) {
+        // Store name list in KV (expires in 25 hours so there's overlap with next cron)
+        await env.CACHE.put('carousel_' + cat, JSON.stringify(names), { expirationTtl: 90000 });
+        // Clear the cached card data so it rebuilds with fresh names
+        await env.CACHE.delete(cat);
+        console.log('[Cron] Refreshed ' + cat + ' carousel: ' + names.length + ' cards');
+      } else {
+        console.log('[Cron] Skipped ' + cat + ' — not enough results');
+      }
+    } catch (e) {
+      console.error('[Cron] Failed to refresh ' + cat + ':', e.message);
+    }
+  }
+}
+
+async function fetchCarouselNames(category) {
+  const cfg = CAROUSEL_QUERIES[category];
+  if (!cfg) return null;
+
+  // Pick a random page (seeded by day-of-year so it changes daily)
+  const dayOfYear = Math.floor(Date.now() / 86400000);
+  const page = (dayOfYear % cfg.maxPage) + 1;
+
+  const url = '/cards/search?q=' + encodeURIComponent(cfg.query)
+    + '&order=' + cfg.order + '&dir=' + cfg.dir
+    + '&unique=cards&page=' + page;
+
+  const data = await scryfallFetch(url);
+  if (!data || !data.data || data.data.length === 0) return null;
+
+  // Filter to cards with USD prices and deduplicate by name
+  const seen = new Set();
+  const cards = [];
+  for (const card of data.data) {
+    if (!card.prices || !card.prices.usd) continue;
+    if (card.digital) continue;
+    if (seen.has(card.name)) continue;
+    seen.add(card.name);
+    cards.push(card.name);
+    if (cards.length >= 12) break;
+  }
+  return cards;
+}
+
+/* ══════════════════════════════════════
    MAIN ROUTER
    ══════════════════════════════════════ */
 
@@ -2051,6 +2127,20 @@ export default {
       if (path === '/api/paypal/create-order')                return handlePayPalCreateOrder(request, env);
       if (path === '/api/paypal/capture-order')               return handlePayPalCaptureOrder(request, env);
 
+      // Admin-only: manual carousel refresh trigger
+      if (path === '/api/admin/refresh-carousels' && request.method === 'POST') {
+        const authHeader = request.headers.get('Authorization') || '';
+        if (!env.ADMIN_TOKEN || authHeader !== 'Bearer ' + env.ADMIN_TOKEN) {
+          return json({ error: 'Unauthorized' }, 401, request);
+        }
+        await refreshCarousels(env);
+        // Also clear the card-data cache keys so endpoints rebuild from new names
+        await env.CACHE.delete('featured');
+        await env.CACHE.delete('trending');
+        await env.CACHE.delete('budget');
+        return json({ ok: true, message: 'Carousels refreshed and cache cleared' }, 200, request);
+      }
+
       // Existing proxy routes (preserved)
       if (path === '/justtcg' || path.startsWith('/justtcg'))  return handleJustTCG(request, env);
       if (path.startsWith('/topdeck'))                         return handleTopDeck(request, env);
@@ -2079,5 +2169,8 @@ export default {
       'DELETE FROM prices WHERE updated_at < ?'
     ).bind(thirtyDaysAgo).run();
     console.log('[Cron] Purged ' + (priceResult.meta?.changes || 0) + ' stale price cache entries (>30 days old)');
+
+    // Refresh carousel card selections from Scryfall
+    await refreshCarousels(env);
   },
 };

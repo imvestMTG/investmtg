@@ -91,7 +91,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 ### Views
 | File | Route | Purpose |
 |------|-------|---------|
-| `components/HomeView.js` | `#home` | Hero with static stats, community events, card carousels (featured/trending/budget) |
+| `components/HomeView.js` | `#home` | Hero with static stats, community events, card carousels (featured/trending/budget — daily auto-refresh via Scryfall cron) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()`. |
 | `components/PortfolioView.js` | `#portfolio` | Portfolio CRUD via `/api/portfolio`, Import button + modal (CSV/Text/MTGA via import-parser.js, batch submit via `/api/portfolio/batch`). Auth gating for import uses the `authUser` prop passed from `App`, matching the Header/SellerDashboard auth source of truth. The import dialog now reuses the shared `mp-modal` overlay/card pattern, locks page scrolling while open, and applies mobile-safe sizing/padding for Safari/iPad stability. v50 fix: useEffect fetches prices on mount only (`[]` dependency) — no longer re-fetches on portfolio.length changes, preventing a race condition where GET would resurrect cards the user just removed. |
@@ -167,9 +167,9 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 |-------|--------|---------|
 | `/api/health` | GET | Health check with storage stats (listings, prices, portfolios row counts) |
 | `/api/ticker` | GET | Tracked card prices (KV-cached, 5min TTL) |
-| `/api/featured` | GET | Featured cards (KV-cached, 1hr TTL) |
-| `/api/trending` | GET | Trending cards (KV-cached, 30min TTL) |
-| `/api/budget` | GET | Budget staples (KV-cached, 1hr TTL) |
+| `/api/featured` | GET | Featured cards (KV-cached, 1hr TTL). Card selection refreshed daily by cron via Scryfall (commander-legal, USD>$20, EDHREC-ranked). Falls back to static list if KV empty. |
+| `/api/trending` | GET | Trending cards (KV-cached, 30min TTL). Card selection refreshed daily by cron via Scryfall (commander-legal, recent sets, EDHREC-ranked). Falls back to static list if KV empty. |
+| `/api/budget` | GET | Budget staples (KV-cached, 1hr TTL). Card selection refreshed daily by cron via Scryfall (commander-legal, USD $0.25–$5, EDHREC-ranked). Falls back to static list if KV empty. |
 | `/api/search` | GET | Card search proxy |
 | `/api/card/:id` | GET | Card detail proxy/cache |
 | `/api/movers/:cat` | GET | Market movers by category |
@@ -191,6 +191,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |
 | `/?target=` | proxy | Allowlisted generic proxy |
+| `/api/admin/refresh-carousels` | POST | Admin-only: manually trigger carousel name refresh from Scryfall + clear card data cache. Requires `Authorization: Bearer <ADMIN_TOKEN>`. |
 
 ### Worker files
 - `worker/worker.js`

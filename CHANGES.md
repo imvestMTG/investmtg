@@ -1,5 +1,21 @@
 # investMTG — Changelog
 
+## 2026-03-11: v57 — Dynamic carousel refresh (daily auto-rotation)
+
+- **worker/worker.js** — Homepage carousels (Featured, Trending, Budget Staples) now rotate cards daily instead of using static lists.
+  - Added `CAROUSEL_QUERIES` config with Scryfall search queries per category (commander-legal, paper-only, priced in USD, sorted by EDHREC rank).
+  - Added `refreshCarousels()` — queries Scryfall for each category, picks 12 unique cards with USD prices, stores name lists in KV with 25hr TTL.
+  - Added `fetchCarouselNames()` — uses day-of-year seeded page rotation (cycles pages 1–8) so content changes daily.
+  - Added `getDynamicNames()` — reads from KV, falls back to static arrays if KV is empty.
+  - Updated `handleFeatured/Trending/Budget` to use dynamic names from KV.
+  - Static card arrays renamed to `FALLBACK_FEATURED`, `FALLBACK_TRENDING`, `FALLBACK_BUDGET`.
+  - Added admin endpoint `POST /api/admin/refresh-carousels` (ADMIN_TOKEN required) for manual triggers.
+  - Cron trigger (`scheduled()`) now calls `refreshCarousels()` after session/price purge.
+- **sw.js** — v56 → v57
+- Worker redeployed. First dynamic refresh populated and verified — all 3 carousels serving 12 fresh cards each.
+
+---
+
 ## 2026-03-11: v56 — Fix seller dashboard delete + clean bad listings
 
 - **worker/worker.js** — `GET /api/sellers` now filters listings with `AND status = 'active'`. Previously returned all listings including `status='removed'`, so deleted listings reappeared immediately after the dashboard refreshed.

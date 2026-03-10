@@ -193,6 +193,7 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-11 | **v57** — Dynamic carousel refresh: Homepage carousels (Featured, Trending, Budget Staples) now auto-rotate daily via Scryfall queries (commander-legal, paper-only, EDHREC-ranked). Day-seeded page rotation ensures fresh content. KV-cached with 25hr TTL. Admin manual trigger endpoint added. |
 | 2026-03-11 | **v56** — Fix seller dashboard delete: `GET /api/sellers` now filters `AND status = 'active'` so deleted listings no longer reappear. Cleaned 3 test listings with $0.00 prices and missing Scryfall data. |
 | 2026-03-10 | **Efficiency upgrades** — 5 new dev tools: `tests/full-qa.sh` (combined QA pipeline), `tests/code-review.sh` (AI diff review), auto health monitoring (6 endpoints every 6hr), Google Sheets release tracker (56 historical releases), Cloudflare connector test (not usable for this zone). |
 | 2026-03-10 | **Git workflow upgrade** — Replaced manual curl + PAT + Git Trees API push method with native `git push` via GitHub CLI (`gh`). Faster, cleaner commit history, less error-prone. |

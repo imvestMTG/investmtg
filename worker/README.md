@@ -47,9 +47,10 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 |-------|--------|---------|
 | `/api/health` | GET | health check with storage stats (listings/prices/portfolios row counts), version 3.1.0 |
 | `/api/ticker` | GET | tracked card prices |
-| `/api/featured` | GET | featured cards (12 high-value staples incl. dual lands, Gaea's Cradle, Tabernacle) |
-| `/api/trending` | GET | trending cards (12 market movers incl. The One Ring, Ragavan, Dockside) |
-| `/api/budget` | GET | budget staples (12 commander staples under ~$5) |
+| `/api/featured` | GET | Featured cards (12 commander staples, USD>$20, EDHREC-ranked). Daily auto-refresh via Scryfall cron; falls back to static list if KV empty. |
+| `/api/trending` | GET | Trending cards (12 recent-set commander cards, USD>$1, EDHREC-ranked). Daily auto-refresh; falls back to static list. |
+| `/api/budget` | GET | Budget staples (12 commander cards, $0.25–$5, EDHREC-ranked). Daily auto-refresh; falls back to static list. |
+| `/api/admin/refresh-carousels` | POST | Admin-only: manually trigger carousel refresh from Scryfall + clear card data cache. Requires `Authorization: Bearer <ADMIN_TOKEN>`. |
 | `/api/search` | GET | Scryfall-backed card search |
 | `/api/card/:id` | GET | card detail proxy/cache |
 | `/api/movers/:cat` | GET | market movers by category |
@@ -103,9 +104,9 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 | Cron | UTC | Purpose |
 |------|-----|---------|
-| `0 3 * * *` | Daily at 3:00 AM | 1) Purge expired rows from `auth_sessions` 2) Purge stale `prices` cache entries older than 30 days |
+| `0 3 * * *` | Daily at 3:00 AM | 1) Purge expired rows from `auth_sessions` 2) Purge stale `prices` cache entries older than 30 days 3) Refresh homepage carousel card selections from Scryfall (featured/trending/budget — 12 cards each, stored in KV with 25hr TTL) |
 
-Defined in `wrangler.toml` under `[triggers]`. The `scheduled()` handler in `worker.js` runs both cleanup tasks.
+Defined in `wrangler.toml` under `[triggers]`. The `scheduled()` handler in `worker.js` runs all three tasks. Manual trigger available via `POST /api/admin/refresh-carousels` (requires ADMIN_TOKEN).
 
 ## Security
 
