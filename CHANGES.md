@@ -1,16 +1,9 @@
 # investMTG — Changelog
 
-## 2026-03-10: v53 — 3-tier header redesign
+## 2026-03-11: v55 — Revert header redesign
 
-- **components/Header.js** — Complete rewrite. Old flat nav replaced with 3-tier layout: main header (logo + search bar + actions) + nav row with dropdown groups + mobile slide-out. Based on ChatGPT UX analysis of header usability.
-  - **Tier 2 (main header):** Logo, persistent search bar with Scryfall autocomplete (debounced, keyboard nav), Sell CTA button, cart badge, theme toggle, user avatar/dropdown, mobile hamburger.
-  - **Tier 3 (nav row):** Dropdown groups for Market Data (Movers, cEDH Meta, Top Decks), My Tools (Portfolio, My Orders), Community (Local Stores). Plus direct links: Search, Portfolio, and a Sell CTA.
-  - **Mobile:** Full-screen slide-out nav with grouped sections, search bar, Sell CTA, Sign In button.
-  - Search dispatches `investmtg-search` custom event (same pattern as HomeView hero).
-  - Uses `autocomplete()` from `utils/api.js` for real-time card name suggestions.
-- **style.css** — Replaced old header CSS block (~160 lines) with new 3-tier header styles (~300 lines). New CSS classes prefixed `hdr-*` for namespacing. Removed stale classes: `.nav-sell-link`, `.nav-links.open`, `@keyframes slideDown`. Retained `.btn-sign-in`, `.user-menu-wrap`, `.user-avatar`, `.user-dropdown` blocks (still referenced by new Header.js).
-- **sw.js** — v52 → v54
-- **v54 fix:** Mobile responsive — hide search bar and Sell CTA in header on mobile (both are in the mobile slide-out nav). Compact header padding for mobile. Fixes vertically-stacked header elements on narrow viewports.
+- Reverted v53/v54 3-tier header redesign. Restored original Header.js and style.css from v52.
+- **sw.js** — v54 → v55
 
 ---
 
