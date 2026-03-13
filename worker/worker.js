@@ -404,50 +404,166 @@ async function scryfallFetch(path) {
   return res.json();
 }
 
+/* ── Card v2 helpers: image extraction, DFC fields, treatments, prices ── */
+
+const MULTI_FACE_LAYOUTS = new Set([
+  'transform', 'modal_dfc', 'double_faced_token', 'reversible_card', 'art_series'
+]);
+
+function extractImageUris(card) {
+  if (card.image_uris) return card.image_uris;
+  if (card.card_faces && card.card_faces.length > 0) {
+    if (card.card_faces[0].image_uris) return card.card_faces[0].image_uris;
+    if (card.card_faces[1] && card.card_faces[1].image_uris) return card.card_faces[1].image_uris;
+  }
+  return {};
+}
+
+function extractAllFaceImages(card) {
+  if (card.image_uris) return [card.image_uris];
+  if (card.card_faces) return card.card_faces.filter(f => f.image_uris).map(f => f.image_uris);
+  return [];
+}
+
+function getCardField(card, field) {
+  if (card[field]) return card[field];
+  if (card.card_faces && card.card_faces.length > 0) {
+    const front = card.card_faces[0][field] || '';
+    const back = card.card_faces[1] ? (card.card_faces[1][field] || '') : '';
+    if (field === 'mana_cost' || field === 'type_line') return back ? `${front} // ${back}` : front;
+    if (field === 'oracle_text') return back ? `${front}\n---\n${back}` : front;
+    return front;
+  }
+  return '';
+}
+
+function getCardColors(card) {
+  if (card.colors) return card.colors;
+  if (card.card_faces && card.card_faces.length > 0) {
+    const all = new Set();
+    for (const face of card.card_faces) {
+      if (face.colors) face.colors.forEach(c => all.add(c));
+    }
+    return [...all];
+  }
+  return [];
+}
+
+function extractPrices(card) {
+  const p = card.prices || {};
+  return {
+    usd: p.usd ? parseFloat(p.usd) : null,
+    usd_foil: p.usd_foil ? parseFloat(p.usd_foil) : null,
+    usd_etched: p.usd_etched ? parseFloat(p.usd_etched) : null,
+    eur: p.eur ? parseFloat(p.eur) : null,
+  };
+}
+
+function getBestUsdPrice(card) {
+  const p = extractPrices(card);
+  return p.usd || p.usd_foil || p.usd_etched || null;
+}
+
+function getTreatmentLabel(card) {
+  const treatments = [];
+  if (card.frame_effects && card.frame_effects.length > 0) {
+    if (card.frame_effects.includes('showcase')) treatments.push('Showcase');
+    if (card.frame_effects.includes('extendedart')) treatments.push('Extended Art');
+    if (card.frame_effects.includes('etched')) treatments.push('Etched');
+  }
+  if (card.border_color === 'borderless') treatments.push('Borderless');
+  if (card.full_art) treatments.push('Full Art');
+  if (card.frame === '1993' || card.frame === '1997') treatments.push('Retro Frame');
+  if (card.promo_types) {
+    if (card.promo_types.includes('textured')) treatments.push('Textured');
+    if (card.promo_types.includes('serialized')) treatments.push('Serialized');
+    if (card.promo_types.includes('galaxyfoil')) treatments.push('Galaxy Foil');
+    if (card.promo_types.includes('surgefoil')) treatments.push('Surge Foil');
+  }
+  return treatments.length > 0 ? treatments[0] : 'Regular';
+}
+
+async function findBestPaperPrinting(name, fallback) {
+  try {
+    const result = await scryfallFetch(
+      '/cards/search?q=' + encodeURIComponent('!"' + name + '" -is:digital game:paper has:usd') +
+      '&order=usd&dir=asc&unique=prints'
+    );
+    if (result && result.data && result.data.length > 0) {
+      const regular = result.data.find(c => !c.promo && c.border_color === 'black' && !c.full_art);
+      return regular || result.data[0];
+    }
+  } catch { /* no results */ }
+  // Fallback: try any paper printing with foil price
+  try {
+    const foilResult = await scryfallFetch(
+      '/cards/search?q=' + encodeURIComponent('!"' + name + '" -is:digital game:paper') +
+      '&order=usd&dir=desc&unique=prints'
+    );
+    if (foilResult && foilResult.data && foilResult.data.length > 0) {
+      const priced = foilResult.data.find(c => getBestUsdPrice(c) !== null);
+      return priced || foilResult.data[0];
+    }
+  } catch { /* no results */ }
+  return fallback;
+}
+
+/* ── Cache a card in D1 using v2 helpers ── */
+function cacheCardToD1(db, card, now) {
+  const imageUris = extractImageUris(card);
+  const allFaces = extractAllFaceImages(card);
+  const prices = extractPrices(card);
+  return db.prepare(`
+    INSERT OR REPLACE INTO prices
+    (card_id, name, set_code, set_name, collector_number, rarity,
+     mana_cost, type_line, oracle_text, colors,
+     price_usd, price_usd_foil, price_usd_etched, price_eur,
+     image_small, image_normal, image_large, image_back,
+     scryfall_uri, treatment, finishes, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    card.id, card.name, card.set, card.set_name, card.collector_number,
+    card.rarity, getCardField(card, 'mana_cost'), getCardField(card, 'type_line'),
+    getCardField(card, 'oracle_text'), JSON.stringify(getCardColors(card)),
+    prices.usd, prices.usd_foil, prices.usd_etched, prices.eur,
+    imageUris.small || '', imageUris.normal || '', imageUris.large || '',
+    allFaces.length > 1 ? (allFaces[1].normal || '') : '',
+    card.scryfall_uri || '', getTreatmentLabel(card),
+    JSON.stringify(card.finishes || []), now
+  ).run();
+}
+
 async function fetchAndCacheCard(db, name) {
   try {
     let card = await scryfallFetch('/cards/named?exact=' + encodeURIComponent(name));
     if (!card || card.object === 'error') return null;
 
-    // If the card is digital-only or has no USD price, search for a physical printing
-    if (card.digital || (!card.prices?.usd && !card.prices?.usd_foil)) {
-      try {
-        const searchResult = await scryfallFetch(
-          '/cards/search?q=!' + encodeURIComponent('"' + name + '"') + '+-is%3Adigital+has%3Ausd&order=usd&dir=desc'
-        );
-        if (searchResult && searchResult.data && searchResult.data.length > 0) {
-          card = searchResult.data[0];
-        }
-      } catch {
-        // Search failed — keep the original card
-      }
+    // If digital-only or no USD price, find the best paper printing
+    if (card.digital || !getBestUsdPrice(card)) {
+      card = await findBestPaperPrinting(name, card);
     }
 
+    const imageUris = extractImageUris(card);
+    const allFaces = extractAllFaceImages(card);
+    const prices = extractPrices(card);
     const now = Math.floor(Date.now() / 1000);
-    const imageUris = card.image_uris || (card.card_faces && card.card_faces[0] && card.card_faces[0].image_uris) || {};
 
-    await db.prepare(`
-      INSERT OR REPLACE INTO prices
-      (card_id, name, set_code, set_name, collector_number, rarity, mana_cost, type_line, oracle_text, colors, price_usd, price_usd_foil, price_eur, image_small, image_normal, image_large, scryfall_uri, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      card.id, card.name, card.set, card.set_name, card.collector_number,
-      card.rarity, card.mana_cost || '', card.type_line || '', card.oracle_text || '',
-      JSON.stringify(card.colors || []),
-      card.prices?.usd ? parseFloat(card.prices.usd) : null,
-      card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
-      card.prices?.eur ? parseFloat(card.prices.eur) : null,
-      imageUris.small || '', imageUris.normal || '', imageUris.large || '',
-      card.scryfall_uri || '', now
-    ).run();
+    await cacheCardToD1(db, card, now);
 
     return {
       card_id: card.id, name: card.name, set_code: card.set, set_name: card.set_name,
-      rarity: card.rarity, mana_cost: card.mana_cost, type_line: card.type_line,
-      price_usd: card.prices?.usd ? parseFloat(card.prices.usd) : null,
-      price_usd_foil: card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
+      rarity: card.rarity,
+      mana_cost: getCardField(card, 'mana_cost'),
+      type_line: getCardField(card, 'type_line'),
+      price_usd: prices.usd, price_usd_foil: prices.usd_foil,
+      price_usd_etched: prices.usd_etched,
       image_small: imageUris.small || '', image_normal: imageUris.normal || '',
-      scryfall_uri: card.scryfall_uri || '', updated_at: now,
+      image_back: allFaces.length > 1 ? (allFaces[1].normal || '') : '',
+      scryfall_uri: card.scryfall_uri || '',
+      treatment: getTreatmentLabel(card),
+      finishes: card.finishes || [],
+      is_dfc: allFaces.length > 1,
+      updated_at: now,
     };
   } catch (e) {
     console.error('fetchAndCacheCard error:', name, e.message);
@@ -701,30 +817,57 @@ async function handleCardDetail(request, env, cardId) {
 
   if (row) return json(row, 200, request);
 
-  // Fetch from Scryfall
+  // Fetch from Scryfall and cache using v2 helpers
   try {
     const card = await scryfallFetch('/cards/' + cardId);
-    const imageUris = card.image_uris || (card.card_faces?.[0]?.image_uris) || {};
-
-    await env.DB.prepare(`
-      INSERT OR REPLACE INTO prices
-      (card_id, name, set_code, set_name, collector_number, rarity, mana_cost, type_line, oracle_text, colors, price_usd, price_usd_foil, price_eur, image_small, image_normal, image_large, scryfall_uri, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      card.id, card.name, card.set, card.set_name, card.collector_number,
-      card.rarity, card.mana_cost || '', card.type_line || '', card.oracle_text || '',
-      JSON.stringify(card.colors || []),
-      card.prices?.usd ? parseFloat(card.prices.usd) : null,
-      card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
-      card.prices?.eur ? parseFloat(card.prices.eur) : null,
-      imageUris.small || '', imageUris.normal || '', imageUris.large || '',
-      card.scryfall_uri || '', now
-    ).run();
-
+    await cacheCardToD1(env.DB, card, now);
     // Return full Scryfall response for card detail page
     return json(card, 200, request);
   } catch (e) {
     console.error('Card lookup error:', e.message);
+    return json({ error: 'Card not found' }, 404, request);
+  }
+}
+
+/* ── GET /api/card-printings/:name ── */
+async function handleCardPrintings(request, env, cardName) {
+  if (!cardName) return json({ error: 'Card name required' }, 400, request);
+
+  const cacheKey = `printings:${cardName.toLowerCase()}`;
+  const cached = await env.CACHE.get(cacheKey, 'json');
+  if (cached) return json(cached, 200, request);
+
+  try {
+    const result = await scryfallFetch(
+      '/cards/search?q=' + encodeURIComponent('!"' + cardName + '" -is:digital game:paper') +
+      '&unique=prints&order=released&dir=desc'
+    );
+    if (!result || !result.data) return json({ error: 'Card not found' }, 404, request);
+
+    const printings = result.data.map(card => ({
+      card_id: card.id,
+      name: card.name,
+      set_code: card.set,
+      set_name: card.set_name,
+      collector_number: card.collector_number,
+      rarity: card.rarity,
+      treatment: getTreatmentLabel(card),
+      finishes: card.finishes || [],
+      price_usd: extractPrices(card).usd,
+      price_usd_foil: extractPrices(card).usd_foil,
+      price_usd_etched: extractPrices(card).usd_etched,
+      image_small: extractImageUris(card).small || '',
+      image_normal: extractImageUris(card).normal || '',
+      image_back: extractAllFaceImages(card).length > 1
+        ? (extractAllFaceImages(card)[1].normal || '') : '',
+      is_dfc: MULTI_FACE_LAYOUTS.has(card.layout),
+    }));
+
+    const response = { name: cardName, total_printings: printings.length, printings };
+    await env.CACHE.put(cacheKey, JSON.stringify(response), { expirationTtl: 3600 });
+    return json(response, 200, request);
+  } catch (e) {
+    console.error('Card printings error:', e.message);
     return json({ error: 'Card not found' }, 404, request);
   }
 }
@@ -2669,6 +2812,7 @@ export default {
       if (path === '/api/trending')                         return handleTrending(request, env);
       if (path === '/api/budget')                           return handleBudget(request, env);
       if (path === '/api/search')                           return handleSearch(request, env);
+      if (path.startsWith('/api/card-printings/'))           return handleCardPrintings(request, env, decodeURIComponent(path.replace('/api/card-printings/', '')));
       if (path.startsWith('/api/card/'))                    return handleCardDetail(request, env, path.replace('/api/card/', ''));
       if (path.startsWith('/api/movers'))                   return handleMovers(request, env, path.split('/').pop() || 'valuable');
       if (path === '/api/listings/batch' && request.method === 'POST') return handleListingsBatch(request, env);

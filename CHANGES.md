@@ -1,5 +1,20 @@
 # investMTG — Changelog
 
+## 2026-03-13: v66 — Card Lookup v2 (DFC, Treatments, Printings Endpoint)
+
+**Worker — Card Lookup v2 (worker/worker.js):**
+- Replaced `fetchAndCacheCard` with v2 system: proper DFC image extraction (`extractImageUris`, `extractAllFaceImages`), DFC field merging (`getCardField` for mana_cost, type_line, oracle_text across both faces), color extraction from card_faces (`getCardColors`).
+- Digital-only fallback improved: `findBestPaperPrinting` searches for cheapest paper printing with USD price, prefers regular (non-promo) printings, falls back to foil-only results.
+- Treatment detection: `getCardTreatment` / `getTreatmentLabel` identifies showcase, borderless, extended art, retro frame, etched, textured, serialized, galaxy foil, surge foil, confetti foil, and more.
+- Price extraction: `extractPrices` / `getBestUsdPrice` now includes `usd_etched` for Commander staples.
+- `handleCardDetail` updated to use `cacheCardToD1` with new columns (treatment, price_usd_etched, image_back, finishes).
+- New endpoint: `GET /api/card-printings/:name` — returns all paper printings for a card with treatment labels, prices, images (front + back for DFCs), cached 1 hour in KV.
+
+**D1 Migration:**
+- `prices` table: added `treatment TEXT`, `price_usd_etched REAL`, `image_back TEXT`, `finishes TEXT` columns.
+
+- **sw.js** — v65 → v66.
+
 ## 2026-03-13: v65 — Seller Listing Card Images + Security Hardening Wave 2
 
 **Seller Dashboard:**
