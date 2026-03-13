@@ -212,6 +212,9 @@ export function CheckoutView(props) {
     setPaymentProcessing(true);
     createServerOrder('reserve').then(function(orderId) {
       finishOrder(orderId, 'reserve');
+    }).catch(function(err) {
+      console.error('Reserve order failed:', err);
+      setPaymentProcessing(false);
     });
   }
 
@@ -877,7 +880,7 @@ export function CheckoutView(props) {
               paymentProcessing
                 ? h('span', null, h('span', { className: 'spinner spinner-light' }), ' Processing\u2026')
                 : h('span', null, 'Pay with ',
-                    h('span', { style: { fontWeight: '700' } },
+                    h('span', { className: 'u-bold' },
                       h('span', { style: { color: '#fff' } }, 'Pay'),
                       h('span', { style: { color: '#A6D8F0' } }, 'Pal')
                     ),

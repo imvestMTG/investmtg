@@ -1,5 +1,26 @@
 # investMTG — Changelog
 
+## 2026-03-13: v64 — Security Hardening + Performance Audit Fixes
+
+**Security (Wave 1):**
+- **worker.js** — Stripped `e.message` from all 10 client-facing API error responses. Internal details now logged server-side only via `console.error()`; clients receive generic messages.
+- **worker.js** — Removed `localhost:3000`, `localhost:5500`, `127.0.0.1:5500` from `ALLOWED_ORIGINS`. Production CORS now allows only `investmtg.com`, `www.investmtg.com`, `api.investmtg.com`, and `imvestmtg.github.io`.
+- **worker.js** — Removed `api.mtgstocks.com` from `ALLOWED_PROXY_HOSTS` (unused by the generic proxy; MTGStocks has its own dedicated handler).
+- **worker.js** — Added audit logging for admin token bypass: logs IP and path to `console.log` on every use.
+- **worker.js** — SumUp error response no longer leaks raw `sumup_errors` array or `detail` string to the client.
+
+**Performance (Wave 2):**
+- **utils/api.js** — Added 15-second `AbortController` timeout to `backendFetch()`. All API calls now abort cleanly instead of hanging indefinitely on slow/dead backends.
+- **components/CheckoutView.js** — Added `.catch()` to `completeReserveOrder()` chain (payment flow). Prevents stuck processing state on network errors.
+- **components/CartView.js** — Added `.catch()` to `Promise.all()` JustTCG pricing fetch. Ensures loading state clears on failure.
+
+**Cleanup (Wave 3):**
+- **style.css** — Removed 18 dead CSS blocks (`.market-card` family, `.watchlist-section`, `.cond-dmg`): −2.4 KB.
+- **style.css** — Added 16 utility CSS classes (`u-mt-2`, `u-mt-3`, `u-mt-4`, `u-mb-3`, `u-mb-4`, `u-p-4`, `u-p-8`, `u-text-center`, `u-text-muted`, `u-text-sm-muted`, `u-link-primary`, `u-flex-shrink-0`, `u-label-xs`, `u-hidden`, `u-bold`) for gradual inline style migration.
+- **sw.js** — v63 → v64.
+
+**QA:** 75/75 pass (full mode).
+
 ## 2026-03-13: v63 — Unified QA Script + Workflow Streamlining
 
 - **tests/qa.sh** — New unified QA script replacing smoke-test.sh, debug-tool.sh, full-qa.sh, and code-review.sh:

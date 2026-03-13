@@ -137,9 +137,20 @@ export function backendFetch(path, options) {
       opts.headers['Authorization'] = 'Bearer ' + token;
     }
   }
+  // Abort after 15 seconds to prevent indefinite loading states
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+  opts.signal = controller.signal;
   return fetch(PROXY_BASE + path, opts).then(function(res) {
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error('Backend error: ' + res.status);
     return res.json();
+  }).catch(function(err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out: ' + path);
+    }
+    throw err;
   });
 }
 

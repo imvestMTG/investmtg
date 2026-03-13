@@ -2853,11 +2853,6 @@ a.cart-item-set.cart-item-link:hover {
   color: #fff;
 }
 
-.mp-badge-condition.cond-dmg {
-  background: rgba(239,68,68,0.85);
-  color: #fff;
-}
-
 .mp-badge-type {
   padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
@@ -3102,34 +3097,6 @@ a.cart-item-set.cart-item-link:hover {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-.watchlist-section {
-  margin-bottom: var(--space-10);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 500px;
-}
-
-.watchlist-section h2 {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 700;
-  margin-bottom: var(--space-5);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid oklch(from var(--color-border) l c h / 0.5);
-}
-
-.watchlist-section h2::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 1.1em;
-  background: linear-gradient(180deg,var(--color-primary) 0%,oklch(from var(--color-primary) l c h / 0.3) 100%);
-  border-radius: 2px;
-  flex-shrink: 0;
 }
 
 .checkout-page {
@@ -4934,63 +4901,6 @@ a.cart-item-set.cart-item-link:hover {
   margin-bottom: var(--space-6);
 }
 
-.market-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  transition: var(--transition-interactive);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.market-card:hover {
-  background: var(--color-surface-elevated,rgba(255,255,255,0.03));
-}
-
-.market-card-rank {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-text-muted);
-  min-width: 28px;
-}
-
-.market-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.market-card-name {
-  font-weight: 600;
-  font-size: var(--text-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.market-card-set {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-.market-card-price {
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.market-card-amount {
-  font-weight: 700;
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-}
-
-.market-empty {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  padding: var(--space-6) 0;
-  text-align: center;
-}
-
 .market-source {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -5304,42 +5214,7 @@ a.cart-item-set.cart-item-link:hover {
   gap: var(--space-1);
 }
 
-a.market-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  transition: var(--transition-interactive);
-  border-bottom: 1px solid var(--color-border);
-  text-decoration: none;
-  color: var(--color-text);
-}
-
-a.market-card:hover {
-  background: var(--color-surface-elevated,rgba(255,255,255,0.03));
-}
-
-.market-card-img {
-  width: 40px;
-  height: 56px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.market-card-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.market-card-foil {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.market-cat-desc {
+aa.market-cat-desc {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin-bottom: var(--space-4);
@@ -9652,3 +9527,20 @@ a.market-card:hover {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
+
+/* ── Utility classes (added v64 — replaces repeated inline styles) ── */
+.u-mt-2 { margin-top: var(--space-2); }
+.u-mt-3 { margin-top: var(--space-3); }
+.u-mt-4 { margin-top: var(--space-4); }
+.u-mb-3 { margin-bottom: var(--space-3); }
+.u-mb-4 { margin-bottom: var(--space-4); }
+.u-p-4 { padding: var(--space-4); }
+.u-p-8 { padding: var(--space-8); }
+.u-text-center { text-align: center; }
+.u-text-muted { color: var(--color-text-muted); }
+.u-text-sm-muted { font-size: var(--text-sm); color: var(--color-text-muted); }
+.u-link-primary { color: var(--color-primary); text-decoration: underline; }
+.u-flex-shrink-0 { flex-shrink: 0; }
+.u-label-xs { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); }
+.u-hidden { display: none; }
+.u-bold { font-weight: 700; }

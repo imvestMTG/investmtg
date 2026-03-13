@@ -59,16 +59,12 @@ const ALLOWED_ORIGINS = [
   'https://investmtg.com',
   'https://api.investmtg.com',
   'https://imvestmtg.github.io',
-  'http://localhost:3000',
-  'http://localhost:5500',
-  'http://127.0.0.1:5500',
 ];
 
 const ALLOWED_PROXY_HOSTS = [
   'edhtop16.com',
   'api.scryfall.com',
   'api2.moxfield.com',
-  'api.mtgstocks.com',
 ];
 
 // Cache TTLs (seconds)
@@ -280,6 +276,8 @@ async function getAuthUser(request, env) {
   if (env.ADMIN_TOKEN) {
     const authHeader = request.headers.get('Authorization') || '';
     if (authHeader === 'Bearer ' + env.ADMIN_TOKEN) {
+      var ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      console.log('[ADMIN_BYPASS] used from IP:', ip, 'path:', new URL(request.url).pathname);
       return {
         userId: 'admin',
         token: 'admin-bypass',
@@ -684,7 +682,8 @@ async function handleSearch(request, env) {
     const data = await scryfallFetch(scryfallUrl);
     return json(data, 200, request);
   } catch (e) {
-    return json({ error: 'Search failed', detail: e.message }, 502, request);
+    console.error('Search error:', e.message);
+    return json({ error: 'Search failed' }, 502, request);
   }
 }
 
@@ -721,7 +720,8 @@ async function handleCardDetail(request, env, cardId) {
     // Return full Scryfall response for card detail page
     return json(card, 200, request);
   } catch (e) {
-    return json({ error: 'Card not found', detail: e.message }, 404, request);
+    console.error('Card lookup error:', e.message);
+    return json({ error: 'Card not found' }, 404, request);
   }
 }
 
@@ -1786,18 +1786,10 @@ async function handleSumUpCheckout(request, env) {
 
     if (!resp.ok) {
       console.error('SumUp checkout error:', resp.status, JSON.stringify(data));
-      // SumUp returns an array of errors like [{message, error_code, param}] or an object {error_message, error_code}
-      let detail = 'Unknown error';
-      if (Array.isArray(data)) {
-        detail = data.map(e => (e.param ? e.param + ': ' : '') + (e.message || e.error_code || '')).join('; ');
-      } else if (data && typeof data === 'object') {
-        detail = data.error_message || data.message || data.error_code || JSON.stringify(data);
-      }
+      // Log full error server-side, return generic message to client
       return json({
         error: 'SumUp checkout creation failed',
-        detail: detail,
-        sumup_errors: data,
-        status: resp.status,
+        status: resp.status >= 500 ? 502 : resp.status,
       }, resp.status >= 500 ? 502 : resp.status, request);
     }
 
@@ -1819,7 +1811,7 @@ async function handleSumUpCheckout(request, env) {
     }, 201, request);
   } catch (e) {
     console.error('SumUp checkout fetch error:', e.message);
-    return json({ error: 'SumUp service unavailable', detail: e.message }, 502, request);
+    return json({ error: 'SumUp service unavailable' }, 502, request);
   }
 }
 
@@ -1993,7 +1985,7 @@ async function handlePayPalCreateOrder(request, env) {
     }, 201, request);
   } catch (e) {
     console.error('PayPal create-order fetch error:', e.message);
-    return json({ error: 'PayPal service unavailable', detail: e.message }, 502, request);
+    return json({ error: 'PayPal service unavailable' }, 502, request);
   }
 }
 
@@ -2079,7 +2071,7 @@ async function handlePayPalCaptureOrder(request, env) {
     }, 200, request);
   } catch (e) {
     console.error('PayPal capture fetch error:', e.message);
-    return json({ error: 'PayPal service unavailable', detail: e.message }, 502, request);
+    return json({ error: 'PayPal service unavailable' }, 502, request);
   }
 }
 
@@ -2283,7 +2275,8 @@ async function handleMTGStocks(request, env) {
     await env.CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: TTL_MTGSTOCKS });
     return json(result, 200, request);
   } catch (e) {
-    return json({ error: 'MTGStocks fetch failed: ' + e.message }, 502, request);
+    console.error('MTGStocks fetch error:', e.message);
+    return json({ error: 'MTGStocks service unavailable' }, 502, request);
   }
 }
 
@@ -2332,7 +2325,8 @@ async function handleHealth(request, env) {
       }
     }, 200, request);
   } catch (e) {
-    return json({ status: 'error', db: 'disconnected', error: e.message }, 500, request);
+    console.error('Health check DB error:', e.message);
+    return json({ status: 'error', db: 'disconnected' }, 500, request);
   }
 }
 
@@ -2622,7 +2616,7 @@ async function handleEchoMTG(request, env) {
     });
   } catch (e) {
     console.error('[EchoMTG] Fetch error:', e.message);
-    return json({ error: 'EchoMTG service unavailable', detail: e.message }, 502, request);
+    return json({ error: 'EchoMTG service unavailable' }, 502, request);
   }
 }
 
@@ -2708,7 +2702,7 @@ export default {
       return json({ error: 'Not found', routes: '/api/health for status' }, 404, request);
     } catch (e) {
       console.error('Worker error:', e.message, e.stack);
-      return json({ error: 'Internal error', detail: e.message }, 500, request);
+      return json({ error: 'Internal error' }, 500, request);
     }
   },
 
