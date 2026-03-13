@@ -1,6 +1,6 @@
 /* SellerDashboard.js — Seller management portal */
 import React from 'react';
-import { formatUSD } from '../utils/helpers.js';
+import { formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 import { STORE_OPTIONS } from '../utils/stores.js';
 import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
@@ -73,7 +73,7 @@ function useScryfallPrintings(cardName) {
     var cancelled = false;
     // Small delay to respect Scryfall rate limits
     var timerId = setTimeout(function() {
-      var url = 'https://api.scryfall.com/cards/search?q=!' + encodeURIComponent('"' + cardName + '"') + '&unique=prints&order=released&dir=desc';
+      var url = 'https://api.scryfall.com/cards/search?q=!' + encodeURIComponent('"' + cardName + '"') + '+-is%3Adigital&unique=prints&order=released&dir=desc';
       fetch(url)
         .then(function(r) {
           if (!r.ok) throw new Error('Not found');
@@ -96,8 +96,8 @@ function useScryfallPrintings(cardName) {
                 rarity: card.rarity,
                 priceUsd: card.prices && card.prices.usd,
                 priceUsdFoil: card.prices && card.prices.usd_foil,
-                imageSmall: card.image_uris && card.image_uris.small,
-                imageNormal: card.image_uris && card.image_uris.normal,
+                imageSmall: getCardImageSmall(card),
+                imageNormal: getScryfallImageUrl(card, 'normal'),
                 scryfallId: card.id
               });
             }

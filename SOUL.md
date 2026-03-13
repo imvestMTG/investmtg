@@ -39,30 +39,35 @@ Build a cleaner, more honest local MTG experience for Guam players using transpa
 - pickup and island delivery come before any broader commerce framing
 - seller flows should make meetup zones, response expectations, and local delivery rules explicit
 
-### 2. No fake market signals
+### 2. Paper cards only
+- All cards on the site are physical paper versions — no MTGO or digital-only printings
+- Every Scryfall query must include `-is:digital` or filter `card.digital === false`
+- Prices shown are paper market prices (`prices.usd`), never digital (`prices.tix`)
+
+### 3. No fake market signals
 - no fabricated trend data
 - no fake price history
 - no fake seller activity
 - no invented liquidity signals
 
-### 3. Reference pricing must stay clear
+### 4. Reference pricing must stay clear
 - Scryfall is the primary reference layer for card data, images, and live prices
 - external market reference links may point to TCGplayer when available through Scryfall purchase URIs
 - Cardmarket is not part of the modern Guam-first buyer flow
 
-### 4. Pricing transparency is non-negotiable
+### 5. Pricing transparency is non-negotiable
 - Every price displayed on the site must be traceable to a named, verifiable data source
 - The Pricing & Data Sources page (`#pricing`) explains every data pipeline, update frequency, and limitation in plain language
 - Inline attribution appears alongside prices on card detail, market movers, and listing forms so users never have to guess where a number came from
 - If a data source is unavailable, we show nothing rather than fabricating a fallback
 - Suggested prices are never binding — sellers always set their own asking price
 
-### 5. Trust beats clutter
+### 6. Trust beats clutter
 - every main screen should have a clear primary action
 - feedback must be explicit, especially on seller actions
 - local trade expectations should be visible, not implied
 
-### 6. Ship code and docs together
+### 7. Ship code and docs together
 A release is not complete until the docs and release notes are updated in the same session.
 
 Required updates after release-impacting work:
@@ -73,7 +78,7 @@ Required updates after release-impacting work:
 - `worker/README.md` when worker behavior changes
 - a security check for secrets and sensitive credentials
 
-### 7. QA before every push
+### 8. QA before every push
 No code reaches `main` without passing QA. Every push must include verification, not just implementation.
 
 **Automated test tools** (run these first):
@@ -92,7 +97,7 @@ No code reaches `main` without passing QA. Every push must include verification,
 4. **Visual verification** — Screenshot the live URL after push. Do not trust "it should work" — verify it does. The screenshot tool captures early, so wait for the full render.
 5. **Console error check** — Open the browser console on the live site. Zero errors is the standard. CSP violations, failed fetches, and module import errors all show here.
 
-### 8. Security posture
+### 9. Security posture
 Security is not optional. Every session must verify these constraints.
 
 **Secrets and credentials:**
@@ -119,7 +124,7 @@ Security is not optional. Every session must verify these constraints.
 - `storageGet()` / `storageSet()` from `utils/storage.js` is the only way to read/write localStorage. Direct `localStorage.getItem()` is banned. The wrapper prevents `JSON.parse` crashes from corrupted values.
 - *Why this exists: v8 — a `JSON.parse(undefined)` crash caused a blank screen that was hard to reproduce because it only happened with corrupted localStorage data.*
 
-### 9. QC audit triggers
+### 10. QC audit triggers
 A targeted codebase audit must happen when any of these conditions are true:
 
 1. **Domain or URL migration** — When any backend URL changes (e.g., `.workers.dev` to custom domain), audit every file that references the old URL. Check CSP, check config imports, check hardcoded strings.

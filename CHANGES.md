@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-13: v62 — DFC Image Fix + Paper-Only Enforcement
+
+- **components/SellerDashboard.js** — Fixed blank card images for double-faced cards (DFCs) in printing picker:
+  - Used `getCardImageSmall()` / `getScryfallImageUrl()` helpers instead of direct `card.image_uris` access (which is null for DFCs — Scryfall stores images in `card_faces[0].image_uris` for those).
+  - Added `-is:digital` filter to Scryfall printings search query — seller can no longer see or list MTGO/digital-only printings.
+- **components/ScannerView.js** — Same DFC image fix applied to scanner history thumbnails and match cards.
+- **SOUL.md** — Added Rule 2 "Paper cards only" codifying the paper-first principle: all Scryfall queries must exclude digital, only paper prices shown.
+- **sw.js** — v61 → v62.
+
 ## 2026-03-13: v61 — EchoMTG Integration + Order Confirmation Emails
 
 - **utils/echomtg-api.js** — New EchoMTG API frontend utility:

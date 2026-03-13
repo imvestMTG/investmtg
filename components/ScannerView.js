@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { searchCards, getCard } from '../utils/api.js';
-import { formatUSD } from '../utils/helpers.js';
+import { formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
 
 var h = React.createElement;
 
@@ -470,7 +470,7 @@ export function ScannerView(props) {
               onClick: function() { goToCard(entry.card.id); }
             },
               h('img', {
-                src: entry.card.image_uris ? entry.card.image_uris.small : '',
+                src: getCardImageSmall(entry.card),
                 alt: entry.card.name,
                 loading: 'lazy'
               }),
@@ -605,7 +605,7 @@ export function ScannerView(props) {
               onClick: function() { goToCard(card.id); }
             },
               h('img', {
-                src: card.image_uris ? card.image_uris.normal || card.image_uris.small : '',
+                src: getScryfallImageUrl(card, 'normal') || getCardImageSmall(card),
                 alt: card.name,
                 className: 'scanner-match-img'
               }),
@@ -636,7 +636,7 @@ export function ScannerView(props) {
               onClick: function() { goToCard(entry.card.id); }
             },
               h('img', {
-                src: entry.card.image_uris ? entry.card.image_uris.small : '',
+                src: getCardImageSmall(entry.card),
                 alt: entry.card.name,
                 loading: 'lazy'
               }),
