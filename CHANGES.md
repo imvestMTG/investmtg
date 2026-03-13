@@ -2,7 +2,8 @@
 
 ## 2026-03-13: v65 — Seller Listing Card Images
 
-- **components/SellerDashboard.js** — Listing cards now display card thumbnail images. Since `image_uri` is stored empty in D1 (storage optimization), the frontend constructs the Scryfall image URL from the available `card_id` (Scryfall ID) using the `?format=image&version=small` endpoint.
+- **components/SellerDashboard.js** — Listing cards now display card thumbnail images via three-tier fallback: (1) stored `image_uri`, (2) Scryfall ID-based image URL, (3) Scryfall exact name search image URL. The name-based fallback covers all existing listings that have empty `card_id` and `image_uri` in D1.
+- **components/SellerDashboard.js** — `ListingForm` now stores `scryfallId` from the selected printing and passes it as `card_id` to the backend, so new listings get the Scryfall ID stored in D1.
 - **sw.js** — v64 → v65.
 
 ## 2026-03-13: v64 — Security Hardening + Performance Audit Fixes

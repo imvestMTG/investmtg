@@ -267,7 +267,8 @@ function ListingForm(props) {
     notes: '',
     contact: '',
     imageUri: '',
-    imageNormal: ''
+    imageNormal: '',
+    scryfallId: ''
   };
   var ref1 = React.useState(Object.assign({}, defaultForm, initial || {}));
   var form = ref1[0], setForm = ref1[1];
@@ -374,6 +375,7 @@ function ListingForm(props) {
     update('collectorNumber', printing.collectorNumber || '');
     update('imageUri', printing.imageSmall || '');
     update('imageNormal', printing.imageNormal || '');
+    update('scryfallId', printing.scryfallId || '');
     if (!form.price && printing.priceUsd) {
       update('price', printing.priceUsd);
     }
@@ -1258,7 +1260,8 @@ export function SellerDashboard(props) {
       seller_contact: listingData.contact || seller.contact || '',
       set_name: listingData.setName || '',
       notes: listingData.notes || '',
-      image_uri: listingData.image || listingData.imageUri || null
+      image_uri: listingData.image || listingData.imageUri || null,
+      card_id: listingData.scryfallId || ''
     };
 
     createListing(backendData).then(function(result) {
@@ -1486,7 +1489,9 @@ export function SellerDashboard(props) {
               var listingNotes = listing.notes || '';
               var cardId = listing.cardId || listing.card_id || '';
               var imageUri = listing.image_uri || listing.imageUri || '';
-              var thumbSrc = imageUri || (cardId ? 'https://api.scryfall.com/cards/' + cardId + '?format=image&version=small' : '');
+              var thumbSrc = imageUri
+                || (cardId ? 'https://api.scryfall.com/cards/' + cardId + '?format=image&version=small' : '')
+                || (cardName ? 'https://api.scryfall.com/cards/named?format=image&version=small&exact=' + encodeURIComponent(cardName) : '');
 
               return h('div', { key: listingId, className: 'seller-listing-card' },
                 thumbSrc && h('img', { src: thumbSrc, className: 'seller-listing-thumb', alt: cardName, loading: 'lazy' }),
