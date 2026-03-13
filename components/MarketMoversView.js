@@ -1,7 +1,8 @@
-/* MarketMoversView.js — Market movers with sortable columns + JustTCG price data */
+/* MarketMoversView.js — Market movers with sortable columns + JustTCG price data + EchoMTG set movers */
 import React from 'react';
 import { fetchMovers, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
+import { getSetGainers, getSetLosers } from '../utils/echomtg-api.js';
 import { TrendingIcon } from './shared/Icons.js';
 var h = React.createElement;
 
@@ -36,9 +37,23 @@ var CATEGORIES = [
     key: 'budget',
     title: 'Budget Finds',
     icon: '\uD83D\uDCB0',
-    description: 'Affordable rares — great for building on a budget.'
+    description: 'Affordable rares \u2014 great for building on a budget.'
+  },
+  {
+    key: 'echo-gainers',
+    title: 'Set Gainers',
+    icon: '\uD83D\uDCC8',
+    description: 'Cards gaining the most value in recent Standard-legal sets (via EchoMTG).'
+  },
+  {
+    key: 'echo-losers',
+    title: 'Set Losers',
+    icon: '\uD83D\uDCC9',
+    description: 'Cards dropping the most value in recent Standard-legal sets (via EchoMTG).'
   }
 ];
+
+var ECHO_SET_CODES = ['FDN', 'DSK', 'BLB', 'OTJ', 'MKM', 'LCI'];
 
 var SORT_COLUMNS = [
   { key: 'rank', label: '#', width: '40px' },
@@ -98,45 +113,73 @@ export function MarketMoversView() {
   var ref6 = React.useState({});
   var jtcgData = ref6[0], setJtcgData = ref6[1];
 
+  var ref7 = React.useState([]);
+  var echoCards = ref7[0], setEchoCards = ref7[1];
+
   React.useEffect(function() {
+    var isEcho = activeCategory === 'echo-gainers' || activeCategory === 'echo-losers';
+
     setLoading(true);
     setError(null);
     setJtcgData({});
-    var backendCategory = CATEGORY_KEY_MAP[activeCategory] || activeCategory;
 
-    fetchMovers(backendCategory).then(function(result) {
-      var seen = {};
-      var unique = [];
-      result.forEach(function(card) {
-        if (!seen[card.name] && unique.length < 16) {
-          seen[card.name] = true;
-          unique.push(card);
-        }
+    if (isEcho) {
+      /* EchoMTG set movers: fetch from multiple recent sets */
+      var fetchFn = activeCategory === 'echo-gainers' ? getSetGainers : getSetLosers;
+      Promise.all(ECHO_SET_CODES.map(function(code) {
+        return fetchFn(code, 8).catch(function() { return []; });
+      })).then(function(results) {
+        var merged = [];
+        results.forEach(function(items) {
+          items.forEach(function(item) { merged.push(item); });
+        });
+        /* Sort by absolute price change */
+        merged.sort(function(a, b) { return Math.abs(b.price_change) - Math.abs(a.price_change); });
+        setEchoCards(merged.slice(0, 20));
+        setCards([]);
+        setLoading(false);
+      }).catch(function() {
+        setError('Could not load EchoMTG data. Please try again.');
+        setLoading(false);
       });
-      setCards(unique);
-      setLoading(false);
+    } else {
+      setEchoCards([]);
+      var backendCategory = CATEGORY_KEY_MAP[activeCategory] || activeCategory;
 
-      /* Fetch JustTCG price data for each card (fire-and-forget, progressive loading) */
-      unique.forEach(function(card) {
-        var cardId = card.id;
-        var tcgId = card.purchase_uris && card.purchase_uris.tcgplayer
-          ? (card.purchase_uris.tcgplayer.match(/[?&]u=.*productId%3D(\d+)/) || [])[1] || null
-          : null;
-        fetchJustTCGDetail({ scryfallId: cardId, tcgplayerId: tcgId }).then(function(detail) {
-          if (detail && detail.conditions && detail.conditions.NM) {
-            setJtcgData(function(prev) {
-              var next = {};
-              Object.keys(prev).forEach(function(k) { next[k] = prev[k]; });
-              next[cardId] = detail.conditions.NM;
-              return next;
-            });
+      fetchMovers(backendCategory).then(function(result) {
+        var seen = {};
+        var unique = [];
+        result.forEach(function(card) {
+          if (!seen[card.name] && unique.length < 16) {
+            seen[card.name] = true;
+            unique.push(card);
           }
         });
+        setCards(unique);
+        setLoading(false);
+
+        /* Fetch JustTCG price data for each card (fire-and-forget, progressive loading) */
+        unique.forEach(function(card) {
+          var cardId = card.id;
+          var tcgId = card.purchase_uris && card.purchase_uris.tcgplayer
+            ? (card.purchase_uris.tcgplayer.match(/[?&]u=.*productId%3D(\d+)/) || [])[1] || null
+            : null;
+          fetchJustTCGDetail({ scryfallId: cardId, tcgplayerId: tcgId }).then(function(detail) {
+            if (detail && detail.conditions && detail.conditions.NM) {
+              setJtcgData(function(prev) {
+                var next = {};
+                Object.keys(prev).forEach(function(k) { next[k] = prev[k]; });
+                next[cardId] = detail.conditions.NM;
+                return next;
+              });
+            }
+          });
+        });
+      }).catch(function() {
+        setError('Could not load market data. Please try again.');
+        setLoading(false);
       });
-    }).catch(function() {
-      setError('Could not load market data. Please try again.');
-      setLoading(false);
-    });
+    }
   }, [activeCategory]);
 
   function toggleSort(key) {
@@ -207,7 +250,45 @@ export function MarketMoversView() {
             return h('div', { key: i, className: 'skeleton skeleton-text', style: { height: '56px', marginBottom: '6px' } });
           })
         )
-      : h('div', { className: 'mv-table-wrap' },
+      : echoCards.length > 0
+        ? h('div', { className: 'mv-table-wrap' },
+            h('table', { className: 'mv-table' },
+              h('thead', null,
+                h('tr', null,
+                  h('th', { className: 'mv-th', style: { width: '40px' } }, '#'),
+                  h('th', { className: 'mv-th mv-th-name' }, 'Card'),
+                  h('th', { className: 'mv-th', style: { width: '80px' } }, 'Set'),
+                  h('th', { className: 'mv-th', style: { width: '100px' } }, 'Mid'),
+                  h('th', { className: 'mv-th', style: { width: '100px' } }, 'Low'),
+                  h('th', { className: 'mv-th', style: { width: '100px' } }, 'Change')
+                )
+              ),
+              h('tbody', null,
+                echoCards.map(function(item, i) {
+                  var chg = item.price_change;
+                  var chgCls = chg > 0 ? 'mv-change mv-change-up' : chg < 0 ? 'mv-change mv-change-down' : 'mv-change mv-change-flat';
+                  var chgPrefix = chg > 0 ? '+' : '';
+                  return h('tr', { key: item.emid || i, className: 'mv-row' },
+                    h('td', { className: 'mv-td mv-td-rank' }, '#' + (i + 1)),
+                    h('td', { className: 'mv-td mv-td-card' },
+                      item.image_cropped
+                        ? h('img', { src: item.image_cropped, alt: item.name, className: 'mv-card-img', loading: 'lazy' })
+                        : null,
+                      h('div', { className: 'mv-card-info' },
+                        h('div', { className: 'mv-card-name' }, item.name),
+                        h('div', { className: 'mv-card-set' }, item.rarity || '')
+                      )
+                    ),
+                    h('td', { className: 'mv-td' }, item.set_code ? item.set_code.toUpperCase() : ''),
+                    h('td', { className: 'mv-td mv-td-price' }, item.tcg_mid ? formatUSD(item.tcg_mid) : 'N/A'),
+                    h('td', { className: 'mv-td mv-td-price' }, item.tcg_low ? formatUSD(item.tcg_low) : 'N/A'),
+                    h('td', { className: 'mv-td mv-td-change' }, h('span', { className: chgCls }, chgPrefix + chg + '%'))
+                  );
+                })
+              )
+            )
+          )
+        : h('div', { className: 'mv-table-wrap' },
           h('table', { className: 'mv-table' },
             h('thead', null,
               h('tr', null,
@@ -260,6 +341,7 @@ export function MarketMoversView() {
       h('a', { href: 'https://scryfall.com', target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
       ' + ',
       h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG'),
+      (activeCategory === 'echo-gainers' || activeCategory === 'echo-losers') ? h(React.Fragment, null, ' + ', h('a', { href: 'https://www.echomtg.com', target: '_blank', rel: 'noopener noreferrer' }, 'EchoMTG')) : null,
       '. Updated regularly. ',
       h('a', { href: '#pricing', style: { color: 'var(--color-primary)', textDecoration: 'underline' } }, 'How we source prices')
     )

@@ -2,6 +2,7 @@
 import React from 'react';
 import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
+import { getGradingPrices } from '../utils/echomtg-api.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
@@ -37,6 +38,8 @@ export function CardDetailView(props) {
   var jtcgDetail = ref9[0], setJtcgDetail = ref9[1];
   var ref10 = React.useState(true);
   var jtcgLoading = ref10[0], setJtcgLoading = ref10[1];
+  var ref11 = React.useState(null);
+  var echoGrading = ref11[0], setEchoGrading = ref11[1];
 
   React.useEffect(function() {
     fetchLists().then(function(data) { setUserLists(data.lists || []); }).catch(function() {});
@@ -105,6 +108,14 @@ export function CardDetailView(props) {
       setLoading(false);
     });
   }, [cardId]);
+
+  /* Fetch EchoMTG graded prices when card loads */
+  React.useEffect(function() {
+    if (!card || !card.set || !card.collector_number) return;
+    getGradingPrices(card.set, card.collector_number).then(function(data) {
+      setEchoGrading(data);
+    }).catch(function() { /* silent — optional data */ });
+  }, [card && card.id]);
 
   /* Fetch JustTCG condition data when card loads */
   React.useEffect(function() {
@@ -347,6 +358,48 @@ export function CardDetailView(props) {
               )
             : null
         ),
+
+        /* ── EchoMTG Graded Slab Prices ── */
+        echoGrading && echoGrading.regular && Object.keys(echoGrading.regular).length > 5
+          ? h('div', { className: 'cd-echo-section' },
+              h('h3', { className: 'cd-jtcg-title' }, 'Graded & Slab Prices'),
+              h('div', { className: 'cd-echo-grid' },
+                (function() {
+                  var reg = echoGrading.regular;
+                  var slabLabels = {
+                    B10: 'BGS 10', B95: 'BGS 9.5', B9: 'BGS 9', B85: 'BGS 8.5', B8: 'BGS 8',
+                    P10: 'PSA 10', P95: 'PSA 9', P9: 'PSA 8', P85: 'PSA 7', P8: 'PSA 6',
+                    SGN: 'Signed', ART: 'Artist Proof', ALT: 'Altered', PRE: 'Pre-release'
+                  };
+                  var items = [];
+                  var keys = Object.keys(slabLabels);
+                  for (var i = 0; i < keys.length; i++) {
+                    var k = keys[i];
+                    if (reg[k] && reg[k] > 0) {
+                      items.push({ key: k, label: slabLabels[k], price: reg[k] });
+                    }
+                  }
+                  if (items.length === 0) return h('div', { className: 'cd-jtcg-empty' }, 'No graded pricing data available.');
+                  return items.map(function(item) {
+                    return h('div', { key: item.key, className: 'cd-echo-card' },
+                      h('div', { className: 'cd-echo-label' }, item.label),
+                      h('div', { className: 'cd-echo-price' }, formatUSD(item.price))
+                    );
+                  });
+                })()
+              ),
+              echoGrading.buylist
+                ? h('div', { className: 'cd-echo-buylist' },
+                    h('span', { className: 'cd-echo-label' }, 'Est. Buylist'),
+                    h('span', { className: 'cd-echo-price' }, formatUSD(echoGrading.buylist))
+                  )
+                : null,
+              h('p', { className: 'price-source', style: { marginTop: '8px' } },
+                'Graded data via ',
+                h('a', { href: 'https://www.echomtg.com', target: '_blank', rel: 'noopener noreferrer' }, 'EchoMTG')
+              )
+            )
+          : null,
 
         h('div', { className: 'card-actions' },
           h('button', { className: 'btn btn-primary', onClick: goToMarketplace },

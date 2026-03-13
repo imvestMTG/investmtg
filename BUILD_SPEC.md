@@ -145,6 +145,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `utils/justtcg-api.js` | JustTCG integration via Worker proxy |
 | `utils/topdeck-api.js` | TopDeck.gg integration via Worker proxy |
 | `utils/moxfield-api.js` | Moxfield decklist integration via Worker CORS proxy |
+| `utils/echomtg-api.js` | EchoMTG integration: graded slab prices, set movers, via Worker proxy |
 | `utils/import-parser.js` | Shared bulk import parser: `parseManaboxCSV()` (CSV with Manabox/DragonShield/Deckbox/TCGplayer aliases), `parseTextList()` (MTGA format, simple names, qty-prefixed), `parseCSVLine()`, `findCol()`. Returns `{ cards, errors }`. |
 
 ## Worker architecture
@@ -247,6 +248,7 @@ investmtg/                          # root = production frontend deployment arti
 ├── utils/
 │   ├── api.js
 │   ├── config.js
+│   ├── echomtg-api.js
 │   ├── edhtop16-api.js
 │   ├── events-config.js
 │   ├── group-by-seller.js

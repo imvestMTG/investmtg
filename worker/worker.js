@@ -17,6 +17,8 @@
  *   PAYPAL_CLIENT_ID  — PayPal client ID (Live)
  *   PAYPAL_CLIENT_SECRET — PayPal client secret (Live)
  *   ADMIN_TOKEN       — Admin bypass token for testing (skips Google OAuth)
+ *   RESEND_API_KEY    — Resend.com API key for transactional emails
+ *   ECHOMTG_API_KEY   — EchoMTG API key for price history + trending data
  *
  * Routes:
  *   /api/ticker           — KV-cached ticker prices
@@ -45,6 +47,7 @@
  *   /justtcg              — JustTCG API proxy (existing)
  *   /topdeck              — TopDeck API proxy (existing)
  *   /chatbot              — AI chatbot proxy (existing)
+ *   /echomtg              — EchoMTG API proxy (price history + trending data)
  *   /?target=             — Generic CORS proxy (existing)
  */
 
@@ -1715,6 +1718,11 @@ async function handleOrders(request, env, orderId) {
       updated_at: nowStr,
     };
 
+    // Fire-and-forget: send order confirmation email
+    sendOrderConfirmationEmail(order, env, 'order_received').catch(function(e) {
+      console.error('[Email] fire-and-forget error:', e.message);
+    });
+
     return json({ ok: true, order }, 201, request);
   }
 
@@ -2035,6 +2043,32 @@ async function handlePayPalCaptureOrder(request, env) {
           console.error('Failed to update order after PayPal capture:', e.message);
         });
         console.log('PayPal: order ' + refId + ' confirmed, capture ' + (captureId || data.id));
+
+        // Fire-and-forget: send payment confirmation email
+        env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(refId).first().then(function(row) {
+          if (row) {
+            const order = {
+              id: row.id,
+              user_email: row.user_email,
+              items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+              subtotal: row.subtotal,
+              tax: row.tax,
+              shipping: row.shipping,
+              total: row.total,
+              fulfillment: row.fulfillment,
+              pickup_store: row.pickup_store,
+              contact_name: row.contact_name,
+              contact_email: row.contact_email,
+              contact_phone: row.contact_phone,
+              payment_method: row.payment_method,
+              status: 'confirmed',
+              created_at: row.created_at,
+            };
+            return sendOrderConfirmationEmail(order, env, 'payment_confirmed');
+          }
+        }).catch(function(e) {
+          console.error('[Email] PayPal capture email error:', e.message);
+        });
       }
     }
 
@@ -2358,6 +2392,241 @@ async function fetchCarouselNames(category) {
 }
 
 /* ══════════════════════════════════════
+   ORDER CONFIRMATION EMAIL (Resend)
+   ══════════════════════════════════════
+
+   Sends transactional order emails via Resend REST API.
+   Requires RESEND_API_KEY wrangler secret.
+   Fire-and-forget — never blocks order creation.
+*/
+
+function buildOrderEmailHtml(order, emailType) {
+  const isPaid = emailType === 'payment_confirmed';
+  const title = isPaid ? 'Payment Confirmed' : 'Order Received';
+  const statusText = isPaid ? 'Payment confirmed — your order is being prepared.'
+    : order.payment_method === 'reserve' ? 'Your order has been reserved. Pay when you pick up.'
+    : 'Your order is being processed.';
+  const statusColor = isPaid ? '#22c55e' : '#D4A843';
+
+  let items;
+  try { items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; }
+  catch (e) { items = []; }
+
+  const itemRows = (items || []).map(function(item) {
+    const cond = item.condition || 'NM';
+    const price = typeof item.price === 'number' ? '$' + item.price.toFixed(2) : item.price || '';
+    const qty = item.quantity || 1;
+    return '<tr>' +
+      '<td style="padding:8px 0;border-bottom:1px solid #2A2F3A;color:#E8E6E1">' + (item.name || 'Card') + ' <span style="color:#8B8D94;font-size:13px">(' + cond + ')</span></td>' +
+      '<td style="padding:8px 0;border-bottom:1px solid #2A2F3A;text-align:center;color:#8B8D94">' + qty + '</td>' +
+      '<td style="padding:8px 0;border-bottom:1px solid #2A2F3A;text-align:right;color:#D4A843;font-weight:600">' + price + '</td>' +
+      '</tr>';
+  }).join('');
+
+  let pickupInfo = '';
+  if (order.fulfillment === 'pickup' && order.pickup_store) {
+    let store = order.pickup_store;
+    try { if (typeof store === 'string') store = JSON.parse(store); } catch (e) { /* keep as string */ }
+    const storeName = typeof store === 'object' ? (store.name || 'Selected Store') : store;
+    pickupInfo = '<div style="background:#1A1E27;border-radius:8px;padding:16px;margin:16px 0">' +
+      '<p style="margin:0 0 4px;font-size:13px;color:#8B8D94;text-transform:uppercase;letter-spacing:0.05em">Pickup Location</p>' +
+      '<p style="margin:0;color:#E8E6E1;font-weight:600">' + storeName + '</p>' +
+      '</div>';
+  }
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+    '<body style="margin:0;padding:0;background:#0D0F12;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">' +
+    '<div style="max-width:600px;margin:0 auto;padding:24px 16px">' +
+
+    // Header
+    '<div style="text-align:center;padding:24px 0">' +
+    '<span style="font-size:24px;font-weight:700;color:#E8E6E1">invest<span style="color:#D4A843">MTG</span></span>' +
+    '</div>' +
+
+    // Status banner
+    '<div style="background:' + statusColor + '20;border:1px solid ' + statusColor + '40;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">' +
+    '<p style="margin:0 0 4px;font-size:20px;font-weight:700;color:' + statusColor + '">' + title + '</p>' +
+    '<p style="margin:0;color:#8B8D94;font-size:14px">' + statusText + '</p>' +
+    '</div>' +
+
+    // Order ID
+    '<div style="background:#111318;border:1px solid #2A2F3A;border-radius:12px;padding:20px;margin-bottom:24px">' +
+    '<p style="margin:0 0 4px;font-size:13px;color:#8B8D94;text-transform:uppercase;letter-spacing:0.05em">Order Number</p>' +
+    '<p style="margin:0;font-size:18px;font-weight:700;color:#D4A843;letter-spacing:0.02em">' + order.id + '</p>' +
+    '<p style="margin:8px 0 0;font-size:13px;color:#8B8D94">' + new Date(order.created_at || Date.now()).toLocaleString('en-US', { timeZone: 'Pacific/Guam', dateStyle: 'long', timeStyle: 'short' }) + ' ChST</p>' +
+    '</div>' +
+
+    // Items table
+    '<div style="background:#111318;border:1px solid #2A2F3A;border-radius:12px;padding:20px;margin-bottom:24px">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+    '<thead><tr>' +
+    '<th style="padding:0 0 8px;text-align:left;color:#8B8D94;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #2A2F3A">Card</th>' +
+    '<th style="padding:0 0 8px;text-align:center;color:#8B8D94;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #2A2F3A">Qty</th>' +
+    '<th style="padding:0 0 8px;text-align:right;color:#8B8D94;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #2A2F3A">Price</th>' +
+    '</tr></thead>' +
+    '<tbody>' + itemRows + '</tbody>' +
+    '</table>' +
+
+    // Totals
+    '<div style="border-top:2px solid #2A2F3A;margin-top:12px;padding-top:12px">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#8B8D94;font-size:13px">Subtotal</span><span style="color:#E8E6E1;font-size:13px">$' + (order.subtotal || 0).toFixed(2) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#8B8D94;font-size:13px">Tax</span><span style="color:#E8E6E1;font-size:13px">$' + (order.tax || 0).toFixed(2) + '</span></div>' +
+    (order.shipping ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#8B8D94;font-size:13px">Shipping</span><span style="color:#E8E6E1;font-size:13px">$' + order.shipping.toFixed(2) + '</span></div>' : '') +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #2A2F3A"><span style="color:#E8E6E1;font-weight:700;font-size:15px">Total</span><span style="color:#D4A843;font-weight:700;font-size:18px">$' + (order.total || 0).toFixed(2) + '</span></div>' +
+    '</div></div>' +
+
+    // Pickup info
+    pickupInfo +
+
+    // Contact info
+    '<div style="background:#111318;border:1px solid #2A2F3A;border-radius:12px;padding:20px;margin-bottom:24px">' +
+    '<p style="margin:0 0 12px;font-size:13px;color:#8B8D94;text-transform:uppercase;letter-spacing:0.05em">Contact Info</p>' +
+    (order.contact_name ? '<p style="margin:0 0 4px;color:#E8E6E1">' + order.contact_name + '</p>' : '') +
+    (order.contact_email ? '<p style="margin:0 0 4px;color:#8B8D94;font-size:13px">' + order.contact_email + '</p>' : '') +
+    (order.contact_phone ? '<p style="margin:0;color:#8B8D94;font-size:13px">' + order.contact_phone + '</p>' : '') +
+    '</div>' +
+
+    // CTA
+    '<div style="text-align:center;margin:24px 0">' +
+    '<a href="https://www.investmtg.com/#order/' + order.id + '" style="display:inline-block;background:#D4A843;color:#0D0F12;font-weight:700;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px">View Order Details</a>' +
+    '</div>' +
+
+    // Footer
+    '<div style="text-align:center;padding:24px 0;border-top:1px solid #2A2F3A">' +
+    '<p style="margin:0 0 4px;color:#8B8D94;font-size:12px">investMTG — Guam\'s MTG Marketplace</p>' +
+    '<p style="margin:0;color:#8B8D94;font-size:11px">Live pricing · Zero markup · Community-driven</p>' +
+    '</div>' +
+
+    '</div></body></html>';
+}
+
+async function sendOrderConfirmationEmail(order, env, emailType) {
+  if (!env.RESEND_API_KEY) {
+    console.log('[Email] Skipped — RESEND_API_KEY not configured');
+    return;
+  }
+
+  const to = order.contact_email || order.user_email;
+  if (!to) {
+    console.log('[Email] Skipped — no recipient email');
+    return;
+  }
+
+  const isPaid = emailType === 'payment_confirmed';
+  const subject = isPaid
+    ? 'Payment Confirmed — Order ' + order.id
+    : 'Order Received — ' + order.id;
+
+  const html = buildOrderEmailHtml(order, emailType);
+
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'investMTG <orders@investmtg.com>',
+        to: [to],
+        subject: subject,
+        html: html,
+      }),
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      console.log('[Email] Sent order confirmation to ' + to + ' — email id: ' + data.id);
+    } else {
+      const errText = await resp.text();
+      console.error('[Email] Failed: ' + resp.status + ' — ' + errText);
+    }
+  } catch (e) {
+    console.error('[Email] Error sending: ' + e.message);
+  }
+}
+
+/* ══════════════════════════════════════
+   ECHOMTG API PROXY
+   ══════════════════════════════════════
+
+   Proxies requests to EchoMTG API with server-side API key injection.
+   KV-cached with configurable TTL per endpoint type.
+
+   /echomtg?path=/api/data/history/&emid=267        — Price history
+   /echomtg?path=/api/group/&name=trendingup&limit=20 — Trending up cards
+   /echomtg?path=/api/group/&name=trendingdown&limit=20 — Trending down
+   /echomtg?path=/api/data/set/&set_code=ONE&limit=20 — Set data
+   /echomtg?path=/api/data/item/&emid=267             — Single card item
+*/
+
+async function handleEchoMTG(request, env) {
+  if (!env.ECHOMTG_API_KEY) {
+    return json({ error: 'EchoMTG not configured. Set ECHOMTG_API_KEY via wrangler secret put.' }, 500, request);
+  }
+
+  const url = new URL(request.url);
+  const apiPath = url.searchParams.get('path');
+  if (!apiPath) {
+    return json({ error: 'path parameter required (e.g. /api/data/history/)' }, 400, request);
+  }
+
+  // Build the EchoMTG URL
+  const params = new URLSearchParams(url.searchParams);
+  params.delete('path');
+  params.set('auth', env.ECHOMTG_API_KEY);
+  const echoUrl = 'https://www.echomtg.com' + apiPath + '?' + params.toString();
+
+  // KV cache key
+  const cacheKey = 'echomtg:' + apiPath + ':' + params.toString();
+
+  // Determine TTL based on endpoint type
+  let ttl = 3600; // default 1 hour
+  if (apiPath.includes('/history/')) ttl = 86400; // 24 hours for price history
+  if (apiPath.includes('/group/'))  ttl = 1800;  // 30 min for trending/groups
+  if (apiPath.includes('/data/set/')) ttl = 86400; // 24 hours for set data
+
+  // Check KV cache first
+  const cached = await env.CACHE.get(cacheKey, 'text');
+  if (cached) {
+    return new Response(cached, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'X-Cache': 'HIT',
+      },
+    });
+  }
+
+  try {
+    const resp = await fetch(echoUrl, {
+      headers: { 'User-Agent': 'investMTG/1.0 (api.investmtg.com)' },
+    });
+
+    const body = await resp.text();
+
+    // Cache successful responses
+    if (resp.ok) {
+      await env.CACHE.put(cacheKey, body, { expirationTtl: ttl }).catch(function(e) {
+        console.warn('[EchoMTG] KV cache write failed:', e.message);
+      });
+    }
+
+    return new Response(body, {
+      status: resp.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'X-Cache': 'MISS',
+      },
+    });
+  } catch (e) {
+    console.error('[EchoMTG] Fetch error:', e.message);
+    return json({ error: 'EchoMTG service unavailable', detail: e.message }, 502, request);
+  }
+}
+
+/* ══════════════════════════════════════
    MAIN ROUTER
    ══════════════════════════════════════ */
 
@@ -2433,6 +2702,7 @@ export default {
       if (path === '/mtgstocks' || path.startsWith('/mtgstocks')) return handleMTGStocks(request, env);
       if (path.startsWith('/topdeck'))                         return handleTopDeck(request, env);
       if (path === '/chatbot')                                 return handleChatbot(request);
+      if (path === '/echomtg' || path.startsWith('/echomtg'))    return handleEchoMTG(request, env);
       if (url.searchParams.has('target'))                      return handleGenericProxy(request);
 
       return json({ error: 'Not found', routes: '/api/health for status' }, 404, request);

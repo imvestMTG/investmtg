@@ -162,6 +162,8 @@ The Cloudflare Worker (v3) is the secure backend at `api.investmtg.com` (custom 
 | Condition pricing | [JustTCG](https://justtcg.com) | Worker-backed integration |
 | Tournament and meta data | [TopDeck.gg](https://topdeck.gg), [EDH Top 16](https://edhtop16.com) | Worker-backed integrations |
 | Decklist imports | [Moxfield](https://moxfield.com) | Integrated as needed |
+| Graded/slab pricing & set movers | [EchoMTG](https://www.echomtg.com) | Worker-backed proxy, API key server-side |
+| Order confirmation emails | [Resend](https://resend.com) | Transactional email via Worker, API key server-side |
 | Proxy / gateway | Cloudflare Worker | Secret-backed API routing |
 | User accounts | Google OAuth 2.0 | Authentication via Google sign-in, accounts stored in D1 |
 | Server-side persistence | Cloudflare D1 | Users, auth sessions, listings, sellers, stores, events, cart, portfolio, orders, order counters |
@@ -193,6 +195,8 @@ The order matters. QA and security come first because they catch the bugs that a
 
 | Date | Change |
 |------|--------|
+| 2026-03-13 | **v61** — EchoMTG integration + order confirmation emails: CardDetailView gains "Graded & Slab Prices" section (BGS 10/9.5/9, PSA 10/9/8, Signed, Artist Proof, etc.) + estimated buylist via EchoMTG API proxy. MarketMoversView adds "Set Gainers" and "Set Losers" tabs pulling price-change data from 6 recent Standard sets via EchoMTG. New `utils/echomtg-api.js` frontend utility. Worker gains `/echomtg` proxy route (KV-cached), Resend email integration (order confirmation + payment confirmation HTML emails), email wired into POST /api/orders and PayPal capture flow. CSP updated: `assets.echomtg.com` in img-src. Wrangler secrets: RESEND_API_KEY, ECHOMTG_API_KEY. |
+| 2026-03-13 | **v60** — Card Scanner: camera + Tesseract.js OCR card identification. ScannerView.js with WebRTC camera, photo upload, Scryfall lookup by collector number. |
 | 2026-03-11 | **v59** — Sortable tables + JustTCG/MTGStocks data: MarketMoversView rewritten as sortable data table with 7D/30D/90D price change columns, JustTCG progressive loading, and 30-day sparkline charts. CardDetailView gains JustTCG condition breakdown (NM/LP/MP/HP/DMG prices with 7d % change), price trend row (24h/7d/30d/90d), 30-day sparkline, and all-time high/low stats. PortfolioView tables now fully sortable (all columns clickable asc/desc). Worker gains MTGStocks proxy handler (/mtgstocks route, KV-cached 24hr). N/A fix: replaced Power 9 cards (no USD prices) with Mishra's Workshop/Tabernacle/Candelabra in valuable movers. |
 | 2026-03-11 | **v58** — Portfolio upgrade: User-created binders with CRUD, card condition tracking (NM/LP/MP/HP/DMG) with condition-adjusted pricing (NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%), virtual lists (Wishlist/Buylist/Trade) with card management. 3 new D1 tables (binders, lists, list_items) + 2 new portfolio columns. Complete PortfolioView rewrite with tabbed UI, group-by controls, binder chip filters. CardDetailView gains inline condition selector and "Add to List" dropdown. 12 new API functions. |
 | 2026-03-11 | **v57** — Dynamic carousel refresh: Homepage carousels (Featured, Trending, Budget Staples) now auto-rotate daily via Scryfall queries (commander-legal, paper-only, EDHREC-ranked). Day-seeded page rotation ensures fresh content. KV-cached with 25hr TTL. Admin manual trigger endpoint added. |

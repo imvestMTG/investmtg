@@ -40,6 +40,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `FRONTEND_URL` | Secret | Frontend URL for OAuth callback redirect |
 | `SUMUP_SECRET_KEY` | Secret | SumUp API secret key for creating checkouts |
 | `ADMIN_TOKEN` | Secret | Admin bypass token — when `Authorization: Bearer <ADMIN_TOKEN>` is sent, `getAuthUser()` returns a synthetic admin user, bypassing Google OAuth. For testing only. |
+| `RESEND_API_KEY` | Secret | Resend.com API key for transactional order confirmation emails |
+| `ECHOMTG_API_KEY` | Secret | EchoMTG API key for graded pricing + set data |
 
 ## Routes
 
@@ -88,6 +90,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/mtgstocks` | api.mtgstocks.com | price history | KV-cached 24hr. Requires `?print_id=N`. Returns print info + TCGplayer price history. |
 | `/topdeck` | topdeck.gg API | tournament data | API key injected server-side |
 | `/chatbot` | text.pollinations.ai | chat relay | rate-limited |
+| `/echomtg` | www.echomtg.com | graded/slab pricing + set data | API key injected server-side; KV-cached (items 24hr, sets 30min) |
 | `/?target=` | allowlisted hosts | generic proxy | Adds `User-Agent: investMTG/1.0 (Cloudflare Worker)` header; use sparingly and keep allowlisted |
 
 ## Database schema
@@ -161,6 +164,8 @@ echo "your-key-here" | npx wrangler secret put JUSTTCG_API_KEY
 echo "your-key-here" | npx wrangler secret put TOPDECK_API_KEY
 echo "your-key-here" | npx wrangler secret put SUMUP_SECRET_KEY
 echo "your-token-here" | npx wrangler secret put ADMIN_TOKEN
+echo "re_xxxxx" | npx wrangler secret put RESEND_API_KEY
+echo "your-echomtg-key" | npx wrangler secret put ECHOMTG_API_KEY
 ```
 
 List configured secrets:

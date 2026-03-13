@@ -1,5 +1,38 @@
 # investMTG — Changelog
 
+## 2026-03-13: v61 — EchoMTG Integration + Order Confirmation Emails
+
+- **utils/echomtg-api.js** — New EchoMTG API frontend utility:
+  - `getEchoCardByEmid()` — single card detail with grading prices.
+  - `getEchoSetCards()` — set cards with price change data.
+  - `findEmidByCollector()` / `findEmidByTcgplayerId()` — emid lookup.
+  - `getGradingPrices()` — full grading data (NM through damaged + graded slabs) for a card.
+  - `getSetGainers()` / `getSetLosers()` / `getSetMovers()` — set-level price movers.
+  - 15-minute in-memory cache, all calls through Worker proxy.
+- **components/CardDetailView.js** — "Graded & Slab Prices" section:
+  - BGS 10/9.5/9/8.5/8, PSA 10/9/8/7/6, Signed, Artist Proof, Altered, Pre-release prices.
+  - Estimated buylist value.
+  - Attribution link to EchoMTG.
+  - Loads asynchronously via set_code + collector_number → emid lookup.
+- **components/MarketMoversView.js** — Two new tabs:
+  - "Set Gainers" — cards gaining value across 6 recent Standard-legal sets (FDN, DSK, BLB, OTJ, MKM, LCI).
+  - "Set Losers" — cards losing value, same sets.
+  - EchoMTG card images (cropped), set code, mid/low prices, change %.
+  - Source attribution updated to include EchoMTG when Echo tabs active.
+- **worker/worker.js** — Backend changes:
+  - `handleEchoMTG()` — EchoMTG API proxy with server-side API key injection.
+    KV-cached: item data 24hr, set data 30min.
+  - `/echomtg` route added to main router.
+  - `sendOrderConfirmationEmail()` — Resend REST API integration for transactional emails.
+  - `buildOrderEmailHtml()` — dark-themed HTML email template matching investMTG brand.
+    Supports `order_received` (gold) and `payment_confirmed` (green) variants.
+  - Email wired into POST `/api/orders` (fire-and-forget after order creation).
+  - Email wired into PayPal capture success flow (fetches order from D1, sends payment confirmation).
+  - New wrangler secrets: `RESEND_API_KEY`, `ECHOMTG_API_KEY`.
+- **index.html** — CSP: added `https://assets.echomtg.com` to `img-src` for card images.
+- **style.css** — ~50 lines new CSS for EchoMTG graded prices grid.
+- **sw.js** — Cache version bumped v60 → v61.
+
 ## 2026-03-13: v60 — Card Scanner (Camera + OCR)
 
 - **components/ScannerView.js** — New card scanner feature:
