@@ -54,17 +54,28 @@ function authFetch(path, options) {
   });
 }
 
-/** On app startup: check URL for auth_token param from OAuth callback.
+/** On app startup: check URL for auth_token from OAuth callback.
+ *  Checks both hash fragment (#auth_token=...) and legacy query param (?auth_token=...).
  *  Returns 'redirecting' if a page reload was triggered (caller must abort). */
 function captureTokenFromURL() {
   try {
-    var params = new URLSearchParams(window.location.search);
-    var token = params.get('auth_token');
+    var token = null;
+    // Primary: read from hash fragment (secure — never sent to servers or referrer headers)
+    var hash = window.location.hash || '';
+    if (hash.indexOf('auth_token=') !== -1) {
+      var hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+      token = hashParams.get('auth_token');
+    }
+    // Fallback: legacy query param (for any cached redirects still using ?auth_token=)
+    if (!token) {
+      var params = new URLSearchParams(window.location.search);
+      token = params.get('auth_token');
+    }
     if (token) {
       setToken(token);
       // Strip auth_token from URL and reload so the app starts fresh.
       // Return 'redirecting' so checkAuth() knows to stop execution.
-      window.location.replace(window.location.pathname + (window.location.hash || ''));
+      window.location.replace(window.location.pathname + '#home');
       return 'redirecting';
     }
   } catch(e) {

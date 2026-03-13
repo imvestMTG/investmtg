@@ -141,18 +141,21 @@ const CAROUSEL_QUERIES = {
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age': '86400',
-    /* Security headers — defense-in-depth on API responses */
+  const securityHeaders = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  };
+  /* Only return CORS headers for allowed origins; unknown origins get security headers only */
+  if (!ALLOWED_ORIGINS.includes(origin)) return securityHeaders;
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+    ...securityHeaders,
   };
 }
 
@@ -600,8 +603,9 @@ async function handleAuthCallback(request, env) {
   const anonymousSession = getSession(request);
   await migrateAnonymousDataToUser(env, anonymousSession, userId);
 
-  // Pass token via URL query so frontend can store it (cross-site cookies are blocked by modern browsers)
-  const redirectUrl = `${env.FRONTEND_URL}?auth_token=${encodeURIComponent(authToken)}`;
+  // Pass token via URL fragment (not query param) so it never appears in server logs,
+  // referrer headers, or browser history. Fragments are client-side only.
+  const redirectUrl = `${env.FRONTEND_URL}#auth_token=${encodeURIComponent(authToken)}`;
   return createRedirect(request, redirectUrl, [
     buildCookie('investmtg_auth', authToken, AUTH_SESSION_MAX_AGE),
   ]);
@@ -1830,8 +1834,20 @@ async function handleSumUpWebhook(request, env) {
     return json({ ok: true }, 200, request);
   }
 
-  // Respond 200 immediately (SumUp requires fast response)
-  // Then process asynchronously via waitUntil if available
+  // Verify webhook authenticity if secret is configured
+  // Set via: wrangler secret put SUMUP_WEBHOOK_SECRET
+  if (env.SUMUP_WEBHOOK_SECRET) {
+    const webhookAuth = request.headers.get('Authorization') || '';
+    const webhookToken = request.headers.get('X-Webhook-Secret') || '';
+    if (webhookAuth !== `Bearer ${env.SUMUP_WEBHOOK_SECRET}` &&
+        webhookToken !== env.SUMUP_WEBHOOK_SECRET) {
+      console.warn('SumUp webhook: invalid or missing secret from IP:', request.headers.get('CF-Connecting-IP'));
+      return json({ error: 'Unauthorized' }, 401, request);
+    }
+  } else {
+    console.warn('SUMUP_WEBHOOK_SECRET not set — webhook endpoint is unprotected');
+  }
+
   const body = await request.json().catch(() => null);
   if (!body || !body.id) {
     return json({ ok: true, message: 'No checkout ID' }, 200, request);
@@ -2167,6 +2183,11 @@ async function handleOrderPaymentStatus(request, env, orderId) {
    ══════════════════════════════════════ */
 
 async function handleJustTCG(request, env) {
+  // Require valid session (anonymous or authenticated) to prevent external API key abuse
+  const auth = await getAuthUser(request, env);
+  if (!auth && !getSession(request)) {
+    return json({ error: 'Session required' }, 401, request);
+  }
   const url = new URL(request.url);
   const path = url.searchParams.get('path') || '/v1/cards/browse';
   const targetUrl = 'https://api.justtcg.com' + path;
@@ -2187,6 +2208,11 @@ async function handleJustTCG(request, env) {
 }
 
 async function handleTopDeck(request, env) {
+  // Require valid session (anonymous or authenticated) to prevent external API key abuse
+  const auth = await getAuthUser(request, env);
+  if (!auth && !getSession(request)) {
+    return json({ error: 'Session required' }, 401, request);
+  }
   const url = new URL(request.url);
   const pathname = url.pathname.replace(/^\/topdeck/, '') || '/';
   if (pathname === '/') return json({ error: 'Missing TopDeck API path' }, 400, request);
