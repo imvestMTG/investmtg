@@ -1,5 +1,10 @@
 # investMTG — Changelog
 
+## 2026-03-13: v65 — Seller Listing Card Images
+
+- **components/SellerDashboard.js** — Listing cards now display card thumbnail images. Since `image_uri` is stored empty in D1 (storage optimization), the frontend constructs the Scryfall image URL from the available `card_id` (Scryfall ID) using the `?format=image&version=small` endpoint.
+- **sw.js** — v64 → v65.
+
 ## 2026-03-13: v64 — Security Hardening + Performance Audit Fixes
 
 **Security (Wave 1):**

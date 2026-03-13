@@ -1484,10 +1484,12 @@ export function SellerDashboard(props) {
               var listingPrice = listing.price || 0;
               var listingCondition = listing.condition || 'NM';
               var listingNotes = listing.notes || '';
+              var cardId = listing.cardId || listing.card_id || '';
               var imageUri = listing.image_uri || listing.imageUri || '';
+              var thumbSrc = imageUri || (cardId ? 'https://api.scryfall.com/cards/' + cardId + '?format=image&version=small' : '');
 
               return h('div', { key: listingId, className: 'seller-listing-card' },
-                imageUri && h('img', { src: imageUri, className: 'seller-listing-thumb', alt: cardName, loading: 'lazy' }),
+                thumbSrc && h('img', { src: thumbSrc, className: 'seller-listing-thumb', alt: cardName, loading: 'lazy' }),
                 h('div', { className: 'seller-listing-top' },
                   h('div', null,
                     h('div', { className: 'seller-listing-name' }, cardName),
