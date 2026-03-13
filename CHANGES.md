@@ -1,5 +1,19 @@
 # investMTG — Changelog
 
+## 2026-03-14: v73 — N/A for Cards Without USD Pricing
+
+**Root cause:** Cards like Zombie Master (Limited Edition Beta) have no USD market
+price on Scryfall (`prices.usd: null`). The pricing waterfall returned 0, which
+`formatUSD()` rendered as "$0.00" — misleading for a card worth ~€140.
+
+**Fix: CardDetailView, CardGrid, CardCarousel**
+- Market price box shows "N/A" with subtitle "No USD data" when all three sources
+  (JustTCG, EchoMTG, Scryfall) return no USD price.
+- Grid and carousel cards show "N/A" instead of "$0.00".
+- `aria-label` updated to say "Price N/A" for accessibility.
+
+- `sw.js` — v72 → v73.
+
 ## 2026-03-14: v72 — Multi-Source Pricing Waterfall
 
 **New module: `utils/price-resolver.js`**

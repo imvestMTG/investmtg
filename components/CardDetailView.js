@@ -211,10 +211,11 @@ export function CardDetailView(props) {
   var price = resolved.price > 0 ? resolved.price : getCardPrice(card);
   var foilPrice = resolved.foil || (card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null);
   var sourceLabel = getPriceSourceLabel(resolved);
+  var priceUnavailable = price <= 0;
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
 
   var priceBoxes = [
-    { label: 'Market', value: formatUSD(price), sub: sourceLabel !== 'Scryfall' ? 'via ' + sourceLabel : null },
+    { label: 'Market', value: priceUnavailable ? 'N/A' : formatUSD(price), sub: priceUnavailable ? 'No USD data' : (sourceLabel !== 'Scryfall' ? 'via ' + sourceLabel : null) },
     { label: 'Foil', value: foilPrice ? formatUSD(foilPrice) : 'N/A' },
   ];
   /* Add 7d change box if available */

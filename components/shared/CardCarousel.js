@@ -92,7 +92,7 @@ export function CardCarousel(props) {
           role: 'button',
           tabIndex: 0,
           onKeyDown: function(e) { if (e.key === 'Enter') window.location.hash = 'card/' + card.id; },
-          'aria-label': card.name + ', ' + formatUSD(price)
+          'aria-label': card.name + ', ' + (price > 0 ? formatUSD(price) : 'Price N/A')
         },
           h('div', { className: 'carousel-card-image' },
             h('img', {
@@ -109,7 +109,7 @@ export function CardCarousel(props) {
             h('div', { className: 'carousel-card-name' }, card.name),
             h('div', { className: 'carousel-card-set' }, card.set_name),
             h('div', { className: 'carousel-card-price-row' },
-              h('span', { className: 'carousel-card-price' }, formatUSD(price)),
+              h('span', { className: 'carousel-card-price' }, price > 0 ? formatUSD(price) : 'N/A'),
               changeText
                 ? h('span', { className: 'carousel-card-change ' + changeClass }, changeText)
                 : null,
