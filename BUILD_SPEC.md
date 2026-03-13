@@ -311,24 +311,16 @@ The Worker is deployed independently with Wrangler and must keep its D1, KV, and
 
 | File | Purpose |
 |------|---------|
-| `tests/full-qa.sh` | Combined QA pipeline. Runs smoke test, waits 35s, then runs debug tool. Flags: `--smoke-only`, `--debug-only`, `--quick`. Recommended for pre-push. |
-| `tests/smoke-test.sh` | Fast pre-push smoke test (33 checks). Covers frontend assets, DOM integrity, payment code, SW version, API health, PayPal/SumUp integration, orders validation, CORS. Runs in ~15 seconds. |
-| `tests/debug-tool.sh` | Comprehensive diagnostic tool (97 checks across 24 sections). Covers everything in the smoke test plus: all JS modules, proxy routes (JustTCG via `tcgplayerId`, CORS), PayPal create-order end-to-end, SumUp checkout end-to-end, full CSP audit (11 domains), secret scan, DNS resolution (3 domains), TLS version detection, D1 database health & row counts, response times (7 endpoints), asset sizes, code style enforcement (var-only, no arrows), URL centralization, and dual-write integrity. |
-| `tests/code-review.sh` | AI code review helper. Extracts git diff, saves to `/tmp/investmtg-review-diff.txt`, prints review prompt for ChatGPT/OpenAI. Flags: `--all`, `--last`, `--staged`, or specific file. |
+| `tests/qa.sh` | Unified QA script. Tiered: `--quick` (18 checks), `--standard` (45 checks, default), `--full` (65 checks incl. DNS/perf). Also `--local` (code only) and `--live` (HTTP only). Caches responses to avoid redundant calls. |
 
 **Usage:**
 ```bash
-bash tests/full-qa.sh              # recommended — smoke + debug with gap
-bash tests/full-qa.sh --smoke-only # smoke only
-bash tests/smoke-test.sh           # fast — run before every push
-bash tests/debug-tool.sh           # full — run for diagnostics
-bash tests/debug-tool.sh frontend  # run only specific sections
-bash tests/debug-tool.sh api payments
-bash tests/code-review.sh          # review staged changes
-bash tests/code-review.sh --last   # review last commit
+bash tests/qa.sh              # standard pre-push (recommended)
+bash tests/qa.sh --quick      # fast sanity check
+bash tests/qa.sh --full       # everything incl. DNS + performance
+bash tests/qa.sh --local      # local code checks only (no HTTP)
+bash tests/qa.sh --live       # live site checks only
 ```
-
-**Rate limit note:** Run smoke test and debug tool with ~30 seconds between them. Back-to-back runs trigger Cloudflare HTTP 1015 rate limits. `full-qa.sh` handles this automatically.
 
 ### Data source segmentation
 
@@ -362,7 +354,7 @@ npx wrangler deploy    # deploy to production
 ## Release checklist
 
 Before considering a release complete:
-- run `bash tests/full-qa.sh` (33/33 smoke, 97/97 debug must pass)
+- run `bash tests/qa.sh` (all checks must pass)
 - update `README.md`
 - update `BUILD_SPEC.md`
 - update `CHANGES.md`

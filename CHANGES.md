@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-13: v63 — Unified QA Script + Workflow Streamlining
+
+- **tests/qa.sh** — New unified QA script replacing smoke-test.sh, debug-tool.sh, full-qa.sh, and code-review.sh:
+  - Tiered: `--quick` (18 checks), `--standard` (45 checks, default), `--full` (65 checks incl. DNS/perf).
+  - Also `--local` (code only, no HTTP) and `--live` (HTTP only, no local).
+  - Caches HTTP responses (index.html + health fetched once, reused) — eliminates ~22 redundant HTTP calls that the old dual-script setup made.
+  - No 35-second rate-limit gap needed (single pass, no duplicate requests).
+- **Removed** `tests/smoke-test.sh`, `tests/debug-tool.sh`, `tests/full-qa.sh`, `tests/code-review.sh` (all consolidated into qa.sh).
+- **investmtg-qa skill** — Trimmed from 512 lines to 96 lines (81% reduction). References qa.sh instead of duplicating inline bash. Saves tokens on every skill load.
+- **SOUL.md** — Rule 8 "QA before every push" updated to reference `tests/qa.sh` tiers.
+- **BUILD_SPEC.md, README.md** — Tests section rewritten with new qa.sh usage.
+- **sw.js** — v62 → v63.
+
 ## 2026-03-13: v62 — DFC Image Fix + Paper-Only Enforcement
 
 - **components/SellerDashboard.js** — Fixed blank card images for double-faced cards (DFCs) in printing picker:

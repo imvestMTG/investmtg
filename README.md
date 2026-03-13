@@ -172,10 +172,7 @@ investmtg/
 │   └── README.md
 # frontend-v2/ removed in v20 optimization pass
 ├── tests/
-│   ├── code-review.sh              # AI code review helper (extracts diff → OpenAI prompt)
-│   ├── debug-tool.sh               # 24-section diagnostic tool (97 checks)
-│   ├── full-qa.sh                  # combined QA pipeline (smoke + debug with gap)
-│   └── smoke-test.sh               # fast pre-push smoke test (33 checks)
+│   └── qa.sh                       # unified QA script (quick/standard/full tiers)
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
 ├── style.css
@@ -190,39 +187,17 @@ investmtg/
 
 ## Testing
 
-Four tools live in `tests/`:
+One unified QA script in `tests/qa.sh` with tiered depth:
 
-### Full QA pipeline (recommended)
 ```bash
-bash tests/full-qa.sh              # runs smoke + debug with 35s gap
-bash tests/full-qa.sh --smoke-only # smoke test only
-bash tests/full-qa.sh --debug-only # debug tool only
-bash tests/full-qa.sh --quick      # smoke only, skip gap
+bash tests/qa.sh              # standard pre-push (~45 checks, recommended)
+bash tests/qa.sh --quick      # fast sanity (~18 checks)
+bash tests/qa.sh --full       # everything incl. DNS + perf (~65 checks)
+bash tests/qa.sh --local      # local code checks only (no HTTP)
+bash tests/qa.sh --live       # live site checks only
 ```
-Runs the smoke test, waits 35 seconds (avoids Cloudflare rate limits), then runs the debug tool. The recommended way to run QA — one command covers everything.
 
-### Smoke test (fast, pre-push)
-```bash
-bash tests/smoke-test.sh
-```
-33 checks covering frontend assets, DOM integrity, payment integration code, service worker, API health, PayPal/SumUp integration, orders validation, and CORS. Runs in ~15 seconds. Use before every push.
-
-### Debug tool (comprehensive diagnostics)
-```bash
-bash tests/debug-tool.sh
-```
-97 checks across 24 sections: frontend static assets, JS modules, DOM integrity, payment code, service worker versioning, API health & data routes, auth, proxy routes (JustTCG, CORS), payment end-to-end (PayPal create-order, SumUp checkout), CSP audit, CORS headers, secret scan, DNS resolution, TLS version, database health & integrity, response times, asset sizes, code style (var-only, no arrows), URL centralization, and dual-write integrity.
-
-### AI code review
-```bash
-bash tests/code-review.sh          # review staged changes
-bash tests/code-review.sh --all    # all uncommitted changes
-bash tests/code-review.sh --last   # last commit
-bash tests/code-review.sh app.js   # specific file
-```
-Extracts a git diff, saves to `/tmp/investmtg-review-diff.txt`, and prints a review prompt to paste into ChatGPT/OpenAI. Enforces investMTG coding rules (var-only, no arrows, no JSX).
-
-**Important:** Run smoke test and debug tool with a ~30-second gap between them to avoid triggering Cloudflare rate limits (HTTP 1015). The `full-qa.sh` script handles this automatically.
+Covers: code style (var-only, no arrows), secrets, URL centralization, SW version, CSP audit, API health, all routes, payments (PayPal + SumUp), CORS, JS module availability, dual-write integrity, and doc checklist. Full mode adds DNS, TLS, performance timing, and asset sizes. Caches HTTP responses to minimize redundant calls.
 
 ### Data source segmentation
 
@@ -289,7 +264,7 @@ npx wrangler dev
 - The root-level SPA is the production front end. `frontend-v2/` was removed in v20 (dead code cleanup).
 - Cardmarket is excluded from the modern buyer experience.
 - No deployment is considered complete until `README.md`, `BUILD_SPEC.md`, `CHANGES.md`, `SOUL.md`, and `worker/README.md` are updated in the same session.
-- Run `bash tests/full-qa.sh` before every push. Or run smoke and debug tests separately with `bash tests/smoke-test.sh` and `bash tests/debug-tool.sh`.
+- Run `bash tests/qa.sh` before every push. All checks must pass.
 
 ---
 

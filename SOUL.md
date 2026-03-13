@@ -81,21 +81,19 @@ Required updates after release-impacting work:
 ### 8. QA before every push
 No code reaches `main` without passing QA. Every push must include verification, not just implementation.
 
-**Automated test tools** (run these first):
-- `bash tests/full-qa.sh` — **Recommended.** Runs smoke test, waits 35s, runs debug tool. One command for full QA. Flags: `--smoke-only`, `--debug-only`, `--quick`.
-- `bash tests/smoke-test.sh` — 33 checks, ~15 seconds. Covers frontend assets, DOM, payment code, SW, API health, PayPal/SumUp, CORS. **Run before every push.**
-- `bash tests/debug-tool.sh` — 97 checks across 24 sections. Full diagnostics including proxy routes, CSP audit, secret scan, DNS, TLS, DB health, response times, code style, URL centralization, dual-write integrity. **Run for troubleshooting or after significant changes.**
-- `bash tests/code-review.sh` — AI code review helper. Extracts diff, prints review prompt for ChatGPT. Flags: `--all`, `--last`, `--staged`, or specific file.
-- Run smoke and debug tools with ~30 seconds between them to avoid Cloudflare rate limits. `full-qa.sh` handles this automatically.
+**Unified QA script** — one command, tiered by depth:
+- `bash tests/qa.sh` — standard pre-push (~45 checks). Code style, secrets, URLs, CSP audit, all API routes, payments, CORS, JS modules, dual-write, doc checklist.
+- `bash tests/qa.sh --quick` — fast sanity (~18 checks). Core health, frontend, code style, secrets.
+- `bash tests/qa.sh --full` — everything (~65 checks). Adds DNS, TLS, performance timing, asset sizes.
+- `bash tests/qa.sh --local` — local code checks only (no HTTP).
+- `bash tests/qa.sh --live` — live site checks only (no local).
 
-**Additional manual checks** (when the automated tools can’t cover it):
-1. **CSP alignment** — Run `grep -roh 'https://[a-zA-Z0-9._-]*' --include='*.js' . | sort -u` against the `connect-src` in `index.html`. Every external domain the frontend fetches from must be in the CSP. A single missing entry silently kills all calls to that domain with zero visible error.
-   - *Why this exists: v19 — sign-in was broken for an entire session because `api.investmtg.com` was missing from CSP after the domain migration. The backend was 100% working; the browser was blocking the requests before they ever left.*
-2. **URL centralization** — Run `grep -rn 'https://' --include='*.js' . | grep -v vendor | grep -v worker | grep -v node_modules`. Every backend URL in frontend code must come from `config.js PROXY_BASE`. No hardcoded proxy URLs.
-   - *Why this exists: v19 audit — 4 API modules still pointed to the old `.workers.dev` URL after the domain migration. The CSP fix would have broken JustTCG, EDH Top 16, Moxfield, and TopDeck data.*
-3. **Auth flow smoke test** — After any auth-related change, verify the full loop: `signIn()` → Google consent → `/auth/callback` → `?auth_token=` in URL → token stored → `checkAuth()` returns user → Header shows user name. If you cannot test the full loop (auth-gated), verify each leg independently.
-4. **Visual verification** — Screenshot the live URL after push. Do not trust "it should work" — verify it does. The screenshot tool captures early, so wait for the full render.
-5. **Console error check** — Open the browser console on the live site. Zero errors is the standard. CSP violations, failed fetches, and module import errors all show here.
+The script caches HTTP responses (index.html fetched once, health fetched once) to minimize redundant calls.
+
+**Manual checks** (when the script can't cover it):
+1. **Auth flow** — After auth changes, verify: `signIn()` → Google consent → callback → token → `checkAuth()` → Header shows user.
+2. **Visual verification** — User screenshots the live site after push. Do not use browser_task for this.
+3. **Console errors** — Zero errors is the standard. CSP violations, failed fetches, module import errors.
 
 ### 9. Security posture
 Security is not optional. Every session must verify these constraints.
