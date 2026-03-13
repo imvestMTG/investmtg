@@ -5,3 +5,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.investmtg.com/sitemap.xml
+Sitemap: https://api.investmtg.com/sitemap.xml

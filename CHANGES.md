@@ -1,5 +1,26 @@
 # investMTG — Changelog
 
+## 2026-03-13: v68 — SEO Overhaul — HTMLRewriter, Dynamic Sitemap, Clean Card URLs
+
+**Worker (worker/worker.js):**
+- Added Worker Route `www.investmtg.com/*` alongside existing `api.investmtg.com` custom domain. Worker now intercepts all www requests and passes through to GitHub Pages origin via `cf.resolveOverride` on `origin-www.investmtg.com` (unproxied CNAME).
+- Bot/crawler detection: `BOT_UA_RE` regex matches 16 bot user-agents (Googlebot, Bingbot, Facebook, Twitter, Discord, Slack, etc.).
+- Clean card URLs: `/card/:id` path — bots receive HTMLRewriter-injected HTML with per-card `<title>`, `<meta description>`, `og:title`, `og:description`, `og:image` (Scryfall card art), `og:url`, `twitter:title`, `twitter:description`, `twitter:image`, and canonical link. Regular users get 302 redirect to `/#card/:id` hash route.
+- Dynamic sitemap: `/sitemap.xml` on both `www.investmtg.com` and `api.investmtg.com` — 10 static page routes + all cards from D1 prices table (268 cards) with clean `/card/:id` URLs and `lastmod` dates. Cached 1 hour.
+- Card data for HTMLRewriter: queries D1 first (cached within TTL_PRICE), falls back to Scryfall API.
+
+**Frontend (app.js):**
+- Added `useEffect` with route-specific `document.title` + `<meta name="description">` updates for all 15 hash routes (home, search, card, cart, checkout, portfolio, seller, movers, store, pricing, privacy, terms, orders, order detail, decks).
+
+**Frontend (components/CardDetailView.js):**
+- Added per-card SEO after data loads: `document.title`, `meta[name="description"]`, `og:title`, `og:description`, `og:image` updated dynamically for client-side navigation.
+
+**Infrastructure:**
+- New DNS record: `origin-www.investmtg.com` CNAME → `imvestmtg.github.io` (unproxied, used as resolveOverride target for Worker pass-through).
+- `wrangler.toml` — added route `{ pattern = "www.investmtg.com/*", zone_name = "investmtg.com" }`.
+- `robots.txt` — added secondary sitemap reference: `https://api.investmtg.com/sitemap.xml`.
+- `sw.js` — v67 → v68.
+
 ## 2026-03-13: v67 — Phase 1 Completion — Promise Safety + DDL Removal
 
 **Worker (worker/worker.js):**

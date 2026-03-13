@@ -76,6 +76,12 @@ const TTL_MOVERS = 1800;      // 30 minutes
 const TTL_MTGSTOCKS = 86400;  // 24 hours (price history doesn't change fast)
 const TTL_PRICE = 600;        // 10 minutes for individual card prices
 
+/* ── SEO: Bot user-agent detection for HTMLRewriter SSR ── */
+const BOT_UA_RE = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegrambot|discordbot|applebot|pinterestbot|redditbot|slackbot/i;
+
+const GITHUB_PAGES_ORIGIN = 'https://imvestmtg.github.io';
+const ORIGIN_WWW_HOSTNAME = 'origin-www.investmtg.com';
+
 const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const AUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 
@@ -2738,6 +2744,147 @@ async function handleEchoMTG(request, env) {
 }
 
 /* ══════════════════════════════════════
+   SEO: HTMLRewriter for bot/crawler card pages
+   ══════════════════════════════════════ */
+
+async function handleBotCardPage(request, env, cardId) {
+  // Fetch card data from D1 (or Scryfall via handleCardDetail fallback)
+  var now = Math.floor(Date.now() / 1000);
+  var row = await env.DB.prepare(
+    'SELECT name, set_name, type_line, oracle_text, price_usd, price_usd_foil, image_normal, rarity FROM prices WHERE card_id = ? AND updated_at > ?'
+  ).bind(cardId, now - TTL_PRICE).first();
+
+  // If no cached row, try Scryfall directly
+  if (!row) {
+    try {
+      var card = await scryfallFetch('/cards/' + cardId);
+      row = {
+        name: card.name || 'Unknown Card',
+        set_name: card.set_name || '',
+        type_line: card.type_line || '',
+        oracle_text: card.oracle_text || '',
+        price_usd: card.prices ? card.prices.usd : null,
+        price_usd_foil: card.prices ? card.prices.usd_foil : null,
+        image_normal: (card.image_uris && card.image_uris.normal) || '',
+        rarity: card.rarity || '',
+      };
+    } catch (e) {
+      row = null;
+    }
+  }
+
+  if (!row) {
+    // Can't find card — just pass through to origin
+    var fallbackReq = new Request('https://www.investmtg.com/', { headers: request.headers });
+    return fetch(fallbackReq, { cf: { resolveOverride: ORIGIN_WWW_HOSTNAME } });
+  }
+
+  var title = row.name + ' — $' + (row.price_usd || 'N/A') + ' | investMTG';
+  var desc = row.name + ' (' + row.set_name + ') — ' + row.type_line + '. '
+    + (row.price_usd ? 'Market price: $' + Number(row.price_usd).toFixed(2) : 'Price unavailable')
+    + (row.price_usd_foil ? ' | Foil: $' + Number(row.price_usd_foil).toFixed(2) : '')
+    + '. Track prices and buy locally on investMTG.';
+  var image = row.image_normal || 'https://www.investmtg.com/og-image.jpg';
+  var cardUrl = 'https://www.investmtg.com/#card/' + cardId;
+
+  // Fetch the origin HTML from GitHub Pages
+  var originReq = new Request('https://www.investmtg.com/', { headers: request.headers });
+  var originResponse = await fetch(originReq, { cf: { resolveOverride: ORIGIN_WWW_HOSTNAME } });
+
+  // Use HTMLRewriter to inject SEO meta tags
+  return new HTMLRewriter()
+    .on('title', {
+      element: function(el) { el.setInnerContent(title); }
+    })
+    .on('meta[name="description"]', {
+      element: function(el) { el.setAttribute('content', desc); }
+    })
+    .on('meta[property="og:title"]', {
+      element: function(el) { el.setAttribute('content', row.name + ' | investMTG'); }
+    })
+    .on('meta[property="og:description"]', {
+      element: function(el) { el.setAttribute('content', desc); }
+    })
+    .on('meta[property="og:image"]', {
+      element: function(el) { el.setAttribute('content', image); }
+    })
+    .on('meta[property="og:url"]', {
+      element: function(el) { el.setAttribute('content', cardUrl); }
+    })
+    .on('meta[name="twitter:title"]', {
+      element: function(el) { el.setAttribute('content', row.name + ' | investMTG'); }
+    })
+    .on('meta[name="twitter:description"]', {
+      element: function(el) { el.setAttribute('content', desc); }
+    })
+    .on('meta[name="twitter:image"]', {
+      element: function(el) { el.setAttribute('content', image); }
+    })
+    .on('link[rel="canonical"]', {
+      element: function(el) { el.setAttribute('href', cardUrl); }
+    })
+    .transform(originResponse);
+}
+
+/* ── SEO: Dynamic sitemap.xml from D1 ── */
+
+async function handleSitemap(request, env) {
+  // Static page routes
+  var pages = [
+    { loc: 'https://www.investmtg.com/', freq: 'daily', priority: '1.0' },
+    { loc: 'https://www.investmtg.com/#search', freq: 'weekly', priority: '0.9' },
+    { loc: 'https://www.investmtg.com/#store', freq: 'weekly', priority: '0.8' },
+    { loc: 'https://www.investmtg.com/#movers', freq: 'daily', priority: '0.8' },
+    { loc: 'https://www.investmtg.com/#portfolio', freq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.investmtg.com/#seller', freq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.investmtg.com/#cart', freq: 'weekly', priority: '0.5' },
+    { loc: 'https://www.investmtg.com/#pricing', freq: 'monthly', priority: '0.6' },
+    { loc: 'https://www.investmtg.com/#privacy', freq: 'monthly', priority: '0.3' },
+    { loc: 'https://www.investmtg.com/#terms', freq: 'monthly', priority: '0.3' },
+  ];
+
+  // Dynamic card pages from D1
+  var rows = await env.DB.prepare(
+    'SELECT card_id, name, updated_at FROM prices ORDER BY updated_at DESC LIMIT 5000'
+  ).all();
+  var cards = (rows && rows.results) ? rows.results : [];
+
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+  // Static pages
+  for (var i = 0; i < pages.length; i++) {
+    xml += '  <url>\n';
+    xml += '    <loc>' + pages[i].loc + '</loc>\n';
+    xml += '    <changefreq>' + pages[i].freq + '</changefreq>\n';
+    xml += '    <priority>' + pages[i].priority + '</priority>\n';
+    xml += '  </url>\n';
+  }
+
+  // Card pages
+  for (var j = 0; j < cards.length; j++) {
+    var c = cards[j];
+    var lastmod = c.updated_at ? new Date(c.updated_at * 1000).toISOString().split('T')[0] : '';
+    xml += '  <url>\n';
+    xml += '    <loc>https://www.investmtg.com/card/' + encodeURIComponent(c.card_id) + '</loc>\n';
+    if (lastmod) xml += '    <lastmod>' + lastmod + '</lastmod>\n';
+    xml += '    <changefreq>weekly</changefreq>\n';
+    xml += '    <priority>0.6</priority>\n';
+    xml += '  </url>\n';
+  }
+
+  xml += '</urlset>';
+
+  return new Response(xml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+}
+
+/* ══════════════════════════════════════
    MAIN ROUTER
    ══════════════════════════════════════ */
 
@@ -2752,9 +2899,42 @@ export default {
     }
 
     const url = new URL(request.url);
+    const host = url.hostname;
     const path = url.pathname;
 
     try {
+      /* ── SEO: Intercept www.investmtg.com requests ── */
+      if (host === 'www.investmtg.com') {
+        var ua = request.headers.get('User-Agent') || '';
+        var isBot = BOT_UA_RE.test(ua);
+
+        // Sitemap — serve dynamic sitemap for all requesters
+        if (path === '/sitemap.xml') return handleSitemap(request, env);
+
+        // Clean card URL: /card/:id
+        // Bots get HTMLRewriter-injected meta; humans get 302 to hash route
+        if (path.startsWith('/card/')) {
+          var seoCardId = path.replace('/card/', '');
+          if (seoCardId) {
+            if (isBot) return handleBotCardPage(request, env, seoCardId);
+            // Regular user — redirect to hash route
+            return new Response(null, {
+              status: 302,
+              headers: { 'Location': 'https://www.investmtg.com/#card/' + seoCardId },
+            });
+          }
+        }
+
+        // Pass through to GitHub Pages origin
+        // Use resolveOverride to send to GH Pages while keeping Host: www.investmtg.com
+        return fetch(request, {
+          cf: { resolveOverride: ORIGIN_WWW_HOSTNAME },
+        });
+      }
+
+      // SEO: Sitemap on api domain too
+      if (path === '/sitemap.xml')                          return handleSitemap(request, env);
+
       // Auth routes
       if (path === '/auth/google')                          return handleGoogleAuth(request, env);
       if (path === '/auth/callback')                        return handleAuthCallback(request, env);

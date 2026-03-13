@@ -316,6 +316,43 @@ function App() {
     return function() { clearTimeout(safetyTimer); };
   }, []);
 
+  // ===== SEO: Dynamic document.title + meta per route =====
+  React.useEffect(function() {
+    var titles = {
+      home: 'investMTG \u2014 Guam\u2019s MTG Marketplace & Price Intelligence',
+      search: 'Search Cards \u2014 investMTG',
+      store: 'Marketplace \u2014 investMTG',
+      movers: 'Market Movers \u2014 investMTG',
+      meta: 'cEDH Metagame \u2014 investMTG',
+      decks: 'Decklists \u2014 investMTG',
+      portfolio: 'My Portfolio \u2014 investMTG',
+      cart: 'Cart \u2014 investMTG',
+      checkout: 'Checkout \u2014 investMTG',
+      seller: 'Seller Dashboard \u2014 investMTG',
+      orders: 'My Orders \u2014 investMTG',
+      scan: 'Card Scanner \u2014 investMTG',
+      pricing: 'Pricing Methodology \u2014 investMTG',
+      privacy: 'Privacy Policy \u2014 investMTG',
+      terms: 'Terms of Service \u2014 investMTG'
+    };
+    var descs = {
+      home: 'Track Magic: The Gathering printed card prices, buy and sell locally in Guam, manage your portfolio.',
+      search: 'Search thousands of MTG cards with real-time Scryfall pricing. Paper cards only.',
+      store: 'Buy and sell Magic: The Gathering cards locally in Guam. Browse seller listings.',
+      movers: 'Track the biggest MTG card price movements \u2014 gainers, losers, and trending cards.',
+      meta: 'Competitive EDH tournament data from EDH Top 16 and TopDeck.gg. Commander staples and metagame analysis.',
+      decks: 'Browse popular MTG decklists from Moxfield. Commander, Standard, Modern, and more.',
+      portfolio: 'Track your MTG card collection value over time. Import, organize, and monitor your investment.',
+      pricing: 'How investMTG sources card pricing data. Scryfall market prices for site-wide display, JustTCG for checkout.',
+      scan: 'Scan physical MTG cards with your camera to instantly look up prices and details.'
+    };
+    document.title = titles[route.page] || titles.home;
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && descs[route.page]) {
+      metaDesc.setAttribute('content', descs[route.page]);
+    }
+  }, [route.page]);
+
   // While loading, show a minimal loading indicator
   if (gs.state.loading) {
     return h('div', {

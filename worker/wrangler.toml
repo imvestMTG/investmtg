@@ -6,8 +6,10 @@ workers_dev = false
 
 # Custom domain — worker accessible at api.investmtg.com
 # (also still available at investmtg-proxy.bloodshutdawn.workers.dev)
+# www route intercepts bot/crawler requests + serves dynamic sitemap
 routes = [
-  { pattern = "api.investmtg.com", custom_domain = true }
+  { pattern = "api.investmtg.com", custom_domain = true },
+  { pattern = "www.investmtg.com/*", zone_name = "investmtg.com" }
 ]
 
 [observability]

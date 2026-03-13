@@ -91,6 +91,24 @@ export function CardDetailView(props) {
       setCard(data);
       setLoading(false);
 
+      // SEO: Update document title and meta for card pages
+      if (data && data.name) {
+        var price = data.prices ? (data.prices.usd || data.prices.usd_foil || '') : (data.price_usd || '');
+        var setName = data.set_name || '';
+        document.title = data.name + (setName ? ' (' + setName + ')' : '') + (price ? ' — $' + price : '') + ' | investMTG';
+        var metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute('content', data.name + (setName ? ' from ' + setName : '') + (price ? ' — $' + price + ' USD' : '') + '. View prices, printings, and buy locally on investMTG.');
+        }
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute('content', data.name + (price ? ' — $' + price : '') + ' | investMTG');
+        var ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc) ogDesc.setAttribute('content', data.name + (setName ? ' from ' + setName : '') + (price ? '. Market price: $' + price : '') + '. Paper card prices on investMTG.');
+        var ogImage = document.querySelector('meta[property="og:image"]');
+        var cardImage = data.image_uris ? data.image_uris.normal : (data.image_normal || '');
+        if (ogImage && cardImage) ogImage.setAttribute('content', cardImage);
+      }
+
       // Fetch other printings via oracle_id
       if (data && data.oracle_id) {
         getCardPrintings(data.oracle_id).then(function(result) {
