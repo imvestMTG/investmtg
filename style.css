@@ -9875,3 +9875,86 @@ aa.market-cat-desc {
 .u-label-xs { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); }
 .u-hidden { display: none; }
 .u-bold { font-weight: 700; }
+
+/* ═══════════════════════════════════════════
+   FAQ Page
+   ═══════════════════════════════════════════ */
+.faq-page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+}
+.faq-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-2);
+}
+.faq-intro {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-8);
+  line-height: 1.6;
+}
+.faq-section {
+  margin-bottom: var(--space-8);
+}
+.faq-section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+  color: var(--color-primary);
+}
+.faq-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+.faq-item:hover {
+  border-color: var(--color-primary);
+}
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  user-select: none;
+}
+.faq-chevron {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  transition: transform 0.2s ease;
+}
+.faq-chevron--open {
+  transform: rotate(90deg);
+}
+.faq-answer {
+  padding: 0 var(--space-4) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+.faq-footer {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.faq-footer a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.cd-jtcg-fallback {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+@media (max-width: 767px) {
+  .faq-page { padding: var(--space-4) var(--space-3); }
+  .faq-title { font-size: var(--text-xl); }
+}

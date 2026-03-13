@@ -16,6 +16,7 @@ export function Footer() {
         h('a', { href: '#privacy' }, 'Privacy Policy'),
         h('a', { href: '#terms' }, 'Terms of Service'),
         h('a', { href: '#pricing' }, 'Pricing & Sources'),
+        h('a', { href: '#faq' }, 'FAQ'),
         h('a', { href: 'https://github.com/imvestMTG/investmtg/blob/main/SOUL.md', target: '_blank', rel: 'noopener' }, 'Data Integrity Policy')
       ),
       h('p', { className: 'footer-credit' },

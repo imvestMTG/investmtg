@@ -18,6 +18,7 @@ export function CardDetailView(props) {
   var updatePortfolio = props.updatePortfolio;
   var updateWatchlist = props.updateWatchlist;
   var onOpenListing = props.onOpenListing;
+  var onBuyLocal = props.onBuyLocal;
 
   var ref1 = React.useState(null);
   var card = ref1[0], setCard = ref1[1];
@@ -147,6 +148,14 @@ export function CardDetailView(props) {
 
   function goToMarketplace() {
     window.location.hash = 'store';
+  }
+
+  function handleBuyLocal() {
+    if (typeof onBuyLocal === 'function' && card) {
+      onBuyLocal(card);
+    } else {
+      window.location.hash = 'store';
+    }
   }
 
   function addToPortfolio() {
@@ -318,7 +327,21 @@ export function CardDetailView(props) {
                     );
                   })
                 )
-              : h('div', { className: 'cd-jtcg-empty' }, 'Condition pricing not available for this card.'),
+              : h('div', { className: 'cd-jtcg-empty' },
+                  h('p', null, 'Condition pricing not available for this card.'),
+                  resolved.change7d != null && h('p', { className: 'cd-jtcg-fallback' },
+                    '7-day change: ',
+                    h('span', { className: resolved.change7d > 0 ? 'cd-change-up' : resolved.change7d < 0 ? 'cd-change-down' : 'cd-change-flat' },
+                      (resolved.change7d > 0 ? '+' : '') + resolved.change7d.toFixed(1) + '%'
+                    ),
+                    ' (via ', getPriceSourceLabel(resolved), ')'
+                  ),
+                  purchaseLinks.tcgplayer && h('p', { style: { marginTop: 'var(--space-2)' } },
+                    h('a', { href: purchaseLinks.tcgplayer, target: '_blank', rel: 'noopener noreferrer', className: 'u-link-primary' },
+                      'View full price history on TCGplayer \u2192'
+                    )
+                  )
+                ),
 
           /* Price trend stats */
           jtcgDetail && jtcgDetail.conditions && jtcgDetail.conditions.NM
@@ -436,8 +459,11 @@ export function CardDetailView(props) {
           : null,
 
         h('div', { className: 'card-actions' },
-          h('button', { className: 'btn btn-primary', onClick: goToMarketplace },
-            h(ShoppingCartIcon, null), ' Find Sellers'
+          h('button', { className: 'btn btn-primary', onClick: handleBuyLocal },
+            h(ShoppingCartIcon, null), ' Add to Cart'
+          ),
+          h('button', { className: 'btn btn-ghost btn-sm', onClick: goToMarketplace, style: { marginLeft: '4px' } },
+            'Browse Marketplace'
           ),
           h('div', { className: 'card-track-group' },
             h('button', { className: 'btn btn-secondary', onClick: addToPortfolio },

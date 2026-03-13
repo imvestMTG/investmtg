@@ -106,8 +106,16 @@ export function SearchView(props) {
     setError(null);
     setShowSuggestions(false);
     backendSearch(q, { order: sortBy, dir: 'desc' }).then(function(data) {
-      setResults(data && data.data ? data.data : []);
+      var cards = data && data.data ? data.data : [];
+      setResults(cards);
       setLoading(false);
+      /* Persist search state for back-navigation */
+      saveSearchState(q, cards, {
+        colors: selectedColors,
+        rarity: selectedRarity,
+        sort: sortBy,
+        price: priceRange
+      });
     }).catch(function(err) {
       setError('No results found. Try a different search.');
       setResults([]);

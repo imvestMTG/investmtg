@@ -1,5 +1,36 @@
 # investMTG — Changelog
 
+## 2026-03-14: v74 — UX Fixes (Search State, Buy Flow, FAQ, Price Fallback)
+
+**Fix 1: Search state preserved on back navigation (CRITICAL)**
+- `SearchView.js` — `saveSearchState()` was defined but never called.
+  Now called after every successful search, persisting query, results, and
+  filter state to `sessionStorage`. Navigating to a card and pressing back
+  restores the full search view (10-minute TTL).
+
+**Fix 2: Add to Cart button on card detail page**
+- `CardDetailView.js` — Primary CTA changed from "Find Sellers" to "Add to Cart".
+  Opens the BuyLocalModal showing available seller listings for that specific card.
+  "Browse Marketplace" kept as secondary ghost button.
+- `app.js` — Passes `onBuyLocal` prop to CardDetailView.
+
+**Fix 3: FAQ page**
+- New `components/FAQView.js` — Accordion-style FAQ with 5 sections:
+  About investMTG, Buying Cards, Selling Cards, Pricing & Data, Accounts & Privacy.
+  16 questions covering marketplace model, paper-only policy, pricing waterfall,
+  N/A prices, and privacy.
+- `app.js` — Route `#faq`, SEO title/description, lazy-loaded component.
+- `Footer.js` — FAQ link added to legal links row.
+- `style.css` — `.faq-*` styles: accordion, chevron animation, responsive.
+
+**Fix 4: Price history fallback when JustTCG unavailable**
+- `CardDetailView.js` — When condition pricing is unavailable, the empty state
+  now shows resolver-sourced 7-day change data (if available) and a link to
+  TCGplayer for full price history.
+- `style.css` — `.cd-jtcg-fallback` styling.
+
+- `sw.js` — v73 → v74.
+
 ## 2026-03-14: v73 — N/A for Cards Without USD Pricing
 
 **Root cause:** Cards like Zombie Master (Limited Edition Beta) have no USD market
