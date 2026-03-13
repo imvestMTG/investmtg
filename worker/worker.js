@@ -1980,6 +1980,7 @@ async function handlePayPalCreateOrder(request, env) {
     return json({
       ok: true,
       id: data.id,
+      paypal_order_id: data.id,
       status: data.status,
     }, 201, request);
   } catch (e) {
