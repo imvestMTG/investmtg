@@ -1,6 +1,6 @@
 /* shared/CardCarousel.js — Horizontal scrolling carousel for MTG card sections */
 import React from 'react';
-import { formatUSD, getCardPrice, getCardImageSmall } from '../../utils/helpers.js';
+import { formatUSD, getCardPrice, getCardImageSmall, handleImageError } from '../../utils/helpers.js';
 var h = React.createElement;
 
 function ChevronLeftIcon() {
@@ -90,7 +90,7 @@ export function CardCarousel(props) {
               alt: card.name,
               loading: 'lazy',
               decoding: 'async',
-              onError: function(e) { e.target.style.opacity = '0'; },
+              onError: function(e) { handleImageError(e, card.id, 'small'); },
               onLoad: function(e) { e.target.style.opacity = '1'; },
               style: { transition: 'opacity 0.3s ease' }
             })

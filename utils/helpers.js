@@ -16,6 +16,8 @@ export function getCardImageSmall(card) {
   if (card.card_faces && card.card_faces[0] && card.card_faces[0].image_uris) {
     return card.card_faces[0].image_uris.small;
   }
+  // Fallback: use direct Scryfall API image endpoint (always works)
+  if (card.id) return 'https://api.scryfall.com/cards/' + card.id + '?format=image&version=small';
   return '';
 }
 
@@ -26,7 +28,26 @@ export function getScryfallImageUrl(card, size) {
   if (card.card_faces && card.card_faces[0] && card.card_faces[0].image_uris) {
     return card.card_faces[0].image_uris[size];
   }
+  // Fallback: use direct Scryfall API image endpoint (always works)
+  if (card.id) return 'https://api.scryfall.com/cards/' + card.id + '?format=image&version=' + size;
   return '';
+}
+
+/* Direct Scryfall image URL by card ID — reliable fallback when CDN URLs 404 */
+export function scryfallImageFallback(scryfallId, size) {
+  if (!scryfallId) return '';
+  if (!size) size = 'small';
+  return 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
+}
+
+/* onError handler for card images — switches to direct API endpoint */
+export function handleImageError(e, scryfallId, size) {
+  if (!scryfallId) return;
+  if (!size) size = 'small';
+  var fallback = 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
+  if (e.target.src !== fallback) {
+    e.target.src = fallback;
+  }
 }
 
 export function debounce(fn, ms) {

@@ -1,6 +1,6 @@
 /* SellerDashboard.js — Seller management portal */
 import React from 'react';
-import { formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
+import { formatUSD, getCardImageSmall, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 import { STORE_OPTIONS } from '../utils/stores.js';
 import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
@@ -523,7 +523,13 @@ function ListingForm(props) {
               onClick: function() { handleSetSelect(p); }
             },
               p.imageSmall
-                ? h('img', { src: p.imageSmall, alt: p.setName, className: 'lf-pgrid-img', loading: 'lazy' })
+                ? h('img', {
+                    src: p.imageSmall,
+                    alt: p.setName,
+                    className: 'lf-pgrid-img',
+                    loading: 'lazy',
+                    onError: function(e) { handleImageError(e, p.scryfallId, 'small'); }
+                  })
                 : h('div', { className: 'lf-pgrid-img-ph' }, h('span', null, p.setCode.toUpperCase())),
               h('div', { className: 'lf-pgrid-body' },
                 h('div', { className: 'lf-pgrid-set' }, p.setName),
@@ -551,7 +557,13 @@ function ListingForm(props) {
               className: 'lf-plist-row' + (isSel ? ' selected' : ''),
               onClick: function() { handleSetSelect(p); }
             },
-              p.imageSmall && h('img', { src: p.imageSmall, alt: '', className: 'lf-plist-thumb', loading: 'lazy' }),
+              p.imageSmall && h('img', {
+                src: p.imageSmall,
+                alt: '',
+                className: 'lf-plist-thumb',
+                loading: 'lazy',
+                onError: function(e) { handleImageError(e, p.scryfallId, 'small'); }
+              }),
               h('div', { className: 'lf-plist-info' },
                 h('div', { className: 'lf-plist-name' }, p.setName),
                 h('div', { className: 'lf-plist-meta' },
@@ -590,7 +602,12 @@ function ListingForm(props) {
 
       // Selected card summary
       form.imageUri && h('div', { className: 'lf-selected-card' },
-        h('img', { src: form.imageNormal || form.imageUri, alt: form.cardName, className: 'lf-selected-img' }),
+        h('img', {
+          src: form.imageNormal || form.imageUri,
+          alt: form.cardName,
+          className: 'lf-selected-img',
+          onError: function(e) { handleImageError(e, form.scryfallId, 'normal'); }
+        }),
         h('div', { className: 'lf-selected-info' },
           h('div', { className: 'lf-selected-name' }, form.cardName),
           h('div', { className: 'lf-selected-set' },
@@ -1494,7 +1511,13 @@ export function SellerDashboard(props) {
                 || (cardName ? 'https://api.scryfall.com/cards/named?format=image&version=small&exact=' + encodeURIComponent(cardName) : '');
 
               return h('div', { key: listingId, className: 'seller-listing-card' },
-                thumbSrc && h('img', { src: thumbSrc, className: 'seller-listing-thumb', alt: cardName, loading: 'lazy' }),
+                thumbSrc && h('img', {
+                  src: thumbSrc,
+                  className: 'seller-listing-thumb',
+                  alt: cardName,
+                  loading: 'lazy',
+                  onError: function(e) { handleImageError(e, cardId, 'small'); }
+                }),
                 h('div', { className: 'seller-listing-top' },
                   h('div', null,
                     h('div', { className: 'seller-listing-name' }, cardName),

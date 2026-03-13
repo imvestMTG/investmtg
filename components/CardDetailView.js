@@ -1,7 +1,7 @@
 /* CardDetailView.js — Card detail with backend pricing + other printings */
 import React from 'react';
 import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail } from '../utils/api.js';
-import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
+import { formatUSD, getCardPrice, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 import { getGradingPrices } from '../utils/echomtg-api.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
@@ -238,7 +238,8 @@ export function CardDetailView(props) {
         h('img', {
           src: getScryfallImageUrl(card, 'normal'),
           alt: card.name,
-          loading: 'lazy'
+          loading: 'lazy',
+          onError: function(e) { handleImageError(e, card.id, 'normal'); }
         })
       ),
       h('div', { className: 'card-detail-info' },
@@ -531,7 +532,8 @@ export function CardDetailView(props) {
                       h('img', {
                         src: getScryfallImageUrl(p, 'small'),
                         alt: p.set_name,
-                        loading: 'lazy'
+                        loading: 'lazy',
+                        onError: function(e) { handleImageError(e, p.id, 'small'); }
                       })
                     ),
                     h('div', { className: 'printing-info' },

@@ -1,5 +1,28 @@
 # investMTG — Changelog
 
+## 2026-03-14: v71 — Image Loading Fix (Scryfall CDN Fallback)
+
+**Root cause:** Scryfall’s search API sometimes returns `cards.scryfall.io` CDN image URLs
+that 404 (especially for double-faced cards and promo printings). This left card images
+blank in the Seller Dashboard printing grid and other views.
+
+**Fix: `utils/helpers.js`**
+- `getCardImageSmall()` and `getScryfallImageUrl()` now fall back to the direct
+  Scryfall API image endpoint (`api.scryfall.com/cards/{id}?format=image`) when no
+  `image_uris` or `card_faces` images are available. This endpoint always redirects
+  to a working image.
+- New `handleImageError(e, scryfallId, size)` — `onError` handler that swaps a broken
+  `<img>` src to the direct API fallback. Prevents infinite loops by checking current src.
+- New `scryfallImageFallback(scryfallId, size)` — returns direct API URL for a card ID.
+
+**Updated components (added `onError` fallback):**
+- `SellerDashboard.js` — printing grid (grid + list view), selected card preview, listing thumbs
+- `CardDetailView.js` — main card image + other printings thumbnails
+- `shared/CardCarousel.js` — homepage featured/trending/budget carousels
+- `DecklistView.js` — card hover preview image
+
+- `sw.js` — v70 → v71.
+
 ## 2026-03-13: v70 — Deck Browser Overhaul
 
 **Rewritten: `components/DecklistView.js`**

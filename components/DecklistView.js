@@ -1,7 +1,7 @@
 /* DecklistView.js — Deck browser with Moxfield search, prices, image preview */
 import React from 'react';
 import { getMoxfieldDeck, searchMoxfieldDecks, getPopularDeckList } from '../utils/moxfield-api.js';
-import { formatUSD, getScryfallImageUrl } from '../utils/helpers.js';
+import { formatUSD, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { ShareButton } from './shared/ShareButton.js';
 import { ChevronLeftIcon, SearchIcon } from './shared/Icons.js';
@@ -64,7 +64,12 @@ function CardImagePreview(props) {
   if (!scryfallId) return null;
   var imgUrl = 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=normal';
   return h('div', { className: 'dk-img-preview' },
-    h('img', { src: imgUrl, alt: name, loading: 'lazy' })
+    h('img', {
+      src: imgUrl,
+      alt: name,
+      loading: 'lazy',
+      onError: function(e) { handleImageError(e, scryfallId, 'normal'); }
+    })
   );
 }
 
