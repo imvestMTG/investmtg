@@ -330,7 +330,7 @@ export function ScannerView(props) {
         var workerP = workerRef ? Promise.resolve(workerRef) : initTesseract();
         workerP.then(function() {
           processImage(cropCanvas.toDataURL('image/png'), fullUrl);
-        });
+        }).catch(function(err) { console.error('OCR init failed:', err); });
       };
       img.src = ev.target.result;
     };

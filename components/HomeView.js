@@ -48,7 +48,7 @@ export function HomeView(props) {
   React.useEffect(function() {
     getEventsAsync().then(function(data) {
       setEvents(data || []);
-    });
+    }).catch(function() { /* events are non-critical */ });
   }, []);
 
   function handleHeroSearch(e) {

@@ -1216,7 +1216,7 @@ export function SellerDashboard(props) {
     // Fetch store options async
     getStoreOptionsAsync().then(function(opts) {
       setStoreOptions(opts);
-    });
+    }).catch(function() { /* store options non-critical */ });
 
     // Check seller session
     fetchSeller().then(function(data) {

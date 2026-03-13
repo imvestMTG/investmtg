@@ -155,7 +155,7 @@ export function useAuth() {
     if (!_checked) {
       checkAuth().then(function(u) {
         setState({ user: u, loading: false });
-      });
+      }).catch(function() { setState({ user: null, loading: false }); });
     }
     return onAuthChange(function(u) {
       setState({ user: u, loading: false });

@@ -31,7 +31,7 @@ export function StoreView(props) {
   React.useEffect(function() {
     getStoresAsync().then(function(backendStores) {
       setStores(backendStores);
-    });
+    }).catch(function() { /* stores will use cached data */ });
   }, []);
 
   var filtered = filterMarketplace(listings, filter);

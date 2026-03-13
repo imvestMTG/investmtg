@@ -1681,20 +1681,7 @@ async function generateOrderId(db) {
     `INSERT INTO order_counters (month_key, last_seq)
      VALUES (?, 1)
      ON CONFLICT(month_key) DO UPDATE SET last_seq = last_seq + 1`
-  ).bind(monthKey).run().catch(async () => {
-    // Table may not exist yet — create it and retry
-    await db.prepare(
-      `CREATE TABLE IF NOT EXISTS order_counters (
-        month_key TEXT PRIMARY KEY,
-        last_seq INTEGER NOT NULL DEFAULT 1
-      )`
-    ).run();
-    await db.prepare(
-      `INSERT INTO order_counters (month_key, last_seq)
-       VALUES (?, 1)
-       ON CONFLICT(month_key) DO UPDATE SET last_seq = last_seq + 1`
-    ).bind(monthKey).run();
-  });
+  ).bind(monthKey).run();
 
   const row = await db.prepare(
     'SELECT last_seq FROM order_counters WHERE month_key = ?'
@@ -1776,36 +1763,6 @@ async function handleOrders(request, env, orderId) {
       const names = invalidItems.map(item => item.name || 'Unknown').join(', ');
       return json({ error: 'Items must come from a seller listing: ' + names }, 400, request);
     }
-
-    // Ensure orders table exists
-    await env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        user_email TEXT NOT NULL,
-        items TEXT NOT NULL,
-        subtotal REAL NOT NULL,
-        tax REAL NOT NULL,
-        shipping REAL DEFAULT 0,
-        total REAL NOT NULL,
-        fulfillment TEXT DEFAULT 'pickup',
-        pickup_store TEXT,
-        contact_name TEXT,
-        contact_email TEXT,
-        contact_phone TEXT,
-        payment_method TEXT DEFAULT 'reserve',
-        status TEXT DEFAULT 'reserved',
-        payment_status TEXT DEFAULT NULL,
-        checkout_id TEXT DEFAULT NULL,
-        sumup_txn_id TEXT DEFAULT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now'))
-      )`
-    ).run().catch(() => {});
-
-    // v33 migration: add new columns to existing orders tables
-    await env.DB.prepare('ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT NULL').run().catch(() => {});
-    await env.DB.prepare('ALTER TABLE orders ADD COLUMN checkout_id TEXT DEFAULT NULL').run().catch(() => {});
-    await env.DB.prepare('ALTER TABLE orders ADD COLUMN sumup_txn_id TEXT DEFAULT NULL').run().catch(() => {});
 
     // Guest orders use contact_email as identifier; authenticated users use their auth email
     const userEmail = auth ? auth.user.email : (body.contact_email || '').trim();

@@ -50,7 +50,7 @@ export function DecklistView() {
     getPopularDeckList().then(function(decks) {
       setPopularDecks(decks);
       setLoading(false);
-    });
+    }).catch(function() { setLoading(false); });
   }, []);
 
   function loadDeck(deckId) {

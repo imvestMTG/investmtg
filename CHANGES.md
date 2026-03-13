@@ -1,5 +1,23 @@
 # investMTG — Changelog
 
+## 2026-03-13: v67 — Phase 1 Completion — Promise Safety + DDL Removal
+
+**Worker (worker/worker.js):**
+- Removed runtime DDL from `handleOrders` POST: `CREATE TABLE IF NOT EXISTS orders` and 3 `ALTER TABLE` statements ran on every order creation. Tables are now managed via migrations only.
+- Removed DDL fallback from `generateOrderId`: `CREATE TABLE IF NOT EXISTS order_counters` in `.catch()` block. Table exists; no self-healing needed.
+
+**Frontend — Unhandled Promise Rejection Fixes (10 chains):**
+- **components/DecklistView.js** — `getPopularDeckList().then()` now catches; clears loading state on failure.
+- **components/HomeView.js** — `getEventsAsync().then()` now catches silently (events non-critical).
+- **components/ListingModal.js** — `fetchConditionPrices().then()` now catches; clears price loading state.
+- **components/MetaView.js** — 3 chains fixed: `Promise.all([tournaments])`, `getStaples()`, `getCommanderDetail()` — all clear loading state on failure.
+- **components/ScannerView.js** — `workerP.then()` (Tesseract init for file upload) now catches with console error.
+- **components/SellerDashboard.js** — `getStoreOptionsAsync().then()` now catches silently (non-critical).
+- **components/StoreView.js** — `getStoresAsync().then()` now catches silently (falls back to cached data).
+- **utils/auth.js** — `checkAuth().then()` in `useAuth()` hook now catches; sets user to null on failure.
+
+- **sw.js** — v66 → v67.
+
 ## 2026-03-13: v66 — Card Lookup v2 (DFC, Treatments, Printings Endpoint)
 
 **Worker — Card Lookup v2 (worker/worker.js):**

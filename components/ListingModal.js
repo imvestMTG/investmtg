@@ -96,7 +96,7 @@ export function ListingModal(props) {
         setPrice(prices.NM.toFixed(2));
       }
       setPricesLoading(false);
-    });
+    }).catch(function() { setPricesLoading(false); });
   }, [cardData]);
 
   var formRef = React.useRef(null);

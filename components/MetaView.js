@@ -386,7 +386,7 @@ export function MetaView() {
         });
         setTournaments(all);
         setTournamentsLoading(false);
-      });
+      }).catch(function() { setTournamentsLoading(false); });
     }
   }, [tab]);
 
@@ -397,7 +397,7 @@ export function MetaView() {
       getStaples().then(function(data) {
         setStaples(data || []);
         setStaplesLoading(false);
-      });
+      }).catch(function() { setStaplesLoading(false); });
     }
   }, [tab]);
 
@@ -409,7 +409,7 @@ export function MetaView() {
     getCommanderDetail(name).then(function(data) {
       setCommanderDetail(data);
       setDetailLoading(false);
-    });
+    }).catch(function() { setDetailLoading(false); });
   }
 
   function closeDetail() {
