@@ -1,5 +1,36 @@
 # investMTG — Changelog
 
+## 2026-03-13: v70 — Deck Browser Overhaul
+
+**Rewritten: `components/DecklistView.js`**
+- Full deck browser with Moxfield search integration.
+- Format filter tabs (All / Standard / Modern / Pioneer / Commander / Pauper).
+- Dynamic browse grid fetches most-viewed decks per format from Moxfield search API.
+- Deck detail view with cards grouped by type (Creatures, Instants, Sorceries, etc.).
+- Per-card price column with deck total cost badge from Scryfall market data (USD).
+- Mana cost symbols rendered as colored circles (W/U/B/R/G).
+- Card image hover preview (fixed sidebar, hidden on mobile).
+- Click any card row to navigate to its card detail page.
+- Share button integration for both browse and detail views.
+- Skeleton loading state for browse grid.
+- Fallback to curated deck list if Moxfield search is unavailable.
+
+**Rewritten: `utils/moxfield-api.js`**
+- Added `searchMoxfieldDecks(format, count)` — queries Moxfield search API sorted by views.
+- Updated `processDeck()` with per-card price data (USD, USD foil) from Moxfield card prices.
+- Added set code, rarity, and CMC to processed card objects.
+- 15-minute in-memory cache for both search results and individual decks.
+- Updated curated fallback deck IDs (2026-03-13).
+
+**CSS (`style.css`):**
+- Complete replacement of old `.decklist-*` styles with new `dk-*` namespace.
+- New classes: `.dk-format-tabs`, `.dk-format-tab`, `.dk-browse-grid`, `.dk-browse-card`,
+  `.dk-format-badge`, `.dk-views`, `.dk-detail-header`, `.dk-price-badge`, `.dk-section`,
+  `.dk-card-row`, `.dk-card-price`, `.dk-img-preview`, `.mana-w/u/b/r/g`.
+- Responsive: single-column grid, hidden image preview, compact tabs on mobile.
+
+- `sw.js` — v69 → v70.
+
 ## 2026-03-13: v69 — Global Share Feature
 
 **New component: `components/shared/ShareButton.js`**

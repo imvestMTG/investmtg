@@ -49,6 +49,45 @@ export function getMoxfieldDeck(deckIdOrUrl) {
   });
 }
 
+/* ── Search popular decks by format from Moxfield ── */
+export function searchMoxfieldDecks(format, count) {
+  format = format || 'commander';
+  count = count || 8;
+  var cacheKey = 'mox-search-' + format + '-' + count;
+  var cached = getCached(cacheKey);
+  if (cached) return Promise.resolve(cached);
+
+  var targetUrl = MOXFIELD_API + '/decks/search?fmt=' + encodeURIComponent(format)
+    + '&pageNumber=1&pageSize=' + count
+    + '&sortType=Views&sortDirection=Descending';
+  var proxyUrl = PROXY_URL + '/?target=' + encodeURIComponent(targetUrl);
+
+  return fetch(proxyUrl).then(function(res) {
+    if (!res.ok) throw new Error('Moxfield search error: ' + res.status);
+    return res.json();
+  }).then(function(data) {
+    var decks = (data.data || []).map(function(dk) {
+      return {
+        id: dk.publicId || dk.id,
+        name: dk.name || 'Unknown Deck',
+        format: dk.format || format,
+        author: dk.createdByUser ? dk.createdByUser.userName : 'Unknown',
+        viewCount: dk.viewCount || 0,
+        likeCount: dk.likeCount || 0,
+        mainboardCount: dk.mainboardCount || 0,
+        colors: dk.colorIdentity || dk.colors || [],
+        updatedAt: dk.lastUpdatedAtUtc || null,
+        moxfieldUrl: 'https://www.moxfield.com/decks/' + (dk.publicId || dk.id)
+      };
+    });
+    setCache(cacheKey, decks);
+    return decks;
+  }).catch(function(err) {
+    console.warn('Moxfield search failed:', err.message);
+    return [];
+  });
+}
+
 /* ── Process raw Moxfield deck data into clean format ── */
 function processDeck(data) {
   var mainboard = [];
@@ -56,67 +95,37 @@ function processDeck(data) {
   var sideboard = [];
   var companion = [];
   var totalCards = 0;
+  var totalPriceUsd = 0;
 
-  // Process mainboard
-  if (data.mainboard) {
-    Object.keys(data.mainboard).forEach(function(key) {
-      var entry = data.mainboard[key];
+  function processBoard(board, arr) {
+    if (!board) return;
+    Object.keys(board).forEach(function(key) {
+      var entry = board[key];
       var card = entry.card || {};
       var qty = entry.quantity || 1;
+      var prices = card.prices || {};
+      var priceUsd = prices.usd || 0;
       totalCards += qty;
-      mainboard.push({
+      totalPriceUsd += priceUsd * qty;
+      arr.push({
         name: card.name || key,
         quantity: qty,
         scryfallId: card.scryfall_id || null,
         type: card.type_line || card.type || '',
         manaCost: card.mana_cost || '',
-        cmc: card.cmc || 0
+        cmc: card.cmc || 0,
+        priceUsd: priceUsd,
+        priceUsdFoil: prices.usd_foil || 0,
+        rarity: card.rarity || '',
+        setCode: card.set || ''
       });
     });
   }
 
-  // Process commanders
-  if (data.commanders) {
-    Object.keys(data.commanders).forEach(function(key) {
-      var entry = data.commanders[key];
-      var card = entry.card || {};
-      commanders.push({
-        name: card.name || key,
-        quantity: entry.quantity || 1,
-        scryfallId: card.scryfall_id || null,
-        type: card.type_line || card.type || '',
-        manaCost: card.mana_cost || ''
-      });
-    });
-  }
-
-  // Process sideboard
-  if (data.sideboard) {
-    Object.keys(data.sideboard).forEach(function(key) {
-      var entry = data.sideboard[key];
-      var card = entry.card || {};
-      sideboard.push({
-        name: card.name || key,
-        quantity: entry.quantity || 1,
-        scryfallId: card.scryfall_id || null,
-        type: card.type_line || card.type || ''
-      });
-    });
-  }
-
-  // Process companion
-  if (data.companions) {
-    Object.keys(data.companions).forEach(function(key) {
-      var entry = data.companions[key];
-      var card = entry.card || {};
-      companion.push({
-        name: card.name || key,
-        quantity: entry.quantity || 1,
-        scryfallId: card.scryfall_id || null,
-        type: card.type_line || card.type || ''
-      });
-    });
-  }
+  processBoard(data.mainboard, mainboard);
+  processBoard(data.commanders, commanders);
+  processBoard(data.sideboard, sideboard);
+  processBoard(data.companions, companion);
 
   // Sort mainboard by type then name
   mainboard.sort(function(a, b) {
@@ -142,6 +151,7 @@ function processDeck(data) {
     sideboard: sideboard,
     companion: companion,
     totalCards: totalCards,
+    totalPriceUsd: totalPriceUsd,
     colors: data.colors || [],
     moxfieldUrl: 'https://www.moxfield.com/decks/' + (data.publicId || data.id)
   };
@@ -161,14 +171,18 @@ function getTypeCategory(type) {
   return 8;
 }
 
-/* ── Curated popular decks (since search endpoint is blocked) ── */
-/* Popular decks — verified 2026-03-08. Replace IDs if decks go private/deleted. */
+/* ── Curated popular decks — fallback if Moxfield search is down ── */
+/* Updated 2026-03-13. Replace IDs if decks go private/deleted. */
 var POPULAR_DECKS = [
-  { id: 'oEWXWHM5eEGMmopExLWRCA', name: 'Commander Tier List [cEDH]', format: 'commander' },
-  { id: 'wAVaIwJLcES5Wo8HyHW0cQ', name: 'Nationals Azorius Control', format: 'standard' },
-  { id: 'mqjvKOBtsEicQRa4MdtdLg', name: 'Standard Prowess', format: 'standard' },
-  { id: 'UDgLae4ejUWdmOVAEcHw8Q', name: 'Creativity', format: 'modern' },
+  { id: 'nLF_Npu5wkyrthzysm0cEw', name: 'Dimir Midrange', format: 'standard' },
+  { id: 'Izv2u85OyUqqa_54-jyIGA', name: 'Izzet Spellementals', format: 'standard' },
+  { id: 'iJMdlEwcPkKnjG8sRAer1Q', name: 'Boros Mobilize', format: 'standard' },
+  { id: 'YB8wVesOBEaCs_trx9ZGiw', name: 'Esper Goryo\'s V2', format: 'modern' },
+  { id: 'fNVWuTplbU6rxeJA-jkMWQ', name: 'Boros Burn', format: 'modern' },
+  { id: 'SnGxvDJIlEKLF8mvLkQSHw', name: 'Izzet Creativity', format: 'pioneer' },
   { id: 'amht9VwANE22Tbsd7nmWKA', name: 'Izzet Phoenix', format: 'pioneer' },
+  { id: 'jfQkmstWTU-ucVSKHmqnEQ', name: 'Kinnan cEDH 2026', format: 'commander' },
+  { id: 'oEWXWHM5eEGMmopExLWRCA', name: 'Commander Tier List [cEDH]', format: 'commander' },
 ];
 
 export function getPopularDeckList() {
