@@ -17,6 +17,34 @@ var COLORS = [
 
 var RARITIES = ['common', 'uncommon', 'rare', 'mythic'];
 
+/* ── Session-level search state persistence ── */
+var SEARCH_CACHE_KEY = 'investmtg-search-state';
+
+function saveSearchState(query, results, filters) {
+  try {
+    sessionStorage.setItem(SEARCH_CACHE_KEY, JSON.stringify({
+      query: query,
+      results: results,
+      filters: filters,
+      ts: Date.now()
+    }));
+  } catch (e) { /* quota exceeded — ignore */ }
+}
+
+function loadSearchState() {
+  try {
+    var raw = sessionStorage.getItem(SEARCH_CACHE_KEY);
+    if (!raw) return null;
+    var data = JSON.parse(raw);
+    // Expire after 10 minutes
+    if (Date.now() - data.ts > 10 * 60 * 1000) {
+      sessionStorage.removeItem(SEARCH_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch (e) { return null; }
+}
+
 export function SearchView(props) {
   var state = props.state;
   var updateCart = props.updateCart;
@@ -24,9 +52,12 @@ export function SearchView(props) {
   var updateWatchlist = props.updateWatchlist;
   var onOpenListing = props.onOpenListing;
 
-  var ref1 = React.useState('');
+  /* Restore previous search state on mount */
+  var cached = React.useMemo(function() { return loadSearchState(); }, []);
+
+  var ref1 = React.useState(cached ? cached.query : '');
   var query = ref1[0], setQuery = ref1[1];
-  var ref2 = React.useState([]);
+  var ref2 = React.useState(cached ? cached.results : []);
   var results = ref2[0], setResults = ref2[1];
   var ref3 = React.useState(false);
   var loading = ref3[0], setLoading = ref3[1];
@@ -37,14 +68,15 @@ export function SearchView(props) {
   var ref6 = React.useState(false);
   var showSuggestions = ref6[0], setShowSuggestions = ref6[1];
 
-  // Filter state
-  var ref7 = React.useState([]);
+  // Filter state — restore from cache
+  var cf = cached ? cached.filters : null;
+  var ref7 = React.useState(cf ? cf.colors : []);
   var selectedColors = ref7[0], setSelectedColors = ref7[1];
-  var ref8 = React.useState('');
+  var ref8 = React.useState(cf ? cf.rarity : '');
   var selectedRarity = ref8[0], setSelectedRarity = ref8[1];
-  var ref9 = React.useState('usd');
+  var ref9 = React.useState(cf ? cf.sort : 'usd');
   var sortBy = ref9[0], setSortBy = ref9[1];
-  var ref10 = React.useState([0, 1000]);
+  var ref10 = React.useState(cf ? cf.price : [0, 1000]);
   var priceRange = ref10[0], setPriceRange = ref10[1];
 
   var inputRef = React.useRef(null);

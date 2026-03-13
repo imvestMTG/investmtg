@@ -1,4 +1,4 @@
-/* MarketMoversView.js — Market movers with sortable columns + JustTCG price data + EchoMTG set movers */
+/* MarketMoversView.js — Market movers with multi-source pricing waterfall */
 import React from 'react';
 import { fetchMovers, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
@@ -159,13 +159,12 @@ export function MarketMoversView() {
         setCards(unique);
         setLoading(false);
 
-        /* Fetch JustTCG price data for each card (fire-and-forget, progressive loading) */
+        /* Fetch JustTCG price data for each card via tcgplayer_id (fire-and-forget, progressive loading) */
         unique.forEach(function(card) {
           var cardId = card.id;
-          var tcgId = card.purchase_uris && card.purchase_uris.tcgplayer
-            ? (card.purchase_uris.tcgplayer.match(/[?&]u=.*productId%3D(\d+)/) || [])[1] || null
-            : null;
-          fetchJustTCGDetail({ scryfallId: cardId, tcgplayerId: tcgId }).then(function(detail) {
+          var tcgId = card.tcgplayer_id || card.tcgplayerId;
+          if (!tcgId) return; /* Skip cards without tcgplayer_id */
+          fetchJustTCGDetail({ tcgplayerId: tcgId }).then(function(detail) {
             if (detail && detail.conditions && detail.conditions.NM) {
               setJtcgData(function(prev) {
                 var next = {};
@@ -237,7 +236,7 @@ export function MarketMoversView() {
       })
     ),
     h('p', { className: 'market-subtitle' },
-      'Real-time MTG card prices powered by Scryfall + JustTCG market data.'
+      'Real-time MTG card prices powered by JustTCG + EchoMTG + Scryfall market data.'
     ),
     h('div', { className: 'market-period-tabs' },
       CATEGORIES.map(function(cat) {

@@ -1,6 +1,7 @@
-/* shared/CardCarousel.js — Horizontal scrolling carousel for MTG card sections */
+/* shared/CardCarousel.js — Horizontal scrolling carousel with multi-source pricing */
 import React from 'react';
 import { formatUSD, getCardPrice, getCardImageSmall, handleImageError } from '../../utils/helpers.js';
+import { useBatchPriceResolver, getBestPrice, getResolvedChange, formatPriceChange } from '../../utils/price-resolver.js';
 var h = React.createElement;
 
 function ChevronLeftIcon() {
@@ -25,6 +26,10 @@ export function CardCarousel(props) {
   var canScrollLeft = ref1[0], setCanScrollLeft = ref1[1];
   var ref2 = React.useState(false);
   var canScrollRight = ref2[0], setCanScrollRight = ref2[1];
+
+  /* Batch-resolve prices: renders Scryfall instantly, upgrades to JustTCG async */
+  var batchRef = useBatchPriceResolver(cards);
+  var priceMap = batchRef.priceMap;
 
   function updateScrollState() {
     var el = trackRef.current;
@@ -72,8 +77,13 @@ export function CardCarousel(props) {
     h('div', { className: 'carousel-track', ref: trackRef },
       cards.map(function(card) {
         if (!card) return null;
-        var price = getCardPrice(card);
-        var foilPrice = card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null;
+        var price = getBestPrice(card, priceMap);
+        var resolved = getResolvedChange(card, priceMap);
+        var foilPrice = resolved && resolved.foil ? resolved.foil
+          : (card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null);
+        var change7d = resolved ? resolved.change7d : null;
+        var changeText = formatPriceChange(change7d);
+        var changeClass = change7d > 0 ? 'pr-change-up' : change7d < 0 ? 'pr-change-down' : '';
 
         return h('article', {
           key: card.id,
@@ -100,6 +110,9 @@ export function CardCarousel(props) {
             h('div', { className: 'carousel-card-set' }, card.set_name),
             h('div', { className: 'carousel-card-price-row' },
               h('span', { className: 'carousel-card-price' }, formatUSD(price)),
+              changeText
+                ? h('span', { className: 'carousel-card-change ' + changeClass }, changeText)
+                : null,
               foilPrice ? h('span', { className: 'carousel-card-foil' }, 'Foil ' + formatUSD(foilPrice)) : null
             )
           )

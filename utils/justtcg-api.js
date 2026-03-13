@@ -44,20 +44,28 @@ function jtcgPost(body) {
   });
 }
 
-/* ── Get detailed pricing by TCGplayer ID ── */
+/* ── Get detailed pricing by TCGplayer ID or Scryfall ID ── */
 export function getJustTCGPricing(tcgplayerId, opts) {
-  if (!tcgplayerId) return Promise.resolve(null);
+  var scryfallId = opts && opts.scryfallId;
+  if (!tcgplayerId && !scryfallId) return Promise.resolve(null);
   var historyDuration = (opts && opts.historyDuration) || '30d';
-  var cacheKey = 'jtcg-' + tcgplayerId + '-' + historyDuration;
+  var lookupKey = tcgplayerId || ('sf-' + scryfallId);
+  var cacheKey = 'jtcg-' + lookupKey + '-' + historyDuration;
   var cached = getCached(cacheKey);
   if (cached) return Promise.resolve(cached);
 
-  return jtcgFetch({
-    tcgplayerId: tcgplayerId,
+  var params = {
     include_price_history: 'true',
     priceHistoryDuration: historyDuration,
     include_statistics: '7d,30d,90d'
-  }).then(function(result) {
+  };
+  if (tcgplayerId) {
+    params.tcgplayerId = tcgplayerId;
+  } else {
+    params.scryfallId = scryfallId;
+  }
+
+  return jtcgFetch(params).then(function(result) {
     if (result && result.data && result.data.length > 0) {
       var card = result.data[0];
       var processed = processJustTCGCard(card);

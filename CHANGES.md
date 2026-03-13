@@ -1,5 +1,50 @@
 # investMTG — Changelog
 
+## 2026-03-14: v72 — Multi-Source Pricing Waterfall
+
+**New module: `utils/price-resolver.js`**
+- Centralized pricing waterfall: JustTCG → EchoMTG → Scryfall (market price).
+- `resolvePrice(card)` — resolves best price from the first available source.
+- `resolveBatchPrices(cards)` — batch resolution for grids/carousels.
+- `usePriceResolver(card)` / `useBatchPriceResolver(cards)` — React hooks.
+- `getBestPrice(resolved)` — picks the best numeric price from resolved data.
+- `getPriceSourceLabel(resolved)` — returns source attribution ("JustTCG", "EchoMTG", "Scryfall").
+- `formatPriceChange(resolved)` — 7-day price change with direction indicator.
+- Each source keyed by `tcgplayerId` (JustTCG), `set_code`+`collector_number` (EchoMTG),
+  or native `prices.usd` (Scryfall).
+
+**Fixed: `utils/api.js`**
+- `fetchConditionPrices()` and `fetchJustTCGDetail()` now only use `tcgplayerId`.
+- Removed dead `scryfallId` fallback paths that always returned NOT_FOUND.
+
+**Fixed: `utils/justtcg-api.js`**
+- `getJustTCGPricing()` interface updated; `opts.scryfallId` accepted but JustTCG
+  only resolves via `tcgplayerId`.
+
+**Updated: `components/shared/CardGrid.js`**
+- Uses `useBatchPriceResolver` for grid-wide price enrichment.
+- 7-day change badges (`.mtg-card-change`) and source indicators (`.mtg-card-source`).
+
+**Updated: `components/shared/CardCarousel.js`**
+- Same batch resolver integration with change badges on carousel cards.
+
+**Updated: `components/CardDetailView.js`**
+- Hero price box powered by `usePriceResolver`.
+- Passes `card.tcgplayer_id` to `fetchJustTCGDetail` (was incorrectly using scryfallId).
+- EchoMTG grading data now comes through resolver; removed separate useEffect.
+
+**Updated: `components/MarketMoversView.js`**
+- Uses native `card.tcgplayer_id` instead of parsing from purchase URL.
+- Source attribution updated.
+
+**CSS (`style.css`):**
+- `.mtg-card-change`, `.carousel-card-change` — 7-day price change badges.
+- `.mtg-card-source` — source attribution label.
+- `.pr-change-up`, `.pr-change-down` — green/red change direction.
+- `.price-box-sub`, `.price-box--up`, `.price-box--down` — detail view price box modifiers.
+
+- `sw.js` — v71 → v72.
+
 ## 2026-03-14: v71 — Image Loading Fix (Scryfall CDN Fallback)
 
 **Root cause:** Scryfall’s search API sometimes returns `cards.scryfall.io` CDN image URLs

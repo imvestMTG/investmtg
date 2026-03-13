@@ -501,19 +501,15 @@ export function clearCartAPI() {
  * Returns a map: { NM: 918.31, LP: 796.27, MP: 724.39, HP: 631.95, DMG: 450.00 }
  * or {} if the card isn't found or the API errors.
  *
- * Prefers tcgplayerId (TCGplayer numeric ID) which is the native JustTCG key.
- * Falls back to scryfallId if tcgplayerId is not available.
+ * JustTCG only supports tcgplayerId lookups (scryfallId returns NOT_FOUND).
  *
- * @param {object} ids — { tcgplayerId, scryfallId }
+ * @param {object} ids — { tcgplayerId }
  */
 export function fetchConditionPrices(ids) {
   var tcgId = ids && ids.tcgplayerId;
-  var sfId  = ids && ids.scryfallId;
-  /* Legacy: if a bare string is passed, treat it as scryfallId */
-  if (typeof ids === 'string') { sfId = ids; tcgId = null; }
-  if (!tcgId && !sfId) return Promise.resolve({});
+  if (!tcgId) return Promise.resolve({});
   var qs = '?path=/v1/cards'
-    + (tcgId ? '&tcgplayerId=' + encodeURIComponent(tcgId) : '&scryfallId=' + encodeURIComponent(sfId))
+    + '&tcgplayerId=' + encodeURIComponent(tcgId)
     + '&condition=NM,LP,MP,HP,DMG'
     + '&include_price_history=false'
     + '&include_statistics=';
@@ -546,15 +542,14 @@ export function fetchConditionPrices(ids) {
 
 /**
  * Fetch full JustTCG card detail with all condition prices, price changes, and history.
+ * JustTCG only supports tcgplayerId lookups (scryfallId returns NOT_FOUND).
  * Returns { conditions: {NM:{price,change24h,change7d,change30d,change90d,history30d,...},...}, card: {...} }
  */
 export function fetchJustTCGDetail(ids) {
   var tcgId = ids && ids.tcgplayerId;
-  var sfId  = ids && ids.scryfallId;
-  if (typeof ids === 'string') { sfId = ids; tcgId = null; }
-  if (!tcgId && !sfId) return Promise.resolve(null);
+  if (!tcgId) return Promise.resolve(null);
   var qs = '?path=/v1/cards'
-    + (tcgId ? '&tcgplayerId=' + encodeURIComponent(tcgId) : '&scryfallId=' + encodeURIComponent(sfId))
+    + '&tcgplayerId=' + encodeURIComponent(tcgId)
     + '&condition=NM,LP,MP,HP,DMG'
     + '&include_price_history=true';
   return fetch(PROXY_BASE + '/justtcg' + qs)

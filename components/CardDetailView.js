@@ -1,8 +1,8 @@
-/* CardDetailView.js — Card detail with backend pricing + other printings */
+/* CardDetailView.js — Card detail with multi-source pricing waterfall */
 import React from 'react';
 import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
-import { getGradingPrices } from '../utils/echomtg-api.js';
+import { usePriceResolver, getPriceSourceLabel, formatPriceChange } from '../utils/price-resolver.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
@@ -39,8 +39,11 @@ export function CardDetailView(props) {
   var jtcgDetail = ref9[0], setJtcgDetail = ref9[1];
   var ref10 = React.useState(true);
   var jtcgLoading = ref10[0], setJtcgLoading = ref10[1];
-  var ref11 = React.useState(null);
-  var echoGrading = ref11[0], setEchoGrading = ref11[1];
+
+  /* Multi-source price resolver (JustTCG → EchoMTG → Scryfall) */
+  var priceRef = usePriceResolver(card);
+  var resolved = priceRef.resolved;
+  var echoGrading = resolved.grading;
 
   React.useEffect(function() {
     fetchLists().then(function(data) { setUserLists(data.lists || []); }).catch(function() {});
@@ -128,19 +131,15 @@ export function CardDetailView(props) {
     });
   }, [cardId]);
 
-  /* Fetch EchoMTG graded prices when card loads */
-  React.useEffect(function() {
-    if (!card || !card.set || !card.collector_number) return;
-    getGradingPrices(card.set, card.collector_number).then(function(data) {
-      setEchoGrading(data);
-    }).catch(function() { /* silent — optional data */ });
-  }, [card && card.id]);
-
-  /* Fetch JustTCG condition data when card loads */
+  /* Fetch JustTCG condition detail (rich data for sparklines/trends).
+   * Uses tcgplayer_id — the only lookup key JustTCG accepts.
+   * EchoMTG grading data is now handled by usePriceResolver above. */
   React.useEffect(function() {
     if (!card) { setJtcgDetail(null); setJtcgLoading(true); return; }
+    var tcgId = card.tcgplayer_id || card.tcgplayerId;
+    if (!tcgId) { setJtcgDetail(null); setJtcgLoading(false); return; }
     setJtcgLoading(true);
-    fetchJustTCGDetail({ scryfallId: card.id }).then(function(detail) {
+    fetchJustTCGDetail({ tcgplayerId: tcgId }).then(function(detail) {
       setJtcgDetail(detail);
       setJtcgLoading(false);
     }).catch(function() { setJtcgLoading(false); });
@@ -208,13 +207,20 @@ export function CardDetailView(props) {
 
   if (!card) return null;
 
-  var price = getCardPrice(card);
+  /* Use resolved price from waterfall (JustTCG → EchoMTG → Scryfall) */
+  var price = resolved.price > 0 ? resolved.price : getCardPrice(card);
+  var foilPrice = resolved.foil || (card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null);
+  var sourceLabel = getPriceSourceLabel(resolved);
   var inWatchlist = state.watchlist.some(function(item) { return item.id === card.id; });
 
   var priceBoxes = [
-    { label: 'Market', value: formatUSD(price) },
-    { label: 'Foil', value: card.prices && card.prices.usd_foil ? formatUSD(parseFloat(card.prices.usd_foil)) : 'N/A' },
+    { label: 'Market', value: formatUSD(price), sub: sourceLabel !== 'Scryfall' ? 'via ' + sourceLabel : null },
+    { label: 'Foil', value: foilPrice ? formatUSD(foilPrice) : 'N/A' },
   ];
+  /* Add 7d change box if available */
+  if (resolved.change7d != null) {
+    priceBoxes.push({ label: '7d Change', value: formatPriceChange(resolved.change7d), changeVal: resolved.change7d });
+  }
 
   var legalities = Object.entries(card.legalities || {}).filter(function(entry) {
     return ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'commander', 'pauper'].indexOf(entry[0]) !== -1;
@@ -262,22 +268,29 @@ export function CardDetailView(props) {
           ' \u00B7 ', card.rarity, ' \u00B7 #', card.collector_number
         ),
 
-        /* ── Scryfall Price Boxes ── */
+        /* ── Price Boxes (multi-source waterfall) ── */
         h('div', { className: 'price-breakdown' },
           priceBoxes.map(function(p) {
-            return h('div', { key: p.label, className: 'price-box' },
+            var boxClass = 'price-box';
+            if (p.changeVal != null) {
+              boxClass += p.changeVal > 0 ? ' price-box--up' : p.changeVal < 0 ? ' price-box--down' : '';
+            }
+            return h('div', { key: p.label, className: boxClass },
               h('div', { className: 'price-box-label' }, p.label),
-              h('div', { className: 'price-box-value' }, p.value)
+              h('div', { className: 'price-box-value' }, p.value),
+              p.sub ? h('div', { className: 'price-box-sub' }, p.sub) : null
             );
           })
         ),
 
         h('p', { className: 'price-source' },
           'Prices from ',
-          h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
-          ' + ',
           h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener noreferrer' }, 'JustTCG'),
-          ' \u00B7 Updated regularly \u00B7 ',
+          ' \u00B7 ',
+          h('a', { href: 'https://www.echomtg.com', target: '_blank', rel: 'noopener noreferrer' }, 'EchoMTG'),
+          ' \u00B7 ',
+          h('a', { href: scryfallUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Scryfall'),
+          ' \u00B7 ',
           h('a', { href: '#pricing', style: { color: 'inherit', textDecoration: 'underline' } }, 'How we source prices')
         ),
 

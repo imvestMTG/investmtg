@@ -1,10 +1,17 @@
-/* shared/CardGrid.js */
+/* shared/CardGrid.js — Card grid with multi-source pricing waterfall */
 import React from 'react';
 import { formatUSD, getCardPrice, getCardImageSmall } from '../../utils/helpers.js';
-import { CartIcon, StarIcon } from './Icons.js';
+import { useBatchPriceResolver, getBestPrice, getResolvedChange, formatPriceChange } from '../../utils/price-resolver.js';
 var h = React.createElement;
 
-export function CardGrid({ cards, state, updateCart, updatePortfolio, updateWatchlist, onOpenListing }) {
+export function CardGrid(props) {
+  var cards = props.cards;
+  var state = props.state;
+
+  /* Batch-resolve prices: renders Scryfall instantly, upgrades to JustTCG async */
+  var batchRef = useBatchPriceResolver(cards);
+  var priceMap = batchRef.priceMap;
+
   if (!cards || cards.length === 0) {
     return h('div', { className: 'empty-state' },
       h('p', null, 'No cards found.')
@@ -14,9 +21,13 @@ export function CardGrid({ cards, state, updateCart, updatePortfolio, updateWatc
   return h('div', { className: 'card-grid' },
     cards.map(function(card) {
       if (!card) return null;
-      var price = getCardPrice(card);
-      var foilPrice = card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null;
-      var inWatchlist = state && state.watchlist && state.watchlist.some(function(item) { return item.id === card.id; });
+      var price = getBestPrice(card, priceMap);
+      var resolved = getResolvedChange(card, priceMap);
+      var foilPrice = resolved && resolved.foil ? resolved.foil
+        : (card.prices && card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null);
+      var change7d = resolved ? resolved.change7d : null;
+      var changeText = formatPriceChange(change7d);
+      var changeClass = change7d > 0 ? 'pr-change-up' : change7d < 0 ? 'pr-change-down' : '';
 
       return h('article', {
         key: card.id,
@@ -47,8 +58,14 @@ export function CardGrid({ cards, state, updateCart, updatePortfolio, updateWatc
           h('div', { className: 'mtg-card-set' }, card.set_name),
           h('div', { className: 'mtg-card-price-row' },
             h('span', { className: 'mtg-card-price' }, formatUSD(price)),
+            changeText
+              ? h('span', { className: 'mtg-card-change ' + changeClass }, changeText)
+              : null,
             foilPrice ? h('span', { className: 'mtg-card-foil' }, 'Foil: ' + formatUSD(foilPrice)) : null
-          )
+          ),
+          resolved && resolved.source !== 'scryfall' && resolved.source !== 'none'
+            ? h('div', { className: 'mtg-card-source' }, resolved.source === 'justtcg' ? 'JustTCG' : 'EchoMTG')
+            : null
         )
       );
     })
