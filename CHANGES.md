@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-14: v75 — Fix Portfolio Page Crash
+
+**Root cause:** `PortfolioView.js` line 759 referenced `items.length` in the
+ShareButton text prop. `items` was only declared inside inner `.then()` callbacks
+(lines 558, 687) and the `renderCardTable` parameter — none of which hoist to
+the component scope. Accessing `.length` on `undefined` threw a TypeError,
+caught by ErrorBoundary as "Something went wrong."
+
+**Fix:** Changed `items.length` → `filtered.length` (the enriched+filtered
+portfolio array that is in scope at render time).
+
+- `sw.js` — v74 → v75.
+
 ## 2026-03-14: v74 — UX Fixes (Search State, Buy Flow, FAQ, Price Fallback)
 
 **Fix 1: Search state preserved on back navigation (CRITICAL)**

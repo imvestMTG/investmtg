@@ -756,7 +756,7 @@ export function PortfolioView(props) {
         h('button', { className: 'btn btn-secondary btn-sm portfolio-import-btn', onClick: function() { setShowImport(true); } }, h(UploadIcon, null), ' Import'),
         h(ShareButton, {
           title: 'My MTG Portfolio | investMTG',
-          text: 'My MTG Portfolio' + '\n' + items.length + ' cards tracked \u2014 Total value: ' + formatUSD(totalValue) + ' (' + (totalGain >= 0 ? '+' : '') + formatUSD(totalGain) + ')' + '\nTrack your collection on investMTG',
+          text: 'My MTG Portfolio' + '\n' + filtered.length + ' cards tracked \u2014 Total value: ' + formatUSD(totalValue) + ' (' + (totalGain >= 0 ? '+' : '') + formatUSD(totalGain) + ')' + '\nTrack your collection on investMTG',
           url: 'https://www.investmtg.com/#portfolio',
           size: 'sm',
           label: 'Share'
