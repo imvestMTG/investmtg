@@ -1834,19 +1834,10 @@ async function handleSumUpWebhook(request, env) {
     return json({ ok: true }, 200, request);
   }
 
-  // Verify webhook authenticity if secret is configured
-  // Set via: wrangler secret put SUMUP_WEBHOOK_SECRET
-  if (env.SUMUP_WEBHOOK_SECRET) {
-    const webhookAuth = request.headers.get('Authorization') || '';
-    const webhookToken = request.headers.get('X-Webhook-Secret') || '';
-    if (webhookAuth !== `Bearer ${env.SUMUP_WEBHOOK_SECRET}` &&
-        webhookToken !== env.SUMUP_WEBHOOK_SECRET) {
-      console.warn('SumUp webhook: invalid or missing secret from IP:', request.headers.get('CF-Connecting-IP'));
-      return json({ error: 'Unauthorized' }, 401, request);
-    }
-  } else {
-    console.warn('SUMUP_WEBHOOK_SECRET not set — webhook endpoint is unprotected');
-  }
+  // SumUp doesn't support webhook signing secrets in their dashboard.
+  // Security relies on server-side re-verification: the handler below calls
+  // GET /v0.1/checkouts/{id} with SUMUP_SECRET_KEY to confirm payment status
+  // directly with SumUp before updating any order.
 
   const body = await request.json().catch(() => null);
   if (!body || !body.id) {

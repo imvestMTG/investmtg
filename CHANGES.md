@@ -10,7 +10,7 @@
 - **worker/worker.js** — CORS hardening: unknown origins now receive only security headers (no `Access-Control-Allow-Origin`). Previously fell back to `ALLOWED_ORIGINS[0]` for unknown origins.
 - **worker/worker.js** — Auth token no longer leaked in URL query parameter after Google OAuth. Redirect now uses URL fragment (`#auth_token=...`) which is never sent to servers, referrer headers, or logged in browser history.
 - **utils/auth.js** — `captureTokenFromURL()` updated to read from hash fragment, with legacy query param fallback.
-- **worker/worker.js** — SumUp webhook (`/api/sumup-webhook`) now verifies `SUMUP_WEBHOOK_SECRET` header before processing. Unrecognized requests get 401. Set secret via `wrangler secret put SUMUP_WEBHOOK_SECRET`.
+- **worker/worker.js** — SumUp webhook (`/api/sumup-webhook`) security documented: SumUp doesn't support webhook signing, so security relies on the existing server-side re-verification (fetching checkout status from SumUp API before updating orders). Added explanatory comment.
 - **worker/worker.js** — JustTCG and TopDeck proxy endpoints now require a valid session cookie or auth token. Prevents external callers from consuming paid API keys. Normal site visitors (who get a session cookie automatically) are unaffected.
 
 - **sw.js** — v64 → v65.
