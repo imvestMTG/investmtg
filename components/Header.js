@@ -76,6 +76,12 @@ export function Header(props) {
             h('li', null, h('a', { href: '#search', className: isActive('search'), onClick: function(e) { e.preventDefault(); nav('search'); } },
               h(SearchIcon, null), 'Search'
             )),
+            h('li', null, h('a', { href: '#scan', className: isActive('scan'), onClick: function(e) { e.preventDefault(); nav('scan'); } },
+              h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { marginRight: '4px', verticalAlign: '-2px' } },
+                h('path', { d: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z' }),
+                h('circle', { cx: 12, cy: 13, r: 4 })
+              ), 'Scan'
+            )),
             h('li', null, h('a', { href: '#portfolio', className: isActive('portfolio'), onClick: function(e) { e.preventDefault(); nav('portfolio'); } },
               h(PortfolioIcon, null), 'Portfolio'
             )),

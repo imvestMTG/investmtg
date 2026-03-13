@@ -67,6 +67,7 @@ var Chatbot = lazyComponent(function() { return import('./components/Chatbot.js'
 var ListingModal = lazyComponent(function() { return import('./components/ListingModal.js'); }, 'ListingModal');
 var BuyLocalModal = lazyComponent(function() { return import('./components/BuyLocalModal.js'); }, 'BuyLocalModal');
 var OrdersView = lazyComponent(function() { return import('./components/OrdersView.js'); }, 'OrdersView');
+var ScannerView = lazyComponent(function() { return import('./components/ScannerView.js'); }, 'ScannerView');
 
 // ===== ROUTER HOOK =====
 function useRouter() {
@@ -106,6 +107,7 @@ function parseHash() {
   if (hash === 'terms') return { page: 'terms' };
   if (hash === 'pricing') return { page: 'pricing' };
   if (hash === 'orders') return { page: 'orders' };
+  if (hash === 'scan') return { page: 'scan' };
   return { page: 'home' };
 }
 
@@ -398,7 +400,8 @@ function App() {
       route.page === 'privacy' && h(PrivacyPolicyView, null),
       route.page === 'terms' && h(TermsView, null),
       route.page === 'pricing' && h(PricingView, null),
-      route.page === 'orders' && h(OrdersView, null)
+      route.page === 'orders' && h(OrdersView, null),
+      route.page === 'scan' && h(ScannerView, null)
       )
     ),
     h(Footer, null),

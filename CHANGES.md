@@ -1,5 +1,32 @@
 # investMTG — Changelog
 
+## 2026-03-13: v60 — Card Scanner (Camera + OCR)
+
+- **components/ScannerView.js** — New card scanner feature:
+  - Device camera access via WebRTC with environment/user camera toggle.
+  - Tesseract.js OCR (loaded dynamically from jsdelivr CDN) reads collector number from card bottom.
+  - Multi-strategy OCR pipeline: crops bottom 30% of frame, applies contrast threshold pre-processing, extracts collector number + set code, falls back to full-image card name recognition.
+  - Scryfall lookup by `number:` + `set:` query for exact match.
+  - Photo upload alternative for users without camera access.
+  - Guide overlay with corner brackets for card alignment.
+  - Camera controls: capture button, flip camera, cancel.
+  - Processing state with spinner overlay on captured image.
+  - Results view shows matched card(s) with image, name, set, price — click to navigate to card detail.
+  - Session scan history (in-memory, up to 20 recent scans).
+  - Full mobile-responsive layout.
+- **app.js** — Added `#scan` route + lazy-loaded ScannerView component.
+- **components/Header.js** — Added "Scan" nav link with camera icon after "Search".
+- **index.html** — CSP updates:
+  - `connect-src`: added `cdn.jsdelivr.net` (Tesseract language data files).
+  - `worker-src`: added `'self' blob:` (Tesseract Web Worker).
+  - `img-src`: added `blob:` (captured camera images).
+  - `Permissions-Policy`: changed `camera=()` to `camera=(self)` to allow camera access.
+- **style.css** — ~640 lines new CSS for scanner page:
+  - Scanner hero/landing, camera view with overlay guide, capture controls.
+  - Processing spinner, error state, results match cards, scan history grid.
+  - Mobile responsive breakpoints.
+- **sw.js** — Cache version bumped v59 → v60.
+
 ## 2026-03-11: v59 — Sortable tables + JustTCG/MTGStocks data integration
 
 - **components/MarketMoversView.js** — Complete rewrite to sortable data table:

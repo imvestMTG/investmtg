@@ -107,6 +107,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/PricingView.js` | `#pricing` | Pricing & Data Sources methodology page — explains all data sources (Scryfall, JustTCG, TCGplayer), update frequencies, data flow pipeline, limitations, and links to SOUL.md Data Integrity Policy |
 | `components/TermsView.js` | `#terms` | Terms of Service (14 sections). Covers user accounts, marketplace transactions, 5 card conditions, pricing data sources, payments, seller obligations, prohibited conduct, IP/WotC, dispute resolution under Guam law. |
 | `components/PrivacyPolicyView.js` | `#privacy` | Privacy Policy. Covers Google OAuth data collection, D1 database storage, server-side accounts, third-party services, data retention, and user rights. |
+| `components/ScannerView.js` | `#scan` | Card scanner using device camera + Tesseract.js OCR. Reads collector number from card bottom, looks up via Scryfall. Supports camera capture and photo upload. Shows matched card with price, links to card detail. Session scan history (in-memory). |
 | `components/TermsGate.js` | site-wide overlay | First-visit ToS acceptance modal (versioned `2026-03-09`). Stores acceptance in localStorage. Also exports `TermsCheckbox` component used in seller registration and checkout. |
 | `components/CookieNotice.js` | site-wide banner | Third-party cookie consent notice |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
@@ -226,6 +227,7 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── PortfolioView.js
 # PriceHistoryChart.js removed in v20 (dead code — never imported)
 │   ├── PrivacyPolicyView.js
+│   ├── ScannerView.js
 │   ├── SearchView.js
 │   ├── SellerDashboard.js
 │   ├── StoreView.js
