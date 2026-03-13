@@ -2,6 +2,7 @@
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PortfolioIcon, UploadIcon, AlertCircleIcon, CheckCircleIcon, XIcon } from './shared/Icons.js';
+import { ShareButton } from './shared/ShareButton.js';
 import {
   fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI, updatePortfolioItem,
   addToPortfolioBatch, fetchBinders, createBinder, deleteBinder, updateBinder,
@@ -752,7 +753,14 @@ export function PortfolioView(props) {
     h('div', { className: 'portfolio-header-row' },
       h('h1', { className: 'page-heading' }, 'My Portfolio'),
       h('div', { className: 'pf-header-actions' },
-        h('button', { className: 'btn btn-secondary btn-sm portfolio-import-btn', onClick: function() { setShowImport(true); } }, h(UploadIcon, null), ' Import')
+        h('button', { className: 'btn btn-secondary btn-sm portfolio-import-btn', onClick: function() { setShowImport(true); } }, h(UploadIcon, null), ' Import'),
+        h(ShareButton, {
+          title: 'My MTG Portfolio | investMTG',
+          text: 'My MTG Portfolio' + '\n' + items.length + ' cards tracked \u2014 Total value: ' + formatUSD(totalValue) + ' (' + (totalGain >= 0 ? '+' : '') + formatUSD(totalGain) + ')' + '\nTrack your collection on investMTG',
+          url: 'https://www.investmtg.com/#portfolio',
+          size: 'sm',
+          label: 'Share'
+        })
       )
     ),
 

@@ -1,5 +1,30 @@
 # investMTG — Changelog
 
+## 2026-03-13: v69 — Global Share Feature
+
+**New component: `components/shared/ShareButton.js`**
+- Reusable share button with two modes:
+  - Mobile/PWA: native Web Share API (share sheet with apps)
+  - Desktop: dropdown with "Copy link" and "Copy with details" options
+- Fallback to `document.execCommand('copy')` for older browsers without clipboard API.
+- Toast feedback on successful copy.
+
+**New icons: `components/shared/Icons.js`**
+- Added `ShareIcon` (node-link), `CopyIcon` (clipboard), `LinkIcon` (chain link).
+
+**Integration across 4 views:**
+- **CardDetailView** — Share button in card actions row. Shares clean SEO URL (`/card/:id`), card name, set, price, and investMTG branding.
+- **PortfolioView** — Share button in header. Shares portfolio summary (card count, total value, gain/loss).
+- **MarketMoversView** — Share button in page header. Shares movers page link.
+- **StoreView** — Share button in marketplace header. Shares Guam marketplace link.
+
+**CSS (`style.css`):**
+- `.share-wrap`, `.share-btn`, `.share-btn--sm` — button layout + sizing.
+- `.share-menu`, `.share-menu-item` — desktop dropdown with slide-in animation.
+- `.page-header-row` — flex row for title + share alignment.
+
+- `sw.js` — v68 → v69.
+
 ## 2026-03-13: v68 — SEO Overhaul — HTMLRewriter, Dynamic Sitemap, Clean Card URLs
 
 **Worker (worker/worker.js):**

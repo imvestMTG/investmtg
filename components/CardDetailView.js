@@ -6,6 +6,7 @@ import { getGradingPrices } from '../utils/echomtg-api.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { PortfolioIcon, StarIcon, ChevronLeftIcon, ShoppingCartIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
+import { ShareButton } from './shared/ShareButton.js';
 var h = React.createElement;
 
 var SCRYFALL_BASE = 'https://api.scryfall.com';
@@ -461,6 +462,12 @@ export function CardDetailView(props) {
           },
             h(StarIcon, null), inWatchlist ? ' Watching' : ' Watch'
           ),
+          h(ShareButton, {
+            title: card.name + ' | investMTG',
+            text: card.name + (card.set_name ? ' (' + card.set_name + ')' : '') + ' \u2014 ' + (card.prices && card.prices.usd ? '$' + Number(card.prices.usd).toFixed(2) : 'Price N/A') + '\nTrack prices on investMTG',
+            url: 'https://www.investmtg.com/card/' + card.id,
+            size: 'md'
+          }),
           onOpenListing && h('button', {
             className: 'btn btn-secondary',
             onClick: function() {

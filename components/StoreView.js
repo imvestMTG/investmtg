@@ -4,6 +4,7 @@ import { filterMarketplace } from '../utils/marketplace-data.js';
 import { formatUSD } from '../utils/helpers.js';
 import { GUAM_STORES, getStoresAsync } from '../utils/stores.js';
 import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon } from './shared/Icons.js';
+import { ShareButton } from './shared/ShareButton.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 var h = React.createElement;
 
@@ -73,7 +74,15 @@ export function StoreView(props) {
 
     // Page header
     h('div', { className: 'store-page-header' },
-      h('h1', { className: 'store-page-title' }, 'Guam MTG Marketplace'),
+      h('div', { className: 'page-header-row' },
+        h('h1', { className: 'store-page-title' }, 'Guam MTG Marketplace'),
+        h(ShareButton, {
+          title: 'Guam MTG Marketplace | investMTG',
+          text: 'Buy, sell, and trade Magic cards locally in Guam on investMTG',
+          url: 'https://www.investmtg.com/#store',
+          size: 'sm'
+        })
+      ),
       h('p', { className: 'store-page-intro' },
         'Buy, sell, and trade Magic cards with Guam\'s local community. All transactions happen in person at local stores or meetups.'
       ),

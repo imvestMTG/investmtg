@@ -283,3 +283,27 @@ export function ListIcon() {
     h('line', { x1: '3', y1: '18', x2: '3.01', y2: '18' })
   );
 }
+
+export function ShareIcon() {
+  return h(Icon, null,
+    h('circle', { cx: '18', cy: '5', r: '3' }),
+    h('circle', { cx: '6', cy: '12', r: '3' }),
+    h('circle', { cx: '18', cy: '19', r: '3' }),
+    h('line', { x1: '8.59', y1: '13.51', x2: '15.42', y2: '17.49' }),
+    h('line', { x1: '15.41', y1: '6.51', x2: '8.59', y2: '10.49' })
+  );
+}
+
+export function CopyIcon() {
+  return h(Icon, null,
+    h('rect', { x: '9', y: '9', width: '13', height: '13', rx: '2', ry: '2' }),
+    h('path', { d: 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' })
+  );
+}
+
+export function LinkIcon() {
+  return h(Icon, null,
+    h('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }),
+    h('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })
+  );
+}

@@ -4,6 +4,7 @@ import { fetchMovers, fetchJustTCGDetail } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl } from '../utils/helpers.js';
 import { getSetGainers, getSetLosers } from '../utils/echomtg-api.js';
 import { TrendingIcon } from './shared/Icons.js';
+import { ShareButton } from './shared/ShareButton.js';
 var h = React.createElement;
 
 /* Map frontend category keys to backend category names */
@@ -226,7 +227,15 @@ export function MarketMoversView() {
   var activeCat = CATEGORIES.find(function(c) { return c.key === activeCategory; });
 
   return h('div', { className: 'container market-movers-view' },
-    h('h1', null, h(TrendingIcon, null), ' Market Movers'),
+    h('div', { className: 'page-header-row' },
+      h('h1', null, h(TrendingIcon, null), ' Market Movers'),
+      h(ShareButton, {
+        title: 'MTG Market Movers | investMTG',
+        text: 'Check out the biggest MTG price movers right now on investMTG',
+        url: 'https://www.investmtg.com/#movers',
+        size: 'sm'
+      })
+    ),
     h('p', { className: 'market-subtitle' },
       'Real-time MTG card prices powered by Scryfall + JustTCG market data.'
     ),
