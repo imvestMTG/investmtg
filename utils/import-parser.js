@@ -87,6 +87,7 @@ export function parseManaboxCSV(csvText) {
     'scryfall id', 'scryfall_id', 'scryfallid',
     'tcgplayer id'
   ]);
+  var languageIdx = findCol(header, ['language', 'lang', 'card language']);
 
   if (nameIdx === -1) {
     return { cards: [], errors: ['Could not find a "Name" or "Card Name" column in CSV header. Found columns: ' + header.join(', ')] };
@@ -149,6 +150,12 @@ export function parseManaboxCSV(csvText) {
     var scryfallId = '';
     if (scryfallIdx !== -1 && cols[scryfallIdx]) scryfallId = cols[scryfallIdx].trim();
 
+    var language = 'English';
+    if (languageIdx !== -1 && cols[languageIdx]) {
+      var rawLang = cols[languageIdx].trim();
+      if (rawLang) language = rawLang;
+    }
+
     // Expand quantity into individual cards for bulk creation
     for (var q = 0; q < qty; q++) {
       cards.push({
@@ -158,6 +165,7 @@ export function parseManaboxCSV(csvText) {
         condition: condition,
         price: price,
         foil: foil,
+        language: language,
         scryfallId: scryfallId,
         notes: foil ? 'Foil' : ''
       });

@@ -1,5 +1,42 @@
 # investMTG — Changelog
 
+## 2026-03-15: v77 — Foil/Language Variant Support
+
+**Finish (Foil) variants for listings**
+- Listings now support a `finish` field: Non-Foil, Foil, or Etched
+- DB schema: `ALTER TABLE listings ADD COLUMN finish TEXT DEFAULT 'nonfoil'`
+- All existing listings default to 'nonfoil' (backward compatible)
+- SellerDashboard listing form: chip selector for finish type, auto-suggests
+  foil price from Scryfall `prices.usd_foil` when foil is selected
+- ListingModal (quick-list from card detail): same finish selector
+- Finish badges displayed on My Listings, Cart, and BuyLocal modals
+- Scryfall `finishes` array per printing determines which finishes are available;
+  unavailable finishes are disabled in the selector
+
+**Language variants for listings**
+- Listings already had `language` column (default 'English') but no UI
+- Added language dropdown (12 MTG languages including Phyrexian) to:
+  SellerDashboard listing form, ListingModal
+- Language badge shown on listings, cart items, and buy-local modal
+  when language is not English
+- Bulk import (CSV): parses `language` column from Manabox/DragonShield exports
+
+**Worker updates**
+- Both INSERT paths (batch + single) now include `finish` column
+- PUT (update) path supports `finish` and `language` updates
+- GET listings API: new `finish` and `language` query filters
+- GET response mapping includes `finish` and `language` fields
+
+**CSS additions**
+- `.finish-badge`, `.finish-foil`, `.finish-etched` badge styles
+- `.language-badge` for non-English language display
+- `.finish-selector`, `.finish-chip` chip selector with active/disabled states
+- Light theme variants included
+
+**Files modified:** worker/worker.js, components/SellerDashboard.js,
+components/ListingModal.js, components/CartView.js, components/BuyLocalModal.js,
+utils/import-parser.js, style.css, sw.js, CHANGES.md
+
 ## 2026-03-15: v76 — Fix Sign-In and Camera Scanner
 
 **Bug 1: Sign-in stuck after Google OAuth (CRITICAL)**

@@ -6,6 +6,10 @@ import { getCardPrice, formatUSD, getScryfallImageUrl } from '../utils/helpers.j
 import { fetchConditionPrices } from '../utils/api.js';
 var h = React.createElement;
 
+var FINISHES = ['nonfoil', 'foil', 'etched'];
+var FINISH_LABELS = { nonfoil: 'Non-Foil', foil: '\u2728 Foil', etched: '\u25C6 Etched' };
+var LANGUAGES = ['English', 'Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'Korean', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Russian', 'Phyrexian'];
+
 /* Input sanitization for marketplace listings */
 function sanitize(str, maxLen) {
   if (!str) return '';
@@ -66,6 +70,12 @@ export function ListingModal(props) {
   var ref7 = React.useState(false);
   var priceManuallyEdited = ref7[0], setPriceManuallyEdited = ref7[1];
 
+  /* Finish and language state */
+  var ref8 = React.useState('nonfoil');
+  var finish = ref8[0], setFinish = ref8[1];
+  var ref9 = React.useState('English');
+  var language = ref9[0], setLanguage = ref9[1];
+
   /* Sync state when prefillCard changes (modal opens for a new card) */
   React.useEffect(function() {
     if (cardData) {
@@ -73,6 +83,8 @@ export function ListingModal(props) {
       setSetName(cardData.setName);
       setPrice(cardData.price);
       setCondition('NM');
+      setFinish('nonfoil');
+      setLanguage('English');
       setPriceManuallyEdited(false);
       setConditionPrices({});
     } else if (prefillCardName) {
@@ -80,6 +92,8 @@ export function ListingModal(props) {
       setSetName('');
       setPrice('');
       setCondition('NM');
+      setFinish('nonfoil');
+      setLanguage('English');
       setPriceManuallyEdited(false);
       setConditionPrices({});
     }
@@ -151,6 +165,8 @@ export function ListingModal(props) {
       cardName: cleanName,
       setName: cleanSet,
       condition: condition,
+      finish: finish,
+      language: language,
       price: cleanPrice,
       type: type,
       seller: seller,
@@ -168,6 +184,8 @@ export function ListingModal(props) {
     setSetName('');
     setPrice('');
     setCondition('NM');
+    setFinish('nonfoil');
+    setLanguage('English');
     setPriceManuallyEdited(false);
     setConditionPrices({});
     onClose();
@@ -357,6 +375,48 @@ export function ListingModal(props) {
               placeholder: '0.00',
               required: true
             })
+          )
+        ),
+
+        /* Finish + Language row */
+        h('div', { className: 'mp-form-grid-2' },
+          h('div', { className: 'mp-form-row' },
+            h('label', null, 'Finish'),
+            h('div', { className: 'finish-selector' },
+              FINISHES.map(function(f) {
+                var availFinishes = prefillCard && prefillCard.finishes ? prefillCard.finishes : FINISHES;
+                var isAvailable = availFinishes.indexOf(f) !== -1;
+                return h('button', {
+                  key: f,
+                  type: 'button',
+                  className: 'finish-chip' + (finish === f ? ' finish-chip--active' : '') + (f === 'foil' ? ' finish-chip--foil' : '') + (f === 'etched' ? ' finish-chip--etched' : '') + (!isAvailable ? ' finish-chip--disabled' : ''),
+                  disabled: !isAvailable,
+                  onClick: function() {
+                    setFinish(f);
+                    // Suggest foil price when switching to foil/etched
+                    if (!priceManuallyEdited && cardData) {
+                      if ((f === 'foil' || f === 'etched') && prefillCard && prefillCard.prices && prefillCard.prices.usd_foil) {
+                        setPrice(prefillCard.prices.usd_foil);
+                      } else if (f === 'nonfoil' && cardData.nmPrice > 0) {
+                        setPrice(cardData.nmPrice.toFixed(2));
+                      }
+                    }
+                  }
+                }, FINISH_LABELS[f] || f);
+              })
+            )
+          ),
+          h('div', { className: 'mp-form-row' },
+            h('label', { htmlFor: 'listing-language' }, 'Language'),
+            h('select', {
+              id: 'listing-language',
+              value: language,
+              onChange: function(e) { setLanguage(e.target.value); }
+            },
+              LANGUAGES.map(function(lang) {
+                return h('option', { key: lang, value: lang }, lang);
+              })
+            )
           )
         ),
 

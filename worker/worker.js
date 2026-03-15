@@ -1297,7 +1297,7 @@ async function handleListingsBatch(request, env) {
           return null;
         }
         return env.DB.prepare(
-          'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           auth.userId,
           item.seller_name,
@@ -1308,6 +1308,7 @@ async function handleListingsBatch(request, env) {
           item.set_name || '',
           item.condition,
           item.language || 'English',
+          item.finish || 'nonfoil',
           item.price,
           '',  // image_uri always empty — storage optimization
           item.notes || '',
@@ -1357,6 +1358,18 @@ async function handleListings(request, env) {
       params.push(condition);
     }
 
+    const finish = url.searchParams.get('finish') || '';
+    if (finish) {
+      query += ' AND finish = ?';
+      params.push(finish);
+    }
+
+    const language = url.searchParams.get('language') || '';
+    if (language) {
+      query += ' AND language = ?';
+      params.push(language);
+    }
+
     if (sort === 'price_asc') query += ' ORDER BY price ASC';
     else if (sort === 'price_desc') query += ' ORDER BY price DESC';
     else query += ' ORDER BY created_at DESC';
@@ -1371,6 +1384,8 @@ async function handleListings(request, env) {
     const countParams = [status];
     if (search) { countQuery += ' AND (card_name LIKE ? OR seller_name LIKE ?)'; countParams.push(`%${search}%`, `%${search}%`); }
     if (condition) { countQuery += ' AND condition = ?'; countParams.push(condition); }
+    if (finish) { countQuery += ' AND finish = ?'; countParams.push(finish); }
+    if (language) { countQuery += ' AND language = ?'; countParams.push(language); }
 
     const countRow = await env.DB.prepare(countQuery).bind(...countParams).first();
 
@@ -1384,7 +1399,8 @@ async function handleListings(request, env) {
       cardName: r.card_name,
       setName: r.set_name,
       condition: r.condition,
-      language: r.language,
+      language: r.language || 'English',
+      finish: r.finish || 'nonfoil',
       price: r.price,
       image: r.image_uri || '',
       notes: r.notes,
@@ -1417,7 +1433,7 @@ async function handleListings(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     const result = await env.DB.prepare(
-      'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       auth.userId,
       body.seller_name,
@@ -1428,6 +1444,7 @@ async function handleListings(request, env) {
       body.set_name || '',
       body.condition,
       body.language || 'English',
+      body.finish || 'nonfoil',
       body.price,
       '',  // image_uri always empty — storage optimization v41
       body.notes || '',
@@ -1448,8 +1465,8 @@ async function handleListings(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(
-      'UPDATE listings SET status = ?, price = COALESCE(?, price), notes = COALESCE(?, notes), updated_at = ? WHERE id = ? AND user_id = ?'
-    ).bind(body.status || 'active', body.price || null, body.notes || null, now, id, auth.userId).run();
+      'UPDATE listings SET status = ?, price = COALESCE(?, price), notes = COALESCE(?, notes), finish = COALESCE(?, finish), language = COALESCE(?, language), updated_at = ? WHERE id = ? AND user_id = ?'
+    ).bind(body.status || 'active', body.price || null, body.notes || null, body.finish || null, body.language || null, now, id, auth.userId).run();
 
     return json({ success: true }, 200, request);
   }

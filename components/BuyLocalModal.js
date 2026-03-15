@@ -35,6 +35,8 @@ export function BuyLocalModal({ card, listings, updateCart, onClose }) {
         name: selectedListing.cardName || card.name,
         set: selectedListing.setName || card.set_name || '',
         condition: selectedListing.condition,
+        finish: selectedListing.finish || 'nonfoil',
+        language: selectedListing.language || 'English',
         price: selectedListing.price,
         seller: selectedListing.seller,
         image: selectedListing.image || '',
@@ -93,7 +95,11 @@ export function BuyLocalModal({ card, listings, updateCart, onClose }) {
                     },
                     onClick: function() { setSelectedListing(l); }
                   },
-                    h('span', null, l.seller, ' \u2014 ', l.condition),
+                    h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' } },
+                      l.seller, ' \u2014 ', l.condition,
+                      l.finish && l.finish !== 'nonfoil' && h('span', { className: 'finish-badge finish-' + l.finish }, l.finish === 'foil' ? '\u2728 Foil' : '\u25C6 Etched'),
+                      l.language && l.language !== 'English' && h('span', { className: 'language-badge' }, l.language)
+                    ),
                     h('span', { style: { fontWeight: '700' } }, formatUSD(l.price))
                   );
                 })

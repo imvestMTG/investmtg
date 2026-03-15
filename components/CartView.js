@@ -222,7 +222,13 @@ export function CartView(props) {
                       }, item.set),
                       item.condition && h('span', {
                         className: 'cart-item-cond-badge cond-' + (item.condition || '').toLowerCase()
-                      }, item.condition)
+                      }, item.condition),
+                      item.finish && item.finish !== 'nonfoil' && h('span', {
+                        className: 'finish-badge finish-' + item.finish
+                      }, item.finish === 'foil' ? '\u2728 Foil' : '\u25C6 Etched'),
+                      item.language && item.language !== 'English' && h('span', {
+                        className: 'language-badge'
+                      }, item.language)
                     ),
                     h('div', { className: 'cart-item-unit-price' }, formatUSD(item.price || 0), ' each')
                   ),

@@ -13,6 +13,9 @@ import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+var FINISHES = ['nonfoil', 'foil', 'etched'];
+var FINISH_LABELS = { nonfoil: 'Non-Foil', foil: '\u2728 Foil', etched: '\u25C6 Etched' };
+var LANGUAGES = ['English', 'Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'Korean', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Russian', 'Phyrexian'];
 var LISTING_TYPES = ['sale', 'trade'];
 
 // Scryfall autocomplete — debounced fetch
@@ -96,6 +99,7 @@ function useScryfallPrintings(cardName) {
                 rarity: card.rarity,
                 priceUsd: card.prices && card.prices.usd,
                 priceUsdFoil: card.prices && card.prices.usd_foil,
+                finishes: card.finishes || ['nonfoil'],
                 imageSmall: getCardImageSmall(card),
                 imageNormal: getScryfallImageUrl(card, 'normal'),
                 scryfallId: card.id
@@ -262,6 +266,8 @@ function ListingForm(props) {
     setCode: '',
     collectorNumber: '',
     condition: 'NM',
+    finish: 'nonfoil',
+    language: 'English',
     price: '',
     type: 'sale',
     notes: '',
@@ -376,8 +382,17 @@ function ListingForm(props) {
     update('imageUri', printing.imageSmall || '');
     update('imageNormal', printing.imageNormal || '');
     update('scryfallId', printing.scryfallId || '');
-    if (!form.price && printing.priceUsd) {
-      update('price', printing.priceUsd);
+    // Store available finishes from Scryfall for this printing
+    var avail = printing.finishes || ['nonfoil'];
+    // Default finish to first available (nonfoil if available, else foil, etc.)
+    if (avail.indexOf(form.finish) === -1) {
+      update('finish', avail[0] || 'nonfoil');
+    }
+    if (!form.price) {
+      var suggestedPrice = (form.finish === 'foil' || form.finish === 'etched')
+        ? (printing.priceUsdFoil || printing.priceUsd)
+        : (printing.priceUsd || printing.priceUsdFoil);
+      if (suggestedPrice) update('price', suggestedPrice);
     }
   }
 
@@ -647,6 +662,53 @@ function ListingForm(props) {
         )
       ),
 
+      // Finish + Language row
+      h('div', { className: 'form-row-2col' },
+        h('div', { className: 'form-group' },
+          h('label', { className: 'form-label' }, 'Finish'),
+          h('div', { className: 'finish-selector' },
+            FINISHES.map(function(f) {
+              // Get available finishes from selected printing
+              var selectedPrinting = printingsData.printings.find(function(p) {
+                return p.setCode === form.setCode && p.collectorNumber === form.collectorNumber;
+              });
+              var availFinishes = selectedPrinting ? (selectedPrinting.finishes || ['nonfoil']) : FINISHES;
+              var isAvailable = availFinishes.indexOf(f) !== -1;
+              return h('button', {
+                key: f,
+                type: 'button',
+                className: 'finish-chip' + (form.finish === f ? ' finish-chip--active' : '') + (f === 'foil' ? ' finish-chip--foil' : '') + (f === 'etched' ? ' finish-chip--etched' : '') + (!isAvailable ? ' finish-chip--disabled' : ''),
+                disabled: !isAvailable,
+                onClick: function() {
+                  update('finish', f);
+                  // Update suggested price when switching finish
+                  if (selectedPrinting) {
+                    if (f === 'foil' || f === 'etched') {
+                      if (selectedPrinting.priceUsdFoil) update('price', selectedPrinting.priceUsdFoil);
+                    } else {
+                      if (selectedPrinting.priceUsd) update('price', selectedPrinting.priceUsd);
+                    }
+                  }
+                }
+              }, FINISH_LABELS[f] || f);
+            })
+          )
+        ),
+        h('div', { className: 'form-group' },
+          h('label', { className: 'form-label', htmlFor: 'lf-lang' }, 'Language'),
+          h('select', {
+            id: 'lf-lang',
+            className: 'form-input',
+            value: form.language,
+            onChange: function(e) { update('language', e.target.value); }
+          },
+            LANGUAGES.map(function(lang) {
+              return h('option', { key: lang, value: lang }, lang);
+            })
+          )
+        )
+      ),
+
       // Price
       form.type === 'sale' && h('div', { className: 'form-group' },
         h('label', { className: 'form-label', htmlFor: 'lf-price' }, 'Price (USD)'),
@@ -767,6 +829,8 @@ function BulkImportForm(props) {
         card_name: card.cardName || '',
         price: card.price > 0 ? card.price : (parseFloat(defaultPrice) || 0),
         condition: card.condition || 'NM',
+        finish: card.foil ? 'foil' : 'nonfoil',
+        language: card.language || 'English',
         seller_name: seller.name || '',
         seller_contact: contact || seller.contact || '',
         set_name: card.setName || '',
@@ -899,6 +963,7 @@ function BulkImportForm(props) {
               h('th', null, 'Card Name'),
               h('th', null, 'Set'),
               h('th', null, 'Cond'),
+              h('th', null, 'Finish'),
               h('th', null, 'Price')
             )
           ),
@@ -908,11 +973,12 @@ function BulkImportForm(props) {
                 h('td', null, card.cardName),
                 h('td', null, card.setName || card.setCode || '\u2014'),
                 h('td', null, h('span', { className: 'mp-badge-condition cond-' + card.condition.toLowerCase() }, card.condition)),
+                h('td', null, card.foil ? h('span', { className: 'finish-badge finish-foil' }, '\u2728 Foil') : h('span', { className: 'finish-badge' }, 'Non-Foil')),
                 h('td', null, card.price > 0 ? '$' + card.price.toFixed(2) : '\u2014')
               );
             }),
             cardCount > 20 && h('tr', null,
-              h('td', { colSpan: 4, style: { textAlign: 'center', color: 'var(--color-text-muted)' } },
+              h('td', { colSpan: 5, style: { textAlign: 'center', color: 'var(--color-text-muted)' } },
                 '\u2026 and ' + (cardCount - 20) + ' more'
               )
             )
@@ -1273,6 +1339,8 @@ export function SellerDashboard(props) {
       card_name: listingData.cardName || '',
       price: listingData.price || 0,
       condition: listingData.condition || 'NM',
+      finish: listingData.finish || 'nonfoil',
+      language: listingData.language || 'English',
       seller_name: seller.name || '',
       seller_contact: listingData.contact || seller.contact || '',
       set_name: listingData.setName || '',
@@ -1503,6 +1571,8 @@ export function SellerDashboard(props) {
               var listingId = listing.id;
               var listingPrice = listing.price || 0;
               var listingCondition = listing.condition || 'NM';
+              var listingFinish = listing.finish || 'nonfoil';
+              var listingLanguage = listing.language || 'English';
               var listingNotes = listing.notes || '';
               var cardId = listing.cardId || listing.card_id || '';
               var imageUri = listing.image_uri || listing.imageUri || '';
@@ -1527,6 +1597,12 @@ export function SellerDashboard(props) {
                     h('span', {
                       className: 'mp-badge-condition cond-' + listingCondition.toLowerCase()
                     }, listingCondition),
+                    listingFinish !== 'nonfoil' && h('span', {
+                      className: 'finish-badge finish-' + listingFinish
+                    }, FINISH_LABELS[listingFinish] || listingFinish),
+                    listingLanguage !== 'English' && h('span', {
+                      className: 'language-badge'
+                    }, listingLanguage),
                     h('span', { className: 'mp-badge-type type-' + listingType },
                       listingType === 'sale' ? 'Sale' : 'Trade'
                     )
