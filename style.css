@@ -9590,6 +9590,13 @@ aa.market-cat-desc {
   margin-right: auto;
 }
 
+.scanner-error-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 /* --- Results State --- */
 .scanner-results {
   padding: var(--space-6) 0;

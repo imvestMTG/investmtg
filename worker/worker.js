@@ -151,7 +151,7 @@ function corsHeaders(request) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Permissions-Policy': 'microphone=(), geolocation=()',
   };
   /* Only return CORS headers for allowed origins; unknown origins get security headers only */
   if (!ALLOWED_ORIGINS.includes(origin)) return securityHeaders;

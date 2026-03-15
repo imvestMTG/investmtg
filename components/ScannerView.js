@@ -181,6 +181,13 @@ export function ScannerView(props) {
 
   // ===== Start camera =====
   function startCamera() {
+    // Check if camera is available (Permissions-Policy may block it)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setPhase('error');
+      setErrorMsg('Camera access is not available in this browser. Please use the "Upload Photo" option instead.');
+      return;
+    }
+
     var worker = workerRef;
     var startPromise = worker ? Promise.resolve(worker) : initTesseract();
 
@@ -210,10 +217,10 @@ export function ScannerView(props) {
       console.warn('Camera error:', err);
       setPhase('error');
       setErrorMsg(err.name === 'NotAllowedError'
-        ? 'Camera access denied. Please allow camera permissions in your browser settings.'
+        ? 'Camera access is blocked by your browser or site settings. Try using the "Upload Photo" option to scan a card from your photo library instead.'
         : err.name === 'NotFoundError'
-        ? 'No camera found on this device.'
-        : 'Camera error: ' + err.message);
+        ? 'No camera found on this device. Use the "Upload Photo" option instead.'
+        : 'Camera error: ' + err.message + '. Try using the "Upload Photo" option instead.');
     });
   }
 
@@ -552,7 +559,30 @@ export function ScannerView(props) {
         h('div', { className: 'scanner-error-icon' }, '⚠'),
         h('h2', null, 'Something went wrong'),
         h('p', null, errorMsg),
-        h('button', { className: 'btn-primary', onClick: function() { setPhase('idle'); setErrorMsg(null); } }, 'Try Again')
+        h('div', { className: 'scanner-error-actions' },
+          h('button', { className: 'btn-primary', onClick: function() { setPhase('idle'); setErrorMsg(null); } }, 'Try Again'),
+          h('button', {
+            className: 'btn-secondary',
+            onClick: function() {
+              setPhase('idle');
+              setErrorMsg(null);
+              setTimeout(function() {
+                if (fileInputRef.current) fileInputRef.current.click();
+              }, 100);
+            }
+          },
+            h(ImageIcon),
+            ' Upload Photo'
+          ),
+          h('input', {
+            ref: fileInputRef,
+            type: 'file',
+            accept: 'image/*',
+            capture: 'environment',
+            style: { display: 'none' },
+            onChange: handleFileUpload
+          })
+        )
       )
     );
   }

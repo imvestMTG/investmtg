@@ -1,5 +1,38 @@
 # investMTG — Changelog
 
+## 2026-03-15: v76 — Fix Sign-In and Camera Scanner
+
+**Bug 1: Sign-in stuck after Google OAuth (CRITICAL)**
+- Root cause: `captureTokenFromURL()` in `auth.js` called
+  `window.location.replace(pathname + '#home')` after saving the auth token.
+  Since the URL change was hash-only (same origin + pathname), browsers treated
+  it as a same-page navigation — no full page reload occurred. `checkAuth()`
+  returned a never-resolving promise, leaving the auth state permanently stuck.
+- Fix: Replaced `window.location.replace()` with `history.replaceState()` to
+  silently clean the URL, then let `checkAuth()` proceed normally to verify
+  the token with `/auth/me`. Auth now completes in a single page load.
+
+**Bug 2: Camera scanner blocked by Permissions-Policy**
+- Root cause: Cloudflare zone-level transform rule "Security headers" sets
+  `Permissions-Policy: camera=()` on all proxied responses, blocking
+  `navigator.mediaDevices.getUserMedia()` entirely. The `<meta>` tag in
+  `index.html` allowing `camera=(self)` is overridden by the HTTP header.
+- Partial fix: Updated `ScannerView.js` error handling to detect camera
+  permission blocks and guide users to the "Upload Photo" alternative.
+  Error state now includes an Upload Photo button alongside Try Again.
+- Worker fix: Removed `camera=()` from the worker's own `Permissions-Policy`
+  header (line 154) — now only blocks microphone and geolocation.
+- **TODO:** The Cloudflare zone transform rule (ID `e787d16aedf44d6888b521f96a2b2ee7`)
+  must be updated in the Cloudflare dashboard to change `camera=()` to
+  `camera=(self)`. The current API token lacks Transform Rules permissions.
+
+**Files changed:**
+- `utils/auth.js` — `captureTokenFromURL()` rewrite, `checkAuth()` simplified
+- `components/ScannerView.js` — Camera error handling, Upload Photo fallback in error state
+- `style.css` — `.scanner-error-actions` layout
+- `worker/worker.js` — `Permissions-Policy` header updated
+- `sw.js` — v75 → v76
+
 ## 2026-03-14: v75 — Fix Portfolio Page Crash
 
 **Root cause:** `PortfolioView.js` line 759 referenced `items.length` in the

@@ -56,7 +56,7 @@ function authFetch(path, options) {
 
 /** On app startup: check URL for auth_token from OAuth callback.
  *  Checks both hash fragment (#auth_token=...) and legacy query param (?auth_token=...).
- *  Returns 'redirecting' if a page reload was triggered (caller must abort). */
+ *  Returns 'captured' if a token was found and saved (caller should proceed with auth check). */
 function captureTokenFromURL() {
   try {
     var token = null;
@@ -73,10 +73,16 @@ function captureTokenFromURL() {
     }
     if (token) {
       setToken(token);
-      // Strip auth_token from URL and reload so the app starts fresh.
-      // Return 'redirecting' so checkAuth() knows to stop execution.
-      window.location.replace(window.location.pathname + '#home');
-      return 'redirecting';
+      // Clean the URL: strip auth_token from hash without triggering a page reload.
+      // Use history.replaceState to update the URL silently, then let checkAuth()
+      // continue with the stored token. Hash-only changes via location.replace()
+      // do NOT trigger a full page reload, which left auth in a stuck state.
+      try {
+        window.history.replaceState(null, '', window.location.pathname + '#home');
+      } catch(e2) {
+        window.location.hash = '#home';
+      }
+      return 'captured';
     }
   } catch(e) {
     /* ignore — will fall through to normal auth check */
@@ -89,12 +95,8 @@ export function checkAuth() {
   if (_checked) return Promise.resolve(_user);
 
   // First, check if we just came back from OAuth redirect.
-  // If captureTokenFromURL triggers a page reload, return a pending promise
-  // (the page will navigate before it resolves — this prevents aborted fetches).
-  var captured = captureTokenFromURL();
-  if (captured === 'redirecting') {
-    return new Promise(function() {}); // never resolves — page is reloading
-  }
+  // If a token was captured from the URL, proceed to verify it with the backend.
+  captureTokenFromURL();
 
   var token = getToken();
   if (!token) {
