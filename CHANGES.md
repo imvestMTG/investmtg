@@ -1,5 +1,19 @@
 # investMTG — Changelog
 
+## 2026-03-15: v83 — Seller Notification Emails (INV-12)
+
+**Seller Reservation Notification**
+- When a buyer places an order, each seller with items in that order receives an email notification via Resend
+- Email includes: order ID, reserved items with condition/price, buyer total, buyer contact info (name, email, phone)
+- Seller email is looked up from the `sellers.contact` column; skipped if contact is not an email address
+- Styled with investMTG dark theme matching the buyer confirmation email
+
+**Privacy Policy Update**
+- Updated Resend disclosure to include seller reservation notifications
+- Added transparency note: buyer contact details are shared with sellers for pickup coordination
+
+- SW cache version bumped to v83
+
 ## 2026-03-15: v82 — Sitemap Update, Image Lazy Loading & Skeleton Placeholders
 
 **Sitemap (sitemap.xml) — INV-10**

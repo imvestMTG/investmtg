@@ -2678,6 +2678,81 @@ async function sendOrderConfirmationEmail(order, env, emailType) {
   } catch (e) {
     console.error('[Email] Error sending: ' + e.message);
   }
+
+  // ── Seller notification (only on new orders, not payment confirmations) ──
+  if (emailType === 'order_received') {
+    try {
+      let items;
+      try { items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; }
+      catch (e) { items = []; }
+
+      // Collect unique seller names from items
+      const sellerNames = [...new Set((items || []).map(i => i.seller).filter(Boolean))];
+      if (sellerNames.length === 0) return;
+
+      // Look up seller emails from DB
+      for (const sellerName of sellerNames) {
+        // sellers table uses 'name' and 'contact' columns
+        const seller = await env.DB.prepare(
+          'SELECT name, contact FROM sellers WHERE name = ? LIMIT 1'
+        ).bind(sellerName).first();
+
+        // contact may be email or phone — only send if it looks like an email
+        const sellerContact = seller && seller.contact ? seller.contact.trim() : '';
+        if (!sellerContact || !sellerContact.includes('@')) {
+          console.log('[Email] No email found for seller: ' + sellerName + ' (contact: ' + sellerContact + ')');
+          continue;
+        }
+
+        const sellerItems = items.filter(i => i.seller === sellerName);
+        const sellerItemList = sellerItems.map(i => '• ' + (i.name || 'Card') + ' (' + (i.condition || 'NM') + ') — $' + ((i.price || 0).toFixed ? i.price.toFixed(2) : i.price)).join('\n');
+        const sellerTotal = sellerItems.reduce(function(sum, i) { return sum + (parseFloat(i.price) || 0) * (i.quantity || 1); }, 0);
+
+        const sellerHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
+          '<body style="margin:0;padding:0;background:#0D0F12;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">' +
+          '<div style="max-width:600px;margin:0 auto;padding:24px 16px">' +
+          '<div style="text-align:center;padding:24px 0"><span style="font-size:24px;font-weight:700;color:#E8E6E1">invest<span style="color:#D4A843">MTG</span></span></div>' +
+          '<div style="background:#22c55e20;border:1px solid #22c55e40;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">' +
+          '<p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#22c55e">New Reservation</p>' +
+          '<p style="margin:0;color:#8B8D94;font-size:14px">A buyer has reserved cards from your listings.</p></div>' +
+          '<div style="background:#111318;border:1px solid #2A2F3A;border-radius:12px;padding:20px;margin-bottom:24px">' +
+          '<p style="margin:0 0 8px;font-size:13px;color:#8B8D94;text-transform:uppercase;letter-spacing:0.05em">Order Details</p>' +
+          '<p style="margin:0 0 4px;color:#D4A843;font-weight:700">' + order.id + '</p>' +
+          '<p style="margin:0 0 12px;color:#8B8D94;font-size:13px">' + new Date(order.created_at || Date.now()).toLocaleString('en-US', { timeZone: 'Pacific/Guam', dateStyle: 'long', timeStyle: 'short' }) + ' ChST</p>' +
+          '<p style="margin:0 0 4px;color:#8B8D94;font-size:12px;text-transform:uppercase">Items reserved from you:</p>' +
+          '<pre style="margin:0;color:#E8E6E1;font-size:14px;white-space:pre-wrap">' + sellerItemList + '</pre>' +
+          '<p style="margin:12px 0 0;color:#E8E6E1;font-weight:700">Your total: $' + sellerTotal.toFixed(2) + '</p></div>' +
+          '<div style="background:#111318;border:1px solid #2A2F3A;border-radius:12px;padding:20px;margin-bottom:24px">' +
+          '<p style="margin:0 0 8px;font-size:13px;color:#8B8D94;text-transform:uppercase;letter-spacing:0.05em">Buyer Contact</p>' +
+          (order.contact_name ? '<p style="margin:0 0 4px;color:#E8E6E1">' + order.contact_name + '</p>' : '') +
+          (order.contact_email ? '<p style="margin:0 0 4px;color:#8B8D94;font-size:13px">' + order.contact_email + '</p>' : '') +
+          (order.contact_phone ? '<p style="margin:0;color:#8B8D94;font-size:13px">' + order.contact_phone + '</p>' : '') +
+          '</div>' +
+          '<div style="text-align:center;padding:24px 0;border-top:1px solid #2A2F3A">' +
+          '<p style="margin:0;color:#8B8D94;font-size:12px">investMTG — Guam\'s MTG Marketplace</p></div>' +
+          '</div></body></html>';
+
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'investMTG <orders@investmtg.com>',
+            to: [sellerContact],
+            subject: 'New Reservation — ' + order.id,
+            html: sellerHtml,
+          }),
+        }).then(function(r) {
+          if (r.ok) console.log('[Email] Seller notification sent to ' + sellerContact);
+          else r.text().then(function(t) { console.error('[Email] Seller notification failed: ' + t); });
+        });
+      }
+    } catch (sellerErr) {
+      console.error('[Email] Seller notification error:', sellerErr.message);
+    }
+  }
 }
 
 /* ══════════════════════════════════════
