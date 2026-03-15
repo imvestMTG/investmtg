@@ -9,6 +9,7 @@
 #    bash tests/qa.sh --full         # everything incl. perf + DNS (~65 checks)
 #    bash tests/qa.sh --local        # local code checks only (no HTTP)
 #    bash tests/qa.sh --live         # live site checks only (no local)
+#    bash tests/qa.sh --deploy       # full close-out: push → wait → QA → cache purge
 #
 #  Requires: bash, curl, python3
 # ═══════════════════════════════════════════════════════════════
@@ -39,6 +40,7 @@ is_standard() { [ "$MODE" = "--standard" ] || [ "$MODE" = "--full" ]; }
 is_full()     { [ "$MODE" = "--full" ]; }
 is_local()    { [ "$MODE" = "--local" ]; }
 is_live()     { [ "$MODE" = "--live" ]; }
+is_deploy()   { [ "$MODE" = "--deploy" ]; }
 run_local()   { ! is_live; }
 run_remote()  { ! is_local; }
 
@@ -97,6 +99,74 @@ time_url() {
 }
 
 # ═══════════════════════════════════════════════════════════════
+# DEPLOY MODE: push → wait for propagation → cache purge → standard QA
+# ═══════════════════════════════════════════════════════════════
+if is_deploy; then
+  cd "$REPO_DIR"
+
+  printf "\n${BOLD}${B}── Deploy: Git Status ──${W}\n"
+  if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+    printf "${R}  ✗${W} Uncommitted changes — commit first, then run --deploy\n"
+    exit 1
+  fi
+
+  # Check if local is ahead of remote
+  git fetch origin main --quiet 2>/dev/null || true
+  LOCAL_SHA=$(git rev-parse HEAD 2>/dev/null)
+  REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null)
+  if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+    printf "${Y}  …${W} Local ahead of remote — pushing...\n"
+    git push origin main 2>&1
+    if [ $? -ne 0 ]; then printf "${R}  ✗${W} Git push failed\n"; exit 1; fi
+    printf "${G}  ✓${W} Pushed to origin/main\n"
+  else
+    printf "${G}  ✓${W} Already in sync with origin/main\n"
+  fi
+
+  # Wait for GitHub Pages propagation (poll SW version)
+  printf "\n${BOLD}${B}── Deploy: Waiting for GitHub Pages ──${W}\n"
+  LOCAL_VER=$(grep -o "investmtg-v[0-9]*" sw.js 2>/dev/null | head -1)
+  printf "${C}  ℹ${W} Expecting: $LOCAL_VER\n"
+  MAX_WAIT=90
+  WAITED=0
+  INTERVAL=10
+  while [ $WAITED -lt $MAX_WAIT ]; do
+    DEPLOYED_VER=$(curl -s "$SITE/sw.js?_=$(date +%s)" 2>/dev/null | grep -o "investmtg-v[0-9]*" | head -1)
+    if [ "$DEPLOYED_VER" = "$LOCAL_VER" ]; then
+      printf "${G}  ✓${W} Live: $DEPLOYED_VER (waited ${WAITED}s)\n"
+      break
+    fi
+    printf "${Y}  …${W} Still $DEPLOYED_VER (${WAITED}s / ${MAX_WAIT}s)\n"
+    sleep $INTERVAL
+    WAITED=$((WAITED + INTERVAL))
+  done
+  if [ "$DEPLOYED_VER" != "$LOCAL_VER" ]; then
+    printf "${Y}  ⚠${W} Timed out — deployed is $DEPLOYED_VER (expected $LOCAL_VER)\n"
+  fi
+
+  # Cloudflare cache purge
+  printf "\n${BOLD}${B}── Deploy: Cache Purge ──${W}\n"
+  CF_TOKEN="${CF_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}"
+  CF_ZONE="7906e5ca359b29ab374228024e70fffd"
+  if [ -n "$CF_TOKEN" ]; then
+    PURGE_OK=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/purge_cache" \
+      -H "Authorization: Bearer $CF_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"purge_everything":true}' 2>/dev/null \
+      | python3 -c "import sys,json; print(json.load(sys.stdin).get('success',''))" 2>/dev/null)
+    if [ "$PURGE_OK" = "True" ]; then printf "${G}  ✓${W} Cache purged\n"
+    else printf "${Y}  ⚠${W} Cache purge may have failed\n"; fi
+    sleep 3
+  else
+    printf "${Y}  ⚠${W} CF_TOKEN not set — skipping cache purge\n"
+    printf "${C}  ℹ${W} Export CF_TOKEN or CLOUDFLARE_API_TOKEN before running\n"
+  fi
+
+  # Switch to standard mode for the rest of the QA checks
+  printf "\n${BOLD}${B}── Deploy: Running Standard QA ──${W}\n"
+  MODE="--standard"
+fi
+
 echo ""
 printf "${BOLD}╔═══════════════════════════════════════════════════╗${W}\n"
 printf "${BOLD}║  investMTG QA  %-35s║${W}\n" "$(date -u '+%Y-%m-%d %H:%M UTC')"
