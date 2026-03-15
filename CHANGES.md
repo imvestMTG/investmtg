@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-15: v80 — Global Heading Font Consistency
+
+- Added global `h1-h6 { font-family: var(--font-display) }` rule for consistent Clash Display headers site-wide
+- Fixed `meta-detail-section h4` using hardcoded `14px`/`rgba` → now uses `--text-sm` and `--color-text`
+- Fixed 8 instances of undefined `--color-text-primary` fallback → replaced with theme-aware `--color-text`
+- Added missing `font-weight: 700` to `.faq-title`
+- Affected views: Market Movers, Decklist, Meta, Legal (Terms/Privacy), FAQ, Portfolio, Scanner
+- SW cache version bumped to v80
+
 ## 2026-03-15: v79 — Sentry Error Monitoring
 
 - Added Sentry CDN loader script (`a0d6e361294e2db9e4c93fa920d9ffd1`) to index.html
