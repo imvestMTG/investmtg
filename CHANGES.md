@@ -1,5 +1,12 @@
 # investMTG — Changelog
 
+## 2026-03-15: v79 — Sentry Error Monitoring
+
+- Added Sentry CDN loader script (`a0d6e361294e2db9e4c93fa920d9ffd1`) to index.html
+- Updated CSP: added `https://js.sentry-cdn.com` to `script-src`, `https://*.sentry.io` to `connect-src`
+- Added Sentry disclosure to Third-Party Services in Privacy Policy (PrivacyPolicyView.js)
+- SW cache version bumped to v79
+
 ## 2026-03-15: v78 — Compliance & Legal Policy Update
 
 **Privacy Policy (PrivacyPolicyView.js)**

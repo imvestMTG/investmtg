@@ -61,7 +61,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(), geolocation=(), payment=(self \"https://js.sumup.com\" \"https://gateway.sumup.com\")">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com https://*.paypalobjects.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com https://lh3.googleusercontent.com https://assets.echomtg.com data: blob:; connect-src 'self' https://api.investmtg.com https://api.scryfall.com https://gateway.sumup.com https://api.sumup.com https://js.sumup.com https://api.justtcg.com https://api2.moxfield.com https://edhtop16.com https://topdeck.gg https://*.paypal.com https://*.paypalobjects.com https://cdn.jsdelivr.net; worker-src 'self' blob:; frame-src https://gateway.sumup.com https://js.sumup.com https://*.paypal.com https://*.paypalobjects.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://gateway.sumup.com https://js.sumup.com https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com https://*.paypalobjects.com https://js.sentry-cdn.com 'unsafe-inline'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src https://cdn.fontshare.com; img-src 'self' https://cards.scryfall.io https://api.scryfall.com https://*.scryfall.com https://static.sumup.com https://lh3.googleusercontent.com https://assets.echomtg.com data: blob:; connect-src 'self' https://api.investmtg.com https://api.scryfall.com https://gateway.sumup.com https://api.sumup.com https://js.sumup.com https://api.justtcg.com https://api2.moxfield.com https://edhtop16.com https://topdeck.gg https://*.paypal.com https://*.paypalobjects.com https://cdn.jsdelivr.net https://*.sentry.io; worker-src 'self' blob:; frame-src https://gateway.sumup.com https://js.sumup.com https://*.paypal.com https://*.paypalobjects.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com;">
 
 <!-- Structured Data -->
 <script type="application/ld+json">
@@ -130,6 +130,12 @@
 <link rel="preconnect" href="https://cards.scryfall.io" crossorigin>
 <link rel="dns-prefetch" href="https://api.justtcg.com">
 <link rel="dns-prefetch" href="https://api2.moxfield.com">
+
+<!-- Sentry — Error tracking (loads async, non-blocking) -->
+<script
+  src="https://js.sentry-cdn.com/a0d6e361294e2db9e4c93fa920d9ffd1.min.js"
+  crossorigin="anonymous"
+></script>
 
 <!-- Preload hero LCP image -->
 <link rel="preload" href="./images/hero-bg.webp" as="image" type="image/webp" fetchpriority="high">
