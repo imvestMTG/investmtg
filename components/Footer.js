@@ -25,13 +25,11 @@ export function Footer() {
         ' & ', h('a', { href: 'https://justtcg.com', target: '_blank', rel: 'noopener' }, 'JustTCG'),
         '. Meta data from ', h('a', { href: 'https://edhtop16.com', target: '_blank', rel: 'noopener' }, 'EDH Top 16'),
         ' & ', h('a', { href: 'https://topdeck.gg', target: '_blank', rel: 'noopener' }, 'TopDeck.gg'),
-        '. Decklists via ', h('a', { href: 'https://www.moxfield.com', target: '_blank', rel: 'noopener' }, 'Moxfield'), '.',
-        h('br', null),
-        'Built with ', h('a', { href: 'https://www.perplexity.ai/computer', target: '_blank', rel: 'noopener' }, 'Perplexity Computer'), '.'
+        '. Decklists via ', h('a', { href: 'https://www.moxfield.com', target: '_blank', rel: 'noopener' }, 'Moxfield'), '.'
       ),
       h('p', { className: 'footer-accessibility' },
         'investMTG is committed to making this site accessible to all users. If you encounter an accessibility barrier, please contact us at ',
-        h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'),
+        h('a', { href: 'mailto:developer@investmtg.com' }, 'developer@investmtg.com'),
         ' and we will make reasonable efforts to address it.'
       ),
       h('p', { className: 'footer-wotc-disclaimer' },

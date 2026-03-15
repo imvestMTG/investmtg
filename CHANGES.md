@@ -1,5 +1,11 @@
 # investMTG — Changelog
 
+## 2026-03-15: v84 — Footer Cleanup
+
+- Removed "Built with Perplexity Computer" credit line from footer
+- Updated accessibility contact email from `bloodshutdawn@gmail.com` to `developer@investmtg.com`
+- SW cache version bumped to v84
+
 ## 2026-03-15: v83 — Seller Notification Emails (INV-12)
 
 **Seller Reservation Notification**
