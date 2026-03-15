@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-15: v85 — Scanner Camera Fix
+
+- Camera now starts immediately without waiting for OCR engine to download first
+- Tesseract.js OCR loads in parallel while camera is active (no more stuck "Loading..." button)
+- Added 30s timeout on OCR engine download to prevent infinite hang
+- Better error messages: NotReadableError (camera in use), NotAllowedError (permission denied)
+- OCR auto-retries loading on capture if background preload failed
+- SW cache version bumped to v85
+
 ## 2026-03-15: v84 — Footer Cleanup
 
 - Removed "Built with Perplexity Computer" credit line from footer

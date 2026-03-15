@@ -167,7 +167,13 @@ export function ScannerView(props) {
   function initTesseract() {
     setPhase('loading-ocr');
     setStatusMsg('Loading card recognition engine…');
-    return loadTesseract().then(function(Tesseract) {
+
+    // 30s timeout so it doesn't hang forever
+    var timeout = new Promise(function(_, reject) {
+      setTimeout(function() { reject(new Error('OCR engine took too long to load. Check your connection and try again.')); }, 30000);
+    });
+
+    var load = loadTesseract().then(function(Tesseract) {
       return Tesseract.createWorker('eng', 1, {
         workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
         corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
@@ -177,6 +183,8 @@ export function ScannerView(props) {
       setWorkerRef(w);
       return w;
     });
+
+    return Promise.race([load, timeout]);
   }
 
   // ===== Start camera =====
@@ -188,38 +196,42 @@ export function ScannerView(props) {
       return;
     }
 
-    var worker = workerRef;
-    var startPromise = worker ? Promise.resolve(worker) : initTesseract();
+    // Start camera FIRST for instant feedback, load OCR in parallel
+    setPhase('camera');
+    setStatusMsg('');
+    setErrorMsg(null);
+    setMatchedCards([]);
+    setCapturedImage(null);
+    setOcrText(null);
 
-    startPromise.then(function() {
-      setPhase('camera');
-      setStatusMsg('');
-      setErrorMsg(null);
-      setMatchedCards([]);
-      setCapturedImage(null);
-      setOcrText(null);
+    var constraints = {
+      video: {
+        facingMode: facingMode,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    };
 
-      var constraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      };
-
-      return navigator.mediaDevices.getUserMedia(constraints);
-    }).then(function(mediaStream) {
+    navigator.mediaDevices.getUserMedia(constraints).then(function(mediaStream) {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+      }
+      // Load Tesseract in background if not already loaded
+      if (!workerRef) {
+        initTesseract().catch(function(err) {
+          console.warn('OCR preload failed (will retry on capture):', err.message);
+        });
       }
     }).catch(function(err) {
       console.warn('Camera error:', err);
       setPhase('error');
       setErrorMsg(err.name === 'NotAllowedError'
-        ? 'Camera access is blocked by your browser or site settings. Try using the "Upload Photo" option to scan a card from your photo library instead.'
+        ? 'Camera access was denied. Go to your browser settings and allow camera access for investmtg.com, then reload the page.'
         : err.name === 'NotFoundError'
         ? 'No camera found on this device. Use the "Upload Photo" option instead.'
+        : err.name === 'NotReadableError'
+        ? 'Camera is in use by another app. Close other apps using the camera and try again.'
         : 'Camera error: ' + err.message + '. Try using the "Upload Photo" option instead.');
     });
   }
@@ -354,12 +366,25 @@ export function ScannerView(props) {
     setMatchedCards([]);
     setOcrText(null);
 
-    var worker = workerRef;
-    if (!worker) {
+    // If OCR isn't loaded yet, load it now before processing
+    var workerPromise = workerRef
+      ? Promise.resolve(workerRef)
+      : initTesseract();
+
+    workerPromise.then(function(worker) {
+      if (!worker) {
+        setPhase('error');
+        setErrorMsg('OCR engine failed to load. Try again or use Upload Photo.');
+        return;
+      }
+      return doOCR(worker, croppedDataUrl, fullImageUrl);
+    }).catch(function(err) {
       setPhase('error');
-      setErrorMsg('OCR engine not ready. Try again.');
-      return;
-    }
+      setErrorMsg('OCR engine failed: ' + err.message + '. Try using "Upload Photo" instead.');
+    });
+  }
+
+  function doOCR(worker, croppedDataUrl, fullImageUrl) {
 
     worker.recognize(croppedDataUrl).then(function(result) {
       var text = result.data.text || '';
