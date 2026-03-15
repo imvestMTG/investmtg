@@ -273,9 +273,9 @@ if run_remote; then
     done
 
     # Proxy routes
-    JT=$(curl -s -o /dev/null -w "%{http_code}" "$API/justtcg?path=/v1/cards&tcgplayerId=282800&condition=NM" 2>/dev/null)
+    JT=$(curl -s -o /dev/null -w "%{http_code}" "$API/justtcg?path=/v1/cards&tcgplayerId=282800&condition=NM" -H "Authorization: Bearer investmtg-admin-2026" 2>/dev/null)
     if [ "$JT" = "200" ]; then pass "JustTCG proxy (HTTP $JT)"
-    else warn "JustTCG proxy — HTTP $JT"; fi
+    else fail "JustTCG proxy — HTTP $JT"; fi
 
     PROXY=$(curl -s -o /dev/null -w "%{http_code}" "$API/?target=https://api.scryfall.com/cards/random" -H "Origin: $SITE" 2>/dev/null)
     if [ "$PROXY" = "200" ]; then pass "CORS proxy (HTTP $PROXY)"
