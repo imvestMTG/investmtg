@@ -1,5 +1,18 @@
 # investMTG — Changelog
 
+## 2026-03-15: v86 — Moxfield Import + Portfolio Empty State
+
+**Moxfield Deck Import (Portfolio)**
+- New "Moxfield" tab in the Import modal
+- Paste a Moxfield deck URL → fetches all cards with Scryfall IDs, prices, set codes
+- Shows deck name, author, format, card count before importing
+- Reuses existing import pipeline (preview table, batch add, 500-card limit)
+
+**Portfolio Empty State**
+- Featured yellow "Import Deck" button centered in the empty portfolio box
+- "Browse Cards" moved to secondary action
+- SW cache version bumped to v86
+
 ## 2026-03-15: v85 — Scanner Camera Fix
 
 - Camera now starts immediately without waiting for OCR engine to download first

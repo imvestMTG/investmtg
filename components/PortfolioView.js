@@ -3,6 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PortfolioIcon, UploadIcon, AlertCircleIcon, CheckCircleIcon, XIcon } from './shared/Icons.js';
 import { ShareButton } from './shared/ShareButton.js';
+import { getMoxfieldDeck } from '../utils/moxfield-api.js';
 import {
   fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI, updatePortfolioItem,
   addToPortfolioBatch, fetchBinders, createBinder, deleteBinder, updateBinder,
@@ -109,6 +110,14 @@ function PortfolioImportModal(props) {
   var ref5 = React.useState(null);
   var resultMsg = ref5[0], setResultMsg = ref5[1];
   var pendingRef = React.useRef(null);
+  var ref6 = React.useState('');
+  var moxfieldUrl = ref6[0], setMoxfieldUrl = ref6[1];
+  var ref7 = React.useState(false);
+  var moxLoading = ref7[0], setMoxLoading = ref7[1];
+  var ref8 = React.useState(null);
+  var moxError = ref8[0], setMoxError = ref8[1];
+  var ref9 = React.useState(null);
+  var moxDeckInfo = ref9[0], setMoxDeckInfo = ref9[1];
 
   function handleFileUpload(e) {
     var file = e.target.files && e.target.files[0];
@@ -127,6 +136,36 @@ function PortfolioImportModal(props) {
     if (!inputText.trim()) return;
     var result = importTab === 'text' ? parseTextList(inputText) : parseManaboxCSV(inputText);
     setParsedResult(result);
+  }
+
+  function handleMoxfieldFetch() {
+    if (!moxfieldUrl.trim()) return;
+    setMoxLoading(true);
+    setMoxError(null);
+    setParsedResult(null);
+    setMoxDeckInfo(null);
+    getMoxfieldDeck(moxfieldUrl.trim()).then(function(deck) {
+      setMoxLoading(false);
+      if (!deck) {
+        setMoxError('Could not load deck. Check the URL and try again.');
+        return;
+      }
+      setMoxDeckInfo({ name: deck.name, author: deck.author, format: deck.format, totalCards: deck.totalCards });
+      // Convert Moxfield cards to parsedResult format
+      var allCards = [].concat(deck.commanders || [], deck.mainboard || [], deck.sideboard || [], deck.companion || []);
+      var cards = allCards.map(function(c) {
+        return { cardName: c.name, scryfallId: c.scryfallId || '', setCode: c.setCode || '', setName: c.setCode || '', price: c.priceUsd || 0, condition: 'NM', quantity: c.quantity || 1 };
+      });
+      // Expand by quantity
+      var expanded = [];
+      cards.forEach(function(c) {
+        for (var i = 0; i < (c.quantity || 1); i++) { expanded.push(c); }
+      });
+      setParsedResult({ cards: expanded, errors: [] });
+    }).catch(function(err) {
+      setMoxLoading(false);
+      setMoxError('Failed to fetch deck: ' + err.message);
+    });
   }
 
   function handleImport() {
@@ -176,8 +215,9 @@ function PortfolioImportModal(props) {
             )
           : h(React.Fragment, null,
               h('div', { className: 'import-tabs' },
-                h('button', { type: 'button', className: 'import-tab' + (importTab === 'csv' ? ' import-tab--active' : ''), onClick: function() { setImportTab('csv'); setParsedResult(null); } }, 'CSV Import'),
-                h('button', { type: 'button', className: 'import-tab' + (importTab === 'text' ? ' import-tab--active' : ''), onClick: function() { setImportTab('text'); setParsedResult(null); } }, 'Text / MTGA')
+                h('button', { type: 'button', className: 'import-tab' + (importTab === 'csv' ? ' import-tab--active' : ''), onClick: function() { setImportTab('csv'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'CSV Import'),
+                h('button', { type: 'button', className: 'import-tab' + (importTab === 'text' ? ' import-tab--active' : ''), onClick: function() { setImportTab('text'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'Text / MTGA'),
+                h('button', { type: 'button', className: 'import-tab' + (importTab === 'moxfield' ? ' import-tab--active' : ''), onClick: function() { setImportTab('moxfield'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'Moxfield')
               ),
               !isAuth && h('p', { style: { fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'center', margin: 'var(--space-2) 0 0', opacity: 0.8 } }, 'Cards will be saved to this browser. Sign in to sync across devices.'),
               importTab === 'csv' && h(React.Fragment, null,
@@ -200,7 +240,31 @@ function PortfolioImportModal(props) {
                 h('label', { className: 'form-label' }, 'Paste Card List'),
                 h('textarea', { className: 'form-input bulk-csv-textarea', rows: 8, placeholder: '4 Lightning Bolt (LEA) 123\n1 Counterspell (ICE)\nSol Ring\n3x Swords to Plowshares', value: inputText, onChange: function(e) { setInputText(e.target.value); setParsedResult(null); } })
               ),
-              !parsedResult && inputText.trim() && h('button', { type: 'button', className: 'btn btn-secondary btn-sm', onClick: handleParse, style: { marginTop: 'var(--space-2)' } }, 'Parse'),
+              importTab === 'moxfield' && h('div', { className: 'form-group' },
+                h('label', { className: 'form-label' }, 'Moxfield Deck URL'),
+                h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
+                  h('input', {
+                    type: 'text',
+                    className: 'form-input',
+                    placeholder: 'https://www.moxfield.com/decks/abc123',
+                    value: moxfieldUrl,
+                    onChange: function(e) { setMoxfieldUrl(e.target.value); setMoxError(null); setMoxDeckInfo(null); setParsedResult(null); },
+                    style: { flex: 1 }
+                  }),
+                  h('button', { type: 'button', className: 'btn btn-primary btn-sm', onClick: handleMoxfieldFetch, disabled: moxLoading || !moxfieldUrl.trim() },
+                    moxLoading ? 'Loading\u2026' : 'Fetch'
+                  )
+                ),
+                h('p', { style: { fontSize: '12px', color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' } }, 'Paste a Moxfield deck URL to import all cards from the decklist.'),
+                moxError && h('p', { style: { fontSize: '13px', color: 'var(--color-error, #ef4444)', marginTop: 'var(--space-2)' } }, moxError),
+                moxDeckInfo && h('div', { style: { marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' } },
+                  h('p', { style: { fontWeight: 600, marginBottom: 'var(--space-1)' } }, moxDeckInfo.name),
+                  h('p', { style: { fontSize: '13px', color: 'var(--color-text-muted)' } },
+                    'by ' + moxDeckInfo.author + ' \u00b7 ' + moxDeckInfo.format + ' \u00b7 ' + moxDeckInfo.totalCards + ' cards'
+                  )
+                )
+              ),
+              importTab !== 'moxfield' && !parsedResult && inputText.trim() && h('button', { type: 'button', className: 'btn btn-secondary btn-sm', onClick: handleParse, style: { marginTop: 'var(--space-2)' } }, 'Parse'),
               parsedResult && cardCount > 0 && h('div', { className: 'bulk-preview', style: { marginTop: 'var(--space-4)' } },
                 cardCount > 500 && h('div', { className: 'bulk-warnings' }, h(AlertCircleIcon, null), h('p', { className: 'bulk-warning-text' }, 'Maximum 500 cards. Only the first 500 will be imported.')),
                 h('div', { className: 'bulk-preview-summary' }, h(CheckCircleIcon, null), h('span', null, Math.min(cardCount, 500) + ' card' + (Math.min(cardCount, 500) !== 1 ? 's' : '') + ' ready to import')),
@@ -854,7 +918,10 @@ export function PortfolioView(props) {
             h('div', { className: 'empty-state-icon' }, h(PortfolioIcon, null)),
             h('h3', null, 'Your portfolio is empty'),
             h('p', null, 'Search for cards and click "Track" to add them to your portfolio.'),
-            h('a', { href: '#search', className: 'btn btn-primary' }, 'Browse Cards')
+            h('div', { style: { display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap', marginTop: 'var(--space-4)' } },
+              h('button', { className: 'btn btn-primary portfolio-empty-import-btn', onClick: function() { setShowImport(true); } }, h(UploadIcon, null), ' Import Deck'),
+              h('a', { href: '#search', className: 'btn btn-secondary' }, 'Browse Cards')
+            )
           )
         : grouped
           ? h('div', { className: 'pf-grouped-tables' },
