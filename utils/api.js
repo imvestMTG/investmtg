@@ -434,6 +434,15 @@ export function addToPortfolioBatch(items) {
   });
 }
 
+/** POST /api/portfolio/enrich — batch-fetch Scryfall prices for imported cards */
+export function enrichPortfolioPrices(cardIds) {
+  return backendFetch('/api/portfolio/enrich', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_ids: cardIds })
+  });
+}
+
 /* ── Sellers ───────────────────────────────────────────────────────────── */
 
 /** GET /api/sellers — { registered: bool, seller?: {...}, listings?: [...] } */

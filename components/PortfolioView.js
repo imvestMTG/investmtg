@@ -6,7 +6,7 @@ import { ShareButton } from './shared/ShareButton.js';
 import { getMoxfieldDeck } from '../utils/moxfield-api.js';
 import {
   fetchPortfolio, addToPortfolioAPI, removeFromPortfolioAPI, updatePortfolioItem,
-  addToPortfolioBatch, fetchBinders, createBinder, deleteBinder, updateBinder,
+  addToPortfolioBatch, enrichPortfolioPrices, fetchBinders, createBinder, deleteBinder, updateBinder,
   fetchLists, createList, deleteList, fetchListItems, addListItem, removeListItem
 } from '../utils/api.js';
 import { storageGet, storageSet } from '../utils/storage.js';
@@ -87,6 +87,7 @@ function PortfolioImportModal(props) {
   var onSuccess = props.onSuccess;
   var onLocalImport = props.onLocalImport;
   var isAuth = props.isAuth;
+  var existingCardIds = props.existingCardIds || [];
 
   React.useEffect(function() {
     var prevBodyOverflow = document.body.style.overflow;
@@ -118,6 +119,33 @@ function PortfolioImportModal(props) {
   var moxError = ref8[0], setMoxError = ref8[1];
   var ref9 = React.useState(null);
   var moxDeckInfo = ref9[0], setMoxDeckInfo = ref9[1];
+  var ref10 = React.useState(false);
+  var enriching = ref10[0], setEnriching = ref10[1];
+  var fetchTimerRef = React.useRef(null);
+
+  /* Check if a string looks like a valid Moxfield URL */
+  function isMoxfieldUrl(str) {
+    return str && str.indexOf('moxfield.com/decks/') !== -1;
+  }
+
+  /* Auto-fetch: debounce when a valid Moxfield URL is detected */
+  function handleMoxUrlChange(value) {
+    setMoxfieldUrl(value);
+    setMoxError(null);
+    setMoxDeckInfo(null);
+    setParsedResult(null);
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+    if (isMoxfieldUrl(value.trim())) {
+      fetchTimerRef.current = setTimeout(function() {
+        doMoxfieldFetch(value.trim());
+      }, 400);
+    }
+  }
+
+  /* Cleanup timer on unmount */
+  React.useEffect(function() {
+    return function() { if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current); };
+  }, []);
 
   function handleFileUpload(e) {
     var file = e.target.files && e.target.files[0];
@@ -138,29 +166,42 @@ function PortfolioImportModal(props) {
     setParsedResult(result);
   }
 
-  function handleMoxfieldFetch() {
-    if (!moxfieldUrl.trim()) return;
+  function doMoxfieldFetch(url) {
+    if (!url) return;
     setMoxLoading(true);
     setMoxError(null);
     setParsedResult(null);
     setMoxDeckInfo(null);
-    getMoxfieldDeck(moxfieldUrl.trim()).then(function(deck) {
+    getMoxfieldDeck(url).then(function(deck) {
       setMoxLoading(false);
       if (!deck) {
         setMoxError('Could not load deck. Check the URL and try again.');
         return;
       }
-      setMoxDeckInfo({ name: deck.name, author: deck.author, format: deck.format, totalCards: deck.totalCards });
+      setMoxDeckInfo({
+        name: deck.name, author: deck.author, format: deck.format,
+        totalCards: deck.totalCards, totalPriceUsd: deck.totalPriceUsd || 0
+      });
       // Convert Moxfield cards to parsedResult format — keep original quantities
       var allCards = [].concat(deck.commanders || [], deck.mainboard || [], deck.sideboard || [], deck.companion || []);
       var cards = allCards.map(function(c) {
-        return { cardName: c.name, scryfallId: c.scryfallId || '', setCode: c.setCode || '', setName: c.setCode || '', price: c.priceUsd || 0, condition: 'NM', quantity: c.quantity || 1 };
+        return {
+          cardName: c.name, scryfallId: c.scryfallId || '',
+          setCode: c.setCode || '', setName: c.setName || c.setCode || '',
+          price: c.priceUsd || 0, condition: 'NM', quantity: c.quantity || 1
+        };
       });
       setParsedResult({ cards: cards, errors: [] });
     }).catch(function(err) {
       setMoxLoading(false);
       setMoxError('Failed to fetch deck: ' + err.message);
     });
+  }
+
+  function handleMoxfieldFetch() {
+    if (!moxfieldUrl.trim()) return;
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+    doMoxfieldFetch(moxfieldUrl.trim());
   }
 
   function handleImport() {
@@ -173,8 +214,22 @@ function PortfolioImportModal(props) {
       });
       addToPortfolioBatch(items).then(function(result) {
         setSubmitting(false);
-        setResultMsg('Successfully imported ' + (result.created || items.length) + ' cards.');
+        setResultMsg('Imported ' + (result.created || items.length) + ' cards. Fetching current prices\u2026');
+        setEnriching(true);
         if (onSuccess) onSuccess();
+        // Background: enrich prices from Scryfall
+        var cardIds = items.map(function(item) { return item.card_id; }).filter(function(id) { return id; });
+        if (cardIds.length > 0) {
+          enrichPortfolioPrices(cardIds).then(function() {
+            setEnriching(false);
+            setResultMsg('Imported ' + (result.created || items.length) + ' cards with current prices.');
+            if (onSuccess) onSuccess();
+          }).catch(function() {
+            setEnriching(false);
+          });
+        } else {
+          setEnriching(false);
+        }
       }).catch(function() { setSubmitting(false); setResultMsg('Import failed. Please try again.'); });
     } else {
       var localItems = cards.map(function(card) {
@@ -186,11 +241,23 @@ function PortfolioImportModal(props) {
       });
       pendingRef.current = localItems;
       setSubmitting(false);
-      setResultMsg('Successfully imported ' + localItems.length + ' cards to your local portfolio.');
+      setResultMsg('Imported ' + localItems.length + ' cards to your local portfolio.');
     }
   }
 
   var cardCount = parsedResult ? parsedResult.cards.reduce(function(sum, c) { return sum + (c.quantity || 1); }, 0) : 0;
+  var uniqueCount = parsedResult ? parsedResult.cards.length : 0;
+
+  /* Duplicate detection */
+  var existingSet = React.useMemo(function() {
+    var s = {};
+    existingCardIds.forEach(function(id) { if (id) s[id] = true; });
+    return s;
+  }, [existingCardIds]);
+  var duplicateCount = parsedResult ? parsedResult.cards.filter(function(c) { return c.scryfallId && existingSet[c.scryfallId]; }).length : 0;
+
+  /* Estimated deck value from Moxfield prices */
+  var deckEstValue = parsedResult ? parsedResult.cards.reduce(function(sum, c) { return sum + (c.price || 0) * (c.quantity || 1); }, 0) : 0;
 
   return h('div', { className: 'mp-modal-overlay open import-modal-overlay', onClick: onClose },
     h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
@@ -203,6 +270,7 @@ function PortfolioImportModal(props) {
           ? h('div', { style: { textAlign: 'center', padding: 'var(--space-6)' } },
               h(CheckCircleIcon, null),
               h('p', { style: { marginTop: 'var(--space-3)' } }, resultMsg),
+              enriching && h('p', { style: { fontSize: '12px', color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' } }, 'Loading live market prices from Scryfall\u2026'),
               h('button', { className: 'btn btn-primary', onClick: function() {
                 if (pendingRef.current && onLocalImport) { onLocalImport(pendingRef.current); pendingRef.current = null; }
                 onClose();
@@ -243,7 +311,7 @@ function PortfolioImportModal(props) {
                     className: 'form-input',
                     placeholder: 'https://www.moxfield.com/decks/abc123',
                     value: moxfieldUrl,
-                    onChange: function(e) { setMoxfieldUrl(e.target.value); setMoxError(null); setMoxDeckInfo(null); setParsedResult(null); },
+                    onChange: function(e) { handleMoxUrlChange(e.target.value); },
                     style: { flex: 1 }
                   }),
                   h('button', { type: 'button', className: 'btn btn-primary btn-sm', onClick: handleMoxfieldFetch, disabled: moxLoading || !moxfieldUrl.trim() },
@@ -256,19 +324,26 @@ function PortfolioImportModal(props) {
                   h('p', { style: { fontWeight: 600, marginBottom: 'var(--space-1)' } }, moxDeckInfo.name),
                   h('p', { style: { fontSize: '13px', color: 'var(--color-text-muted)' } },
                     'by ' + moxDeckInfo.author + ' \u00b7 ' + moxDeckInfo.format + ' \u00b7 ' + moxDeckInfo.totalCards + ' cards'
+                  ),
+                  moxDeckInfo.totalPriceUsd > 0 && h('p', { style: { fontSize: '13px', color: 'var(--color-primary)', fontWeight: 500, marginTop: 'var(--space-1)' } },
+                    'Estimated value: ' + formatUSD(moxDeckInfo.totalPriceUsd)
                   )
                 )
               ),
               importTab !== 'moxfield' && !parsedResult && inputText.trim() && h('button', { type: 'button', className: 'btn btn-secondary btn-sm', onClick: handleParse, style: { marginTop: 'var(--space-2)' } }, 'Parse'),
               parsedResult && cardCount > 0 && h('div', { className: 'bulk-preview', style: { marginTop: 'var(--space-4)' } },
                 cardCount > 500 && h('div', { className: 'bulk-warnings' }, h(AlertCircleIcon, null), h('p', { className: 'bulk-warning-text' }, 'Maximum 500 cards. Only the first 500 will be imported.')),
-                h('div', { className: 'bulk-preview-summary' }, h(CheckCircleIcon, null), h('span', null, Math.min(cardCount, 500) + ' card' + (Math.min(cardCount, 500) !== 1 ? 's' : '') + ' ready to import')),
+                duplicateCount > 0 && h('div', { className: 'bulk-warnings', style: { marginBottom: 'var(--space-2)' } }, h(AlertCircleIcon, null), h('p', { className: 'bulk-warning-text' }, duplicateCount + ' card' + (duplicateCount !== 1 ? 's' : '') + ' already in your portfolio. Importing will update their quantities.')),
+                h('div', { className: 'bulk-preview-summary' }, h(CheckCircleIcon, null), h('span', null,
+                  uniqueCount + ' unique card' + (uniqueCount !== 1 ? 's' : '') + ' (' + Math.min(cardCount, 500) + ' total)' +
+                  (deckEstValue > 0 ? ' \u00b7 Est. ' + formatUSD(deckEstValue) : '')
+                )),
                 h('div', { className: 'bulk-preview-table-wrap' },
                   h('table', { className: 'bulk-preview-table' },
                     h('thead', null, h('tr', null, h('th', null, 'Card Name'), h('th', null, 'Set'), h('th', null, 'Qty'))),
                     h('tbody', null,
                       parsedResult.cards.slice(0, 15).map(function(card, i) { return h('tr', { key: i }, h('td', null, card.cardName), h('td', null, card.setName || card.setCode || '\u2014'), h('td', null, String(card.quantity || 1))); }),
-                      cardCount > 15 && h('tr', null, h('td', { colSpan: 3, style: { textAlign: 'center', color: 'var(--color-text-muted)' } }, '\u2026 and ' + (Math.min(cardCount, 500) - 15) + ' more'))
+                      uniqueCount > 15 && h('tr', null, h('td', { colSpan: 3, style: { textAlign: 'center', color: 'var(--color-text-muted)' } }, '\u2026 and ' + (uniqueCount - 15) + ' more'))
                     )
                   )
                 )
@@ -944,7 +1019,8 @@ export function PortfolioView(props) {
       onClose: function() { setShowImport(false); },
       onSuccess: refreshPortfolio,
       onLocalImport: function(importedCards) { updatePortfolio(portfolio.concat(importedCards)); },
-      isAuth: !!authUser
+      isAuth: !!authUser,
+      existingCardIds: portfolio.map(function(item) { return item.id; })
     }),
     showCreateBinder && h(CreateBinderModal, {
       onClose: function() { setShowCreateBinder(false); },

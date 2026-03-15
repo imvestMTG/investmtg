@@ -117,7 +117,8 @@ function processDeck(data) {
         priceUsd: priceUsd,
         priceUsdFoil: prices.usd_foil || 0,
         rarity: card.rarity || '',
-        setCode: card.set || ''
+        setCode: card.set || '',
+        setName: card.set_name || ''
       });
     });
   }

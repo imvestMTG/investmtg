@@ -30,6 +30,7 @@
  *   /api/movers/:cat      — Market movers data
  *   /api/portfolio        — Portfolio CRUD (auth user or anonymous session)
  *   /api/portfolio/batch  — Batch portfolio import (auth required, max 500)
+ *   /api/portfolio/enrich — Batch-fetch Scryfall prices for imported cards
  *   /api/listings         — Marketplace listings CRUD (write routes require auth)
  *   /api/listings/batch   — Batch listing creation (auth required, max 500)
  *   /api/sellers          — Seller registration + management (write routes require auth)
@@ -514,8 +515,8 @@ async function findBestPaperPrinting(name, fallback) {
   return fallback;
 }
 
-/* ── Cache a card in D1 using v2 helpers ── */
-function cacheCardToD1(db, card, now) {
+/* ── Build a prepared statement to cache a card in D1 (no .run()) ── */
+function cacheCardStmt(db, card, now) {
   const imageUris = extractImageUris(card);
   const allFaces = extractAllFaceImages(card);
   const prices = extractPrices(card);
@@ -536,7 +537,12 @@ function cacheCardToD1(db, card, now) {
     allFaces.length > 1 ? (allFaces[1].normal || '') : '',
     card.scryfall_uri || '', getTreatmentLabel(card),
     JSON.stringify(card.finishes || []), now
-  ).run();
+  );
+}
+
+/* ── Cache a card in D1 using v2 helpers ── */
+function cacheCardToD1(db, card, now) {
+  return cacheCardStmt(db, card, now).run();
 }
 
 async function fetchAndCacheCard(db, name) {
@@ -1066,6 +1072,78 @@ async function handlePortfolioBatch(request, env) {
   }
 
   return json({ success: true, created }, 201, request);
+}
+
+/* ── Enrich portfolio: batch-fetch Scryfall prices for imported cards ── */
+async function handlePortfolioEnrich(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.card_ids) || body.card_ids.length === 0) {
+    return json({ error: 'card_ids array required' }, 400, request);
+  }
+
+  // Filter out IDs already in prices table (fresh within 24h)
+  const cutoff = Math.floor(Date.now() / 1000) - 86400;
+  const allIds = body.card_ids.slice(0, 500).filter(id => id);
+  const existingSet = new Set();
+  // Check in chunks of 50 to avoid too many bind params
+  for (let c = 0; c < allIds.length; c += 50) {
+    const idChunk = allIds.slice(c, c + 50);
+    const ph = idChunk.map(() => '?').join(',');
+    const rows = await env.DB.prepare(
+      `SELECT card_id FROM prices WHERE card_id IN (${ph}) AND updated_at > ?`
+    ).bind(...idChunk, cutoff).all();
+    (rows.results || []).forEach(r => existingSet.add(r.card_id));
+  }
+  const needed = allIds.filter(id => !existingSet.has(id));
+
+  if (needed.length === 0) {
+    return json({ success: true, enriched: 0, message: 'All prices already cached' }, 200, request);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  let enriched = 0;
+
+  // Scryfall /cards/collection accepts max 75 identifiers per request
+  for (let i = 0; i < needed.length; i += 75) {
+    const chunk = needed.slice(i, i + 75);
+    const identifiers = chunk.map(id => ({ id: id }));
+    try {
+      // Rate-limit between Scryfall calls
+      if (i > 0) await new Promise(r => setTimeout(r, 100));
+      const res = await fetch(SCRYFALL_BASE + '/cards/collection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'investmtg/2.0 (https://www.investmtg.com)',
+        },
+        body: JSON.stringify({ identifiers }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const cards = data.data || [];
+
+      // Filter out digital-only cards
+      const paperCards = cards.filter(c => !c.digital);
+
+      // Batch write to D1 in chunks of 50 (D1 batch limit)
+      for (let j = 0; j < paperCards.length; j += 50) {
+        const dbChunk = paperCards.slice(j, j + 50);
+        const stmts = dbChunk.map(card => cacheCardStmt(env.DB, card, now));
+        if (stmts.length > 0) {
+          await env.DB.batch(stmts);
+          enriched += stmts.length;
+        }
+      }
+    } catch (e) {
+      console.error('[Enrich] Chunk failed:', e.message);
+    }
+  }
+
+  return json({ success: true, enriched }, 200, request);
 }
 
 /* ══════════════════════════════════════
@@ -3047,6 +3125,7 @@ export default {
       if (path.startsWith('/api/movers'))                   return handleMovers(request, env, path.split('/').pop() || 'valuable');
       if (path === '/api/listings/batch' && request.method === 'POST') return handleListingsBatch(request, env);
       if (path === '/api/portfolio/batch' && request.method === 'POST') return handlePortfolioBatch(request, env);
+      if (path === '/api/portfolio/enrich' && request.method === 'POST') return handlePortfolioEnrich(request, env);
       if (path.startsWith('/api/portfolio'))                return handlePortfolio(request, env);
       if (path.startsWith('/api/listings'))                 return handleListings(request, env);
       if (path.startsWith('/api/binders'))                  return handleBinders(request, env);
