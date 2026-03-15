@@ -1,5 +1,22 @@
 # investMTG — Changelog
 
+## 2026-03-15: v82 — Sitemap Update, Image Lazy Loading & Skeleton Placeholders
+
+**Sitemap (sitemap.xml) — INV-10**
+- Added 3 missing public routes: `#pricing`, `#faq`, `#guidelines`
+- Auth-gated routes (`#orders`, `#checkout`, `#scan`) intentionally excluded
+- Total sitemap entries: 14 (was 11)
+
+**Card Image Lazy Loading & Skeletons — INV-15**
+- Added `loading="lazy"` to remaining images missing it (ScannerView match results, SellerDashboard selected card)
+- All card image containers (`.mtg-card-image`, `.carousel-card-image`, `.card-detail-image`, `.printing-img-wrap`) now show animated shimmer skeleton while images load
+- Upgraded `handleImageError()` in `utils/helpers.js` — when even the Scryfall API fallback fails, renders a styled card-name placeholder instead of a broken image icon
+- Added `.img-fallback-name` CSS for graceful image failure states
+- Added `@keyframes shimmer` animation (1.8s ease-in-out infinite)
+- Added `position: relative` to `.printing-img-wrap` for `::before` pseudo-element support
+
+- SW cache version bumped to v82
+
 ## 2026-03-15: v81 — Community Guidelines, Accessibility, Breach Procedure
 
 **Community Guidelines (GuidelinesView.js)**

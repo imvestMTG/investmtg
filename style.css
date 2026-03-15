@@ -5617,6 +5617,7 @@ a.cart-item-set.cart-item-link:hover {
   border-radius: var(--radius-sm);
   overflow: hidden;
   margin-bottom: var(--space-2);
+  position: relative;
 }
 
 .printing-img-wrap img {
@@ -10145,4 +10146,60 @@ aa.market-cat-desc {
 .checkout-dispute-notice a {
   color: var(--color-primary);
   text-decoration: underline;
+}
+
+/* ══════════════════════════════════════════════
+   Skeleton shimmer animation for card images
+   ══════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.mtg-card-image::before,
+.carousel-card-image::before,
+.card-detail-image::before,
+.printing-img-wrap::before {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-offset) 25%,
+    var(--color-surface-dynamic) 50%,
+    var(--color-surface-offset) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.card-detail-image::before,
+.printing-img-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.card-detail-image {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Image fallback placeholder (when Scryfall is unreachable) ── */
+
+.img-fallback-name {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-4);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-offset);
+  z-index: 2;
+  word-break: break-word;
+  line-height: 1.3;
 }

@@ -621,6 +621,7 @@ function ListingForm(props) {
           src: form.imageNormal || form.imageUri,
           alt: form.cardName,
           className: 'lf-selected-img',
+          loading: 'lazy',
           onError: function(e) { handleImageError(e, form.scryfallId, 'normal'); }
         }),
         h('div', { className: 'lf-selected-info' },

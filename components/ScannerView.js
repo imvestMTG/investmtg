@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { searchCards, getCard } from '../utils/api.js';
-import { formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
+import { formatUSD, getCardImageSmall, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 
 var h = React.createElement;
 
@@ -637,7 +637,9 @@ export function ScannerView(props) {
               h('img', {
                 src: getScryfallImageUrl(card, 'normal') || getCardImageSmall(card),
                 alt: card.name,
-                className: 'scanner-match-img'
+                className: 'scanner-match-img',
+                loading: 'lazy',
+                onError: function(e) { handleImageError(e, card.id, 'normal'); }
               }),
               h('div', { className: 'scanner-match-info' },
                 h('h3', { className: 'scanner-match-name' }, card.name),

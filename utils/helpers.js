@@ -40,13 +40,24 @@ export function scryfallImageFallback(scryfallId, size) {
   return 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
 }
 
-/* onError handler for card images — switches to direct API endpoint */
+/* onError handler for card images — switches to direct API endpoint, then card-name placeholder */
 export function handleImageError(e, scryfallId, size) {
   if (!scryfallId) return;
   if (!size) size = 'small';
   var fallback = 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
   if (e.target.src !== fallback) {
     e.target.src = fallback;
+  } else {
+    // Even the fallback failed — show a styled placeholder
+    var parent = e.target.parentElement;
+    if (parent && !parent.querySelector('.img-fallback-name')) {
+      var alt = e.target.alt || 'Card';
+      var placeholder = document.createElement('div');
+      placeholder.className = 'img-fallback-name';
+      placeholder.textContent = alt;
+      e.target.style.display = 'none';
+      parent.appendChild(placeholder);
+    }
   }
 }
 
