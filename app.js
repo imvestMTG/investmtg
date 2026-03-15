@@ -64,6 +64,7 @@ var PrivacyPolicyView = lazyComponent(function() { return import('./components/P
 var TermsView = lazyComponent(function() { return import('./components/TermsView.js'); }, 'TermsView');
 var PricingView = lazyComponent(function() { return import('./components/PricingView.js'); }, 'PricingView');
 var FAQView = lazyComponent(function() { return import('./components/FAQView.js'); }, 'FAQView');
+var GuidelinesView = lazyComponent(function() { return import('./components/GuidelinesView.js'); }, 'GuidelinesView');
 var Chatbot = lazyComponent(function() { return import('./components/Chatbot.js'); }, 'Chatbot');
 var ListingModal = lazyComponent(function() { return import('./components/ListingModal.js'); }, 'ListingModal');
 var BuyLocalModal = lazyComponent(function() { return import('./components/BuyLocalModal.js'); }, 'BuyLocalModal');
@@ -108,6 +109,7 @@ function parseHash() {
   if (hash === 'terms') return { page: 'terms' };
   if (hash === 'pricing') return { page: 'pricing' };
   if (hash === 'faq') return { page: 'faq' };
+  if (hash === 'guidelines') return { page: 'guidelines' };
   if (hash === 'orders') return { page: 'orders' };
   if (hash === 'scan') return { page: 'scan' };
   return { page: 'home' };
@@ -335,6 +337,7 @@ function App() {
       scan: 'Card Scanner \u2014 investMTG',
       pricing: 'Pricing Methodology \u2014 investMTG',
       faq: 'FAQ \u2014 investMTG',
+      guidelines: 'Community Guidelines \u2014 investMTG',
       privacy: 'Privacy Policy \u2014 investMTG',
       terms: 'Terms of Service \u2014 investMTG'
     };
@@ -348,6 +351,7 @@ function App() {
       portfolio: 'Track your MTG card collection value over time. Import, organize, and monitor your investment.',
       pricing: 'How investMTG sources card pricing data. Scryfall market prices for site-wide display, JustTCG for checkout.',
       faq: 'Frequently asked questions about investMTG. Learn how buying, selling, pricing, and accounts work on the Guam-based MTG marketplace.',
+      guidelines: 'Community guidelines for buying and selling on investMTG. Card grading standards, seller expectations, dispute resolution, and the Fair Play Economy.',
       scan: 'Scan physical MTG cards with your camera to instantly look up prices and details.'
     };
     document.title = titles[route.page] || titles.home;
@@ -443,6 +447,7 @@ function App() {
       route.page === 'terms' && h(TermsView, null),
       route.page === 'pricing' && h(PricingView, null),
       route.page === 'faq' && h(FAQView, null),
+      route.page === 'guidelines' && h(GuidelinesView, null),
       route.page === 'orders' && h(OrdersView, null),
       route.page === 'scan' && h(ScannerView, null)
       )

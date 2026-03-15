@@ -6858,6 +6858,21 @@ aa.market-cat-desc {
   text-decoration: underline;
 }
 
+.footer-accessibility {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  line-height: 1.5;
+  max-width: 600px;
+  margin: var(--space-3) auto 0;
+  text-align: center;
+}
+
+.footer-accessibility a {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+
 .footer-wotc-disclaimer {
   font-size: 0.7rem;
   color: var(--color-text-muted);

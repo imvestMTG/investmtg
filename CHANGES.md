@@ -1,5 +1,23 @@
 # investMTG — Changelog
 
+## 2026-03-15: v81 — Community Guidelines, Accessibility, Breach Procedure
+
+**Community Guidelines (GuidelinesView.js)**
+- New `#guidelines` route with 8 sections: card grading standards (NM/LP/MP/HP/DMG table), pricing norms, seller expectations, buyer expectations, reservations, dispute resolution, reporting, Fair Play Economy
+- Lazy-loaded component, SEO title + meta description registered in app.js
+- Footer link added to legal links section
+
+**Accessibility Statement (Footer.js)**
+- Added ADA-compliant accessibility commitment to the site footer (INV-7)
+- Styled with `.footer-accessibility` class matching disclaimer style
+
+**Data Breach Response Procedure (Notion KB)**
+- Documented 5-step breach response procedure per Guam Code Ann. § 9 Ch. 48 (INV-9)
+- Covers containment, assessment, investigation, notification (users + Guam AG), post-incident report
+- Published to Notion knowledge base
+
+- SW cache version bumped to v81
+
 ## 2026-03-15: v80 — Global Heading Font Consistency
 
 - Added global `h1-h6 { font-family: var(--font-display) }` rule for consistent Clash Display headers site-wide

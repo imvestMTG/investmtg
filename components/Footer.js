@@ -17,6 +17,7 @@ export function Footer() {
         h('a', { href: '#terms' }, 'Terms of Service'),
         h('a', { href: '#pricing' }, 'Pricing & Sources'),
         h('a', { href: '#faq' }, 'FAQ'),
+        h('a', { href: '#guidelines' }, 'Community Guidelines'),
         h('a', { href: 'https://github.com/imvestMTG/investmtg/blob/main/SOUL.md', target: '_blank', rel: 'noopener' }, 'Data Integrity Policy')
       ),
       h('p', { className: 'footer-credit' },
@@ -27,6 +28,11 @@ export function Footer() {
         '. Decklists via ', h('a', { href: 'https://www.moxfield.com', target: '_blank', rel: 'noopener' }, 'Moxfield'), '.',
         h('br', null),
         'Built with ', h('a', { href: 'https://www.perplexity.ai/computer', target: '_blank', rel: 'noopener' }, 'Perplexity Computer'), '.'
+      ),
+      h('p', { className: 'footer-accessibility' },
+        'investMTG is committed to making this site accessible to all users. If you encounter an accessibility barrier, please contact us at ',
+        h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'),
+        ' and we will make reasonable efforts to address it.'
       ),
       h('p', { className: 'footer-wotc-disclaimer' },
         'investMTG is unofficial Fan Content permitted under the ',
