@@ -1016,6 +1016,7 @@ async function handlePortfolioBatch(request, env) {
   const auth = await getAuthUser(request, env);
   if (!auth) return json({ error: 'Authentication required — bulk import needs a persistent account' }, 401, request);
 
+  const { token } = ensureSession(request);
   const body = await request.json().catch(() => null);
   if (!body || !Array.isArray(body.items) || body.items.length === 0) {
     return json({ error: 'items array required' }, 400, request);
@@ -1044,7 +1045,7 @@ async function handlePortfolioBatch(request, env) {
           'INSERT OR REPLACE INTO portfolios (user_id, session_token, card_id, card_name, quantity, added_price, added_at, condition, binder_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           auth.userId,
-          null,
+          token,
           item.card_id || '',
           item.card_name,
           item.quantity || 1,

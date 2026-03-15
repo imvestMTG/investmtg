@@ -151,17 +151,12 @@ function PortfolioImportModal(props) {
         return;
       }
       setMoxDeckInfo({ name: deck.name, author: deck.author, format: deck.format, totalCards: deck.totalCards });
-      // Convert Moxfield cards to parsedResult format
+      // Convert Moxfield cards to parsedResult format — keep original quantities
       var allCards = [].concat(deck.commanders || [], deck.mainboard || [], deck.sideboard || [], deck.companion || []);
       var cards = allCards.map(function(c) {
         return { cardName: c.name, scryfallId: c.scryfallId || '', setCode: c.setCode || '', setName: c.setCode || '', price: c.priceUsd || 0, condition: 'NM', quantity: c.quantity || 1 };
       });
-      // Expand by quantity
-      var expanded = [];
-      cards.forEach(function(c) {
-        for (var i = 0; i < (c.quantity || 1); i++) { expanded.push(c); }
-      });
-      setParsedResult({ cards: expanded, errors: [] });
+      setParsedResult({ cards: cards, errors: [] });
     }).catch(function(err) {
       setMoxLoading(false);
       setMoxError('Failed to fetch deck: ' + err.message);
@@ -174,7 +169,7 @@ function PortfolioImportModal(props) {
     var cards = parsedResult.cards.slice(0, 500);
     if (isAuth) {
       var items = cards.map(function(card) {
-        return { card_id: card.scryfallId || '', card_name: card.cardName, quantity: 1, added_price: card.price || 0, condition: card.condition || 'NM' };
+        return { card_id: card.scryfallId || '', card_name: card.cardName, quantity: card.quantity || 1, added_price: card.price || 0, condition: card.condition || 'NM' };
       });
       addToPortfolioBatch(items).then(function(result) {
         setSubmitting(false);
@@ -185,7 +180,7 @@ function PortfolioImportModal(props) {
       var localItems = cards.map(function(card) {
         return {
           id: card.scryfallId || ('import-' + card.cardName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).slice(2, 8)),
-          name: card.cardName, set: card.setName || card.setCode || '', qty: 1,
+          name: card.cardName, set: card.setName || card.setCode || '', qty: card.quantity || 1,
           buyPrice: card.price || 0, currentPrice: 0, image: null, condition: card.condition || 'NM'
         };
       });
@@ -195,7 +190,7 @@ function PortfolioImportModal(props) {
     }
   }
 
-  var cardCount = parsedResult ? parsedResult.cards.length : 0;
+  var cardCount = parsedResult ? parsedResult.cards.reduce(function(sum, c) { return sum + (c.quantity || 1); }, 0) : 0;
 
   return h('div', { className: 'mp-modal-overlay open import-modal-overlay', onClick: onClose },
     h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
@@ -272,7 +267,7 @@ function PortfolioImportModal(props) {
                   h('table', { className: 'bulk-preview-table' },
                     h('thead', null, h('tr', null, h('th', null, 'Card Name'), h('th', null, 'Set'), h('th', null, 'Qty'))),
                     h('tbody', null,
-                      parsedResult.cards.slice(0, 15).map(function(card, i) { return h('tr', { key: i }, h('td', null, card.cardName), h('td', null, card.setName || card.setCode || '\u2014'), h('td', null, '1')); }),
+                      parsedResult.cards.slice(0, 15).map(function(card, i) { return h('tr', { key: i }, h('td', null, card.cardName), h('td', null, card.setName || card.setCode || '\u2014'), h('td', null, String(card.quantity || 1))); }),
                       cardCount > 15 && h('tr', null, h('td', { colSpan: 3, style: { textAlign: 'center', color: 'var(--color-text-muted)' } }, '\u2026 and ' + (Math.min(cardCount, 500) - 15) + ' more'))
                     )
                   )
