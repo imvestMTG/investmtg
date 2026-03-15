@@ -7,7 +7,7 @@ export function PrivacyPolicyView() {
 
   return h('div', { className: 'container legal-page' },
     h('h1', { className: 'page-heading' }, 'Privacy Policy'),
-    h('p', { className: 'legal-updated' }, 'Last updated: March 9, 2026'),
+    h('p', { className: 'legal-updated' }, 'Last updated: March 15, 2026'),
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'Overview'),
@@ -75,7 +75,8 @@ export function PrivacyPolicyView() {
         h('li', null, 'Display real-time card pricing from third-party APIs'),
         h('li', null, 'Improve the Site\u2019s functionality and user experience')
       ),
-      h('p', null, 'We do not sell, rent, or share your personal information with third parties for marketing purposes.')
+      h('p', null, 'We do not sell, rent, or share your personal information with third parties for marketing purposes.'),
+      h('p', null, h('strong', null, 'Legal basis for processing: '), 'We process your personal information as necessary to perform our services (account creation, order processing, seller/buyer coordination), to protect our legitimate interests (security, fraud prevention, site improvement), and where you have given consent (cookie acceptance, Terms of Service agreement). We do not sell your personal information to third parties.')
     ),
 
     h('section', { className: 'legal-section' },
@@ -88,19 +89,59 @@ export function PrivacyPolicyView() {
         h('li', null, h('strong', null, 'JustTCG'), ' \u2014 Provides condition-specific pricing for NM, LP, MP, HP, and DMG conditions. API requests contain card identifiers but no personal data.'),
         h('li', null, h('strong', null, 'Cloudflare'), ' \u2014 Hosts our backend worker, database, and edge cache. Cloudflare may set security cookies to protect against malicious traffic. See ', h('a', { href: 'https://www.cloudflare.com/privacypolicy/', target: '_blank', rel: 'noopener' }, 'Cloudflare\u2019s Privacy Policy'), '.'),
         h('li', null, h('strong', null, 'FontShare'), ' \u2014 Provides web fonts. Font loading requests include standard HTTP headers.'),
-        h('li', null, h('strong', null, 'GitHub Pages'), ' \u2014 Hosts the website. See ', h('a', { href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', target: '_blank', rel: 'noopener' }, 'GitHub\u2019s Privacy Statement'), '.')
+        h('li', null, h('strong', null, 'GitHub Pages'), ' \u2014 Hosts the website. See ', h('a', { href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', target: '_blank', rel: 'noopener' }, 'GitHub\u2019s Privacy Statement'), '.'),
+        h('li', null, h('strong', null, 'PayPal'), ' \u2014 Processes payments via PayPal, Venmo, and Pay Later. When you choose PayPal at checkout, your name, email, and payment details are sent to PayPal\u2019s secure servers. We never see your PayPal password or full payment details. See ', h('a', { href: 'https://www.paypal.com/us/legalhub/privacy-full', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Privacy Policy'), '.'),
+        h('li', null, h('strong', null, 'Resend'), ' \u2014 Sends order confirmation and payment confirmation emails on our behalf. Your name and email address are transmitted to Resend to deliver transactional messages. Resend does not use this information for marketing. See ', h('a', { href: 'https://resend.com/legal/privacy-policy', target: '_blank', rel: 'noopener' }, 'Resend\u2019s Privacy Policy'), '.'),
+        h('li', null, h('strong', null, 'EchoMTG'), ' \u2014 Provides graded card pricing and set price movement data. API requests are routed through our backend and do not include personal information.')
       )
     ),
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'Cookies'),
-      h('p', null, 'investMTG itself does not set cookies for tracking or advertising. However, third-party services (particularly Cloudflare and SumUp) may set essential security or functionality cookies when you visit the site or process a payment. These are not used for tracking or advertising.')
+      h('p', null, 'investMTG itself does not set cookies for tracking or advertising. However, third-party services may set essential cookies:'),
+      h('table', { className: 'legal-table' },
+        h('thead', null,
+          h('tr', null,
+            h('th', null, 'Service'),
+            h('th', null, 'Purpose'),
+            h('th', null, 'Type'),
+            h('th', null, 'Duration')
+          )
+        ),
+        h('tbody', null,
+          h('tr', null,
+            h('td', null, 'Cloudflare'),
+            h('td', null, 'DDoS protection, bot detection'),
+            h('td', null, 'Essential / Security'),
+            h('td', null, 'Session')
+          ),
+          h('tr', null,
+            h('td', null, 'SumUp'),
+            h('td', null, 'Secure payment session'),
+            h('td', null, 'Essential / Payment'),
+            h('td', null, 'Session')
+          ),
+          h('tr', null,
+            h('td', null, 'PayPal'),
+            h('td', null, 'Payment session, fraud prevention'),
+            h('td', null, 'Essential / Payment'),
+            h('td', null, 'Session')
+          )
+        )
+      ),
+      h('p', null, 'investMTG stores authentication tokens, cart data, and preferences in your browser\u2019s localStorage (not cookies). This data is controlled entirely by your browser and can be cleared at any time.')
     ),
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'Data Retention'),
-      h('p', null, 'We retain your account data for as long as your account is active. If you wish to have your data removed, contact us and we will delete your account and associated data from our database within a reasonable timeframe.'),
-      h('p', null, 'Order records may be retained for legal and operational purposes even after account deletion.')
+      h('ul', null,
+        h('li', null, h('strong', null, 'Account data'), ' (name, email, profile picture): Retained while your account is active. Deleted within 30 days of a verified deletion request.'),
+        h('li', null, h('strong', null, 'Order records: '), 'Retained for 3 years from the order date for business and legal purposes, even after account deletion.'),
+        h('li', null, h('strong', null, 'Authentication sessions: '), 'Automatically expired after 30 days of inactivity.'),
+        h('li', null, h('strong', null, 'Seller listings: '), 'Deleted when a listing is removed or the seller account is deleted.'),
+        h('li', null, h('strong', null, 'Locally stored data: '), 'Controlled entirely by your browser; cleared when you clear your browser data.'),
+        h('li', null, h('strong', null, 'Cloudflare logs: '), 'Subject to Cloudflare\u2019s own retention policies. See ', h('a', { href: 'https://www.cloudflare.com/privacypolicy/', target: '_blank', rel: 'noopener' }, 'Cloudflare\u2019s Privacy Policy'), '.')
+      )
     ),
 
     h('section', { className: 'legal-section' },
@@ -111,7 +152,11 @@ export function PrivacyPolicyView() {
         h('li', null, h('strong', null, 'Delete local data: '), 'Clear your browser\u2019s localStorage for www.investmtg.com, or use your browser\u2019s "Clear Site Data" function to remove locally stored data.'),
         h('li', null, h('strong', null, 'Delete your account: '), 'Contact us to request deletion of your server-side account and associated data.'),
         h('li', null, h('strong', null, 'Revoke Google access: '), 'You can revoke investMTG\u2019s access to your Google account at any time through your ', h('a', { href: 'https://myaccount.google.com/permissions', target: '_blank', rel: 'noopener' }, 'Google account settings'), '.'),
-        h('li', null, h('strong', null, 'Export your data: '), 'Contact us if you need a copy of your data.')
+        h('li', null, h('strong', null, 'Export your data: '), 'Contact us if you need a copy of your data.'),
+        h('li', null, h('strong', null, 'Correct your data: '), 'If any information we hold about you is inaccurate or incomplete, contact us and we will update it promptly.'),
+        h('li', null, h('strong', null, 'Restrict processing: '), 'In certain circumstances, you may request that we limit how we use your data.'),
+        h('li', null, h('strong', null, 'Object to processing: '), 'You may object to our processing of your data where we rely on legitimate interests.'),
+        h('li', null, h('strong', null, 'Opt-out of data sale: '), 'investMTG does not sell, rent, or share your personal information with third parties for their marketing or commercial purposes. If this policy ever changes, we will notify you and provide a clear opt-out mechanism before any such sharing begins.')
       )
     ),
 
@@ -126,8 +171,22 @@ export function PrivacyPolicyView() {
     ),
 
     h('section', { className: 'legal-section' },
+      h('h2', null, 'DMCA / Copyright Takedown'),
+      h('p', null, 'investMTG respects intellectual property rights. If you believe content on this site infringes your copyright, please send a written notice to ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' (subject: "DMCA Takedown") including:'),
+      h('ol', null,
+        h('li', null, 'Identification of the copyrighted work'),
+        h('li', null, 'Identification of the allegedly infringing material and its location on the site'),
+        h('li', null, 'Your contact information'),
+        h('li', null, 'A statement of good faith belief that the use is not authorized'),
+        h('li', null, 'A statement under penalty of perjury that the information is accurate and you are authorized to act on behalf of the copyright owner')
+      ),
+      h('p', null, 'Card images on this site are provided by the Scryfall API and are the property of Wizards of the Coast LLC.')
+    ),
+
+    h('section', { className: 'legal-section' },
       h('h2', null, 'Contact'),
-      h('p', null, 'If you have questions about this privacy policy, contact us at: ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'))
+      h('p', null, 'If you have questions about this privacy policy, contact us at: ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com')),
+      h('p', null, 'For privacy-related requests (access, deletion, correction), email us with the subject line "Privacy Request." We will acknowledge your request within 5 business days and respond substantively within 30 days.')
     )
   );
 }

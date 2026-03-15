@@ -1,5 +1,39 @@
 # investMTG — Changelog
 
+## 2026-03-15: v78 — Compliance & Legal Policy Update
+
+**Privacy Policy (PrivacyPolicyView.js)**
+- Added PayPal, Resend, and EchoMTG to Third-Party Services disclosures
+- Added legal basis for processing statement
+- Added cookie table with Cloudflare, SumUp, PayPal details
+- Expanded data retention with specific timeframes (30-day deletion, 3-year orders)
+- Added data subject rights: correction, restriction, objection, opt-out of sale
+- Added privacy request response timeframe (5 business days acknowledge, 30 days respond)
+- Added DMCA / Copyright Takedown section
+
+**Terms of Service (TermsView.js)**
+- Added PayPal to Payments section (§ 6) alongside SumUp
+- Added seller fee/chargeback transparency to Seller Obligations (§ 7)
+- Added aggregate liability cap ($100) to Limitation of Liability (§ 11)
+- Expanded Dispute Resolution (§ 12) with buyer protection for online payments
+- Added Refund and Return Policy (new § 13) — FTC Act § 5 compliance
+- Added Account Suspension and Termination (new § 15)
+- Added under-13 account termination provision (§ 1)
+- Renumbered sections 13→14 (Modifications), 14→16 (Contact)
+
+**Cookie Notice (CookieNotice.js)**
+- Updated to individually list Cloudflare, SumUp, and PayPal with purposes
+
+**Checkout (CheckoutView.js)**
+- Added dispute resolution disclosure at payment step
+- Updated Step 3 subtitle to clarify contact details shared with seller
+
+**Terms Gate (TermsGate.js)**
+- Bumped TOS_VERSION to 2026-03-15 (triggers re-acceptance for existing users)
+
+**Infrastructure**
+- SW bumped to v78
+
 ## 2026-03-15: v77 — Foil/Language Variant Support
 
 **Finish (Foil) variants for listings**

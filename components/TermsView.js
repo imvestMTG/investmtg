@@ -7,12 +7,13 @@ export function TermsView() {
 
   return h('div', { className: 'container legal-page' },
     h('h1', { className: 'page-heading' }, 'Terms of Service'),
-    h('p', { className: 'legal-updated' }, 'Last updated: March 9, 2026'),
+    h('p', { className: 'legal-updated' }, 'Last updated: March 15, 2026'),
 
     h('section', { className: 'legal-section' },
       h('h2', null, '1. Acceptance of Terms'),
       h('p', null, 'By accessing or using investMTG ("the Site"), located at www.investmtg.com, you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Site. You must be at least 13 years of age to use this Site.'),
-      h('p', null, 'By creating an account, listing cards for sale or trade, placing an order, or otherwise using the Site\u2019s features, you confirm that you have read, understood, and agree to these Terms as well as our ', h('a', { href: '#privacy' }, 'Privacy Policy'), '.')
+      h('p', null, 'By creating an account, listing cards for sale or trade, placing an order, or otherwise using the Site\u2019s features, you confirm that you have read, understood, and agree to these Terms as well as our ', h('a', { href: '#privacy' }, 'Privacy Policy'), '.'),
+      h('p', null, 'If we discover that a user is under 13, we will terminate their account and delete associated data without notice.')
     ),
 
     h('section', { className: 'legal-section' },
@@ -55,7 +56,7 @@ export function TermsView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, '6. Payments'),
-      h('p', null, 'Online payments are processed by SumUp, a PCI-compliant payment processor. investMTG never sees, stores, or processes your payment card information. By using the payment feature, you also agree to ', h('a', { href: 'https://www.sumup.com/en-us/terms/', target: '_blank', rel: 'noopener' }, 'SumUp\u2019s Terms of Service'), '.'),
+      h('p', null, 'Online payments are processed by SumUp and PayPal, both PCI-compliant payment processors. investMTG never sees, stores, or processes your payment card information. By using the payment features, you also agree to ', h('a', { href: 'https://www.sumup.com/en-us/terms/', target: '_blank', rel: 'noopener' }, 'SumUp\u2019s Terms of Service'), ' and/or ', h('a', { href: 'https://www.paypal.com/us/legalhub/useragreement-full', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s User Agreement'), ' as applicable.'),
       h('p', null, 'For in-person transactions (Reserve & Pay at Pickup), payment terms are between the buyer and seller.')
     ),
 
@@ -68,7 +69,10 @@ export function TermsView() {
         h('li', null, 'Respond to buyer inquiries in a timely manner'),
         h('li', null, 'Comply with all applicable Guam business and tax laws'),
         h('li', null, 'Not list counterfeit, proxy, or stolen cards')
-      )
+      ),
+      h('p', null, 'investMTG is free to use. investMTG does not charge seller fees or take a commission on transactions.'),
+      h('p', null, 'For online payment transactions, the payment processor (SumUp or PayPal) may charge the seller standard processing fees. investMTG is not responsible for these fees.'),
+      h('p', null, 'Sellers accept responsibility for any chargebacks or payment disputes arising from their listings. investMTG has no ability to reverse payments on sellers\u2019 behalf.')
     ),
 
     h('section', { className: 'legal-section' },
@@ -101,22 +105,50 @@ export function TermsView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, '11. Limitation of Liability'),
-      h('p', null, 'TO THE MAXIMUM EXTENT PERMITTED BY LAW, INVESTMTG AND ITS OPERATORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SITE, INCLUDING BUT NOT LIMITED TO LOSSES FROM MARKETPLACE TRANSACTIONS, PRICING INACCURACIES, OR SERVICE INTERRUPTIONS.')
+      h('p', null, 'TO THE MAXIMUM EXTENT PERMITTED BY LAW, INVESTMTG AND ITS OPERATORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SITE, INCLUDING BUT NOT LIMITED TO LOSSES FROM MARKETPLACE TRANSACTIONS, PRICING INACCURACIES, OR SERVICE INTERRUPTIONS.'),
+      h('p', null, 'IN NO EVENT SHALL INVESTMTG\u2019S TOTAL LIABILITY FOR ALL CLAIMS EXCEED ONE HUNDRED US DOLLARS ($100) OR THE AMOUNT YOU PAID TO INVESTMTG IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM, WHICHEVER IS GREATER.')
     ),
 
     h('section', { className: 'legal-section' },
       h('h2', null, '12. Dispute Resolution'),
       h('p', null, 'Disputes between buyers and sellers should be resolved directly between the parties. investMTG may, but is not obligated to, assist in dispute resolution.'),
+      h('h3', null, 'Buyer Protection for Online Payments'),
+      h('p', null, 'If you paid for an order via SumUp or PayPal and have a dispute regarding the transaction, you may file a dispute or chargeback directly with your card issuer (for SumUp) or through ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'), ' (for PayPal orders). investMTG has no ability to issue refunds on behalf of sellers \u2014 refunds are the responsibility of the individual seller. Contact the seller first; if unresolved, use your payment processor\u2019s dispute mechanism.'),
+      h('h3', null, 'Reserve & Pay at Pickup'),
+      h('p', null, 'For reserved orders (no advance payment), if a seller fails to honor a reservation, contact the seller and, if unresolved, notify investMTG at ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), '. Repeated violations may result in seller suspension.'),
       h('p', null, 'Any disputes with investMTG itself shall be governed by the laws of the Territory of Guam, United States.')
     ),
 
     h('section', { className: 'legal-section' },
-      h('h2', null, '13. Modifications'),
+      h('h2', null, '13. Refund and Return Policy'),
+      h('p', null, h('strong', null, 'investMTG is a platform, not a seller.'), ' All sales are directly between buyers and sellers.'),
+      h('h3', null, 'Reserve & Pay at Pickup'),
+      h('p', null, 'No payment is taken by investMTG. Refund terms are between the buyer and seller directly. Either party may cancel before pickup.'),
+      h('h3', null, 'Online Payments (SumUp / PayPal)'),
+      h('p', null, 'investMTG does not hold or control payment funds. Online payments go directly to the seller via the respective payment processor.'),
+      h('ul', null,
+        h('li', null, h('strong', null, 'SumUp transactions: '), 'Contact your card issuer or SumUp to dispute a charge if the item was not as described or not received.'),
+        h('li', null, h('strong', null, 'PayPal transactions: '), 'Use PayPal\u2019s ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'Resolution Center'), ' to open a dispute. PayPal Buyer Protection may apply.')
+      ),
+      h('h3', null, 'Seller Obligations'),
+      h('p', null, 'Sellers are required to accurately describe card conditions. A buyer who receives a card materially different from the listed condition may request a refund from the seller. Sellers who repeatedly misrepresent cards may be suspended.'),
+      h('p', null, 'For unresolved disputes, email ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), '. We will make reasonable efforts to mediate.')
+    ),
+
+    h('section', { className: 'legal-section' },
+      h('h2', null, '14. Modifications'),
       h('p', null, 'We reserve the right to modify these Terms at any time. Changes will be posted on this page with an updated "Last updated" date. Continued use of the Site after changes constitutes acceptance of the revised Terms.')
     ),
 
     h('section', { className: 'legal-section' },
-      h('h2', null, '14. Contact'),
+      h('h2', null, '15. Account Suspension and Termination'),
+      h('p', null, 'investMTG reserves the right to suspend or terminate any user account, at our sole discretion, for violations of these Terms, including but not limited to: listing counterfeit or stolen items, fraudulent behavior, harassment of other users, or repeated failure to honor reservations.'),
+      h('p', null, 'Upon termination: (a) your access to the marketplace will be revoked; (b) your active listings will be removed; (c) pending reservations will be cancelled with seller/buyer notifications; and (d) your personal data will be handled per our Privacy Policy.'),
+      h('p', null, 'You may terminate your own account at any time by contacting ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' with a deletion request.')
+    ),
+
+    h('section', { className: 'legal-section' },
+      h('h2', null, '16. Contact'),
       h('p', null, 'For questions about these Terms, contact us at: ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'))
     )
   );

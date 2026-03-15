@@ -626,7 +626,7 @@ export function CheckoutView(props) {
       step === 3 && h('div', { className: 'checkout-section' },
         h('h2', { className: 'checkout-section-title' }, 'Contact Information'),
         h('p', { className: 'checkout-section-sub' },
-          'We\'ll send your order confirmation here and share it with the seller for coordination.'
+          'We\'ll send your order confirmation to your email address and share your contact details with the seller to coordinate pickup or delivery.'
         ),
 
         h('div', { className: 'checkout-form' },
@@ -949,6 +949,18 @@ export function CheckoutView(props) {
                   disabled: sumupLoading
                 }, '\uD83D\uDCB3 Initialize Payment')
               : null
+        ),
+
+        h('div', { className: 'checkout-dispute-notice' },
+          h('p', null,
+            'By completing this order, you agree to our ',
+            h('a', { href: '#terms' }, 'Terms of Service'),
+            '. For payment disputes, contact your card issuer (for card payments) or ',
+            h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'),
+            ' (for PayPal). investMTG facilitates connections between buyers and sellers and is not a party to transactions. See our ',
+            h('a', { href: '#terms', onClick: function(e) { e.preventDefault(); window.open('#terms', '_blank'); } }, 'Refund Policy'),
+            ' for details.'
+          )
         ),
 
         h('div', { className: 'checkout-payment-info' },

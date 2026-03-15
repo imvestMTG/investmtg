@@ -194,6 +194,8 @@ Before any go-live push:
 
 The order matters. QA and security come first because they catch the bugs that are hardest to diagnose after the fact.
 
+**ToS / Legal update rule:** Any change to Terms of Service text in `TermsView.js` requires: (1) updating the "Last updated" date in `TermsView.js`, (2) bumping `TOS_VERSION` in `TermsGate.js` to the new date, and (3) bumping the Privacy Policy date in `PrivacyPolicyView.js` if privacy-related content changed. These must be kept in sync.
+
 ## Changelog
 
 | Date | Change |

@@ -4,7 +4,7 @@ import { storageGetRaw, storageSetRaw } from '../utils/storage.js';
 var h = React.createElement;
 
 var TOS_KEY = 'investmtg-tos-accepted';
-var TOS_VERSION = '2026-03-09';
+var TOS_VERSION = '2026-03-15';
 
 export function TermsGate() {
   var ref = React.useState(function() {
