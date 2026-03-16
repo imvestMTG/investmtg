@@ -47,7 +47,15 @@ run_remote()  { ! is_local; }
 # ── Cached fetches (fetch once, reuse) ──
 INDEX_HTML=""
 HEALTH_JSON=""
-fetch_index() { [ -n "$INDEX_HTML" ] && return; INDEX_HTML=$(curl -s --connect-timeout 8 --max-time 15 "$SITE/" 2>/dev/null); }
+fetch_index() {
+  [ -n "$INDEX_HTML" ] && return
+  INDEX_HTML=$(curl -s --connect-timeout 8 --max-time 15 "$SITE/" 2>/dev/null)
+  # Retry once if response is empty or suspiciously short (< 1KB)
+  if [ ${#INDEX_HTML} -lt 1024 ]; then
+    sleep 2
+    INDEX_HTML=$(curl -s --connect-timeout 8 --max-time 15 "$SITE/" 2>/dev/null)
+  fi
+}
 fetch_health() { [ -n "$HEALTH_JSON" ] && return; HEALTH_JSON=$(curl -s --connect-timeout 8 --max-time 15 "$API/api/health" 2>/dev/null); }
 
 # ── Helpers ──
@@ -387,10 +395,15 @@ if run_remote; then
   if ! is_quick; then
     header "CSP Audit"
     fetch_index
-    for domain in api.investmtg.com api.scryfall.com gateway.sumup.com api.sumup.com js.sumup.com api.justtcg.com api2.moxfield.com edhtop16.com topdeck.gg paypal.com paypalobjects.com; do
-      if echo "$INDEX_HTML" | grep -q "$domain"; then pass "CSP: $domain"
-      else fail "CSP MISSING: $domain"; fi
-    done
+    CSP_CONNECT=$(echo "$INDEX_HTML" | grep -oP 'connect-src[^;]+' | head -1)
+    if [ -z "$CSP_CONNECT" ]; then
+      fail "CSP connect-src — not found in HTML (fetch may have failed)"
+    else
+      for domain in api.investmtg.com api.scryfall.com gateway.sumup.com api.sumup.com js.sumup.com api.justtcg.com api2.moxfield.com edhtop16.com topdeck.gg paypal.com paypalobjects.com sentry.io; do
+        if echo "$CSP_CONNECT" | grep -q "$domain"; then pass "CSP connect-src: $domain"
+        else fail "CSP connect-src MISSING: $domain"; fi
+      done
+    fi
   fi
 
   # ── CORS ──

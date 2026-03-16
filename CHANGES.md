@@ -1,5 +1,14 @@
 # investMTG — Changelog
 
+## 2026-03-16: QA Script — CSP Audit Hardening
+
+- Fixed intermittent CSP audit flake: replaced full-HTML grep with targeted `connect-src` extraction
+- `fetch_index` now retries once if response is under 1KB (catches partial/failed fetches)
+- CSP checks now label `CSP connect-src: <domain>` instead of generic `CSP: <domain>`
+- Added `sentry.io` to CSP audit domain list
+- If `connect-src` can't be extracted, reports one clear failure instead of 11+ confusing misses
+- No frontend or worker changes (no version bump)
+
 ## 2026-03-15: v86 — Moxfield Import + Portfolio Empty State
 
 **Moxfield Deck Import (Portfolio)**
