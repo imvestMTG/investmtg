@@ -2273,9 +2273,16 @@ async function handlePayPalCaptureOrder(request, env) {
       }
     }
 
+    // Include the investMTG order_id so the frontend can navigate to order confirmation
+    var investOrderId = null;
+    if (data.status === 'COMPLETED' && data.purchase_units && data.purchase_units[0]) {
+      investOrderId = data.purchase_units[0].reference_id || null;
+    }
+
     return json({
       ok: true,
       status: data.status,
+      order_id: investOrderId,
       payer: data.payer ? { email: data.payer.email_address, name: (data.payer.name ? data.payer.name.given_name : '') } : null,
     }, 200, request);
   } catch (e) {

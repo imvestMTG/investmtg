@@ -1,5 +1,28 @@
 # investMTG — Changelog
 
+## 2026-03-16: v89 — PayPal Handshake Fix, Portfolio Persistence, Email & Image Updates
+
+**PayPal Capture Fix (Worker + Frontend)**
+- Worker `handlePayPalCaptureOrder` now returns `order_id` (investMTG order ID) in the capture response
+- Frontend `onApprove` callback uses `result.order_id || investOrderIdRef.current` to correctly navigate to order confirmation
+- Previously, `finishOrder` received the PayPal order ID instead of the investMTG ID, breaking the order detail page
+
+**Portfolio Persistence Fix**
+- Added 600ms delay before `refreshPortfolio` after batch import to let D1 batch commits settle
+- Improved error handling: auth expiry now shows "Session expired. Please sign in again" instead of generic failure
+
+**Seller Dashboard**
+- Fixed join date display: correctly reads `registered_at` (Unix seconds) from D1 and converts to milliseconds
+
+**Email Update**
+- Replaced `bloodshutdawn@gmail.com` with `support@investmtg.com` across Terms, Privacy Policy, and Guidelines (9 instances)
+
+**Event Images**
+- Replaced 3 event card images with higher-quality photos:
+  - TCG Con 2026: convention gaming hall scene
+  - Commander Night: custom gaming table with cards
+  - MTG Weekend: regional championship tournament tables
+
 ## 2026-03-16: QA Script — CSP Audit Hardening
 
 - Fixed intermittent CSP audit flake: replaced full-HTML grep with targeted `connect-src` extraction

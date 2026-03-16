@@ -1461,7 +1461,8 @@ export function SellerDashboard(props) {
   }, 0);
   var storeLabel = storeOptions.find(function(s) { return s.id === (seller.store_affiliation || seller.storeId); });
   storeLabel = storeLabel ? storeLabel.name : 'No affiliation';
-  var joinDate = seller.created_at || seller.joinDate || new Date().toISOString();
+  var rawJoin = seller.registered_at || seller.created_at || seller.joinDate;
+  var joinDate = typeof rawJoin === 'number' && rawJoin < 9999999999 ? rawJoin * 1000 : (rawJoin || Date.now());
   var reputationScore = seller.reputation_score || seller.reputationScore || 100;
 
   return h('div', { className: 'container seller-dashboard' },

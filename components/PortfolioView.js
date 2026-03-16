@@ -216,21 +216,29 @@ function PortfolioImportModal(props) {
         setSubmitting(false);
         setResultMsg('Imported ' + (result.created || items.length) + ' cards. Fetching current prices\u2026');
         setEnriching(true);
-        if (onSuccess) onSuccess();
+        // Small delay to let D1 batch commits settle before refreshing
+        setTimeout(function() { if (onSuccess) onSuccess(); }, 600);
         // Background: enrich prices from Scryfall
         var cardIds = items.map(function(item) { return item.card_id; }).filter(function(id) { return id; });
         if (cardIds.length > 0) {
           enrichPortfolioPrices(cardIds).then(function() {
             setEnriching(false);
             setResultMsg('Imported ' + (result.created || items.length) + ' cards with current prices.');
-            if (onSuccess) onSuccess();
+            setTimeout(function() { if (onSuccess) onSuccess(); }, 600);
           }).catch(function() {
             setEnriching(false);
           });
         } else {
           setEnriching(false);
         }
-      }).catch(function() { setSubmitting(false); setResultMsg('Import failed. Please try again.'); });
+      }).catch(function(err) {
+        setSubmitting(false);
+        var msg = 'Import failed. Please try again.';
+        if (err && err.message && err.message.indexOf('401') !== -1) {
+          msg = 'Session expired. Please sign in again and retry.';
+        }
+        setResultMsg(msg);
+      });
     } else {
       var localItems = cards.map(function(card) {
         return {

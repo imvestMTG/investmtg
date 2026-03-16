@@ -173,7 +173,7 @@ export function PrivacyPolicyView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'DMCA / Copyright Takedown'),
-      h('p', null, 'investMTG respects intellectual property rights. If you believe content on this site infringes your copyright, please send a written notice to ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' (subject: "DMCA Takedown") including:'),
+      h('p', null, 'investMTG respects intellectual property rights. If you believe content on this site infringes your copyright, please send a written notice to ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), ' (subject: "DMCA Takedown") including:'),
       h('ol', null,
         h('li', null, 'Identification of the copyrighted work'),
         h('li', null, 'Identification of the allegedly infringing material and its location on the site'),
@@ -186,7 +186,7 @@ export function PrivacyPolicyView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'Contact'),
-      h('p', null, 'If you have questions about this privacy policy, contact us at: ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com')),
+      h('p', null, 'If you have questions about this privacy policy, contact us at: ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com')),
       h('p', null, 'For privacy-related requests (access, deletion, correction), email us with the subject line "Privacy Request." We will acknowledge your request within 5 business days and respond substantively within 30 days.')
     )
   );

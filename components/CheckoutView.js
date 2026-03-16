@@ -108,6 +108,7 @@ export function CheckoutView(props) {
   // Refs for PayPal session + instance
   var paypalSessionRef = React.useRef(null);
   var paypalSdkRef = React.useRef(null);
+  var investOrderIdRef = React.useRef(null); // Track investMTG order ID across PayPal flow
 
   var refTos = React.useState(false);
   var tosAccepted = refTos[0], setTosAccepted = refTos[1];
@@ -315,7 +316,7 @@ export function CheckoutView(props) {
             }).then(function(res) { return res.json(); })
               .then(function(result) {
                 if (result.ok) {
-                  var orderId = result.order_id || data.orderID;
+                  var orderId = result.order_id || investOrderIdRef.current || data.orderID;
                   finishOrder(orderId, 'paypal');
                 } else {
                   setPaypalError(result.detail || result.error || 'Payment capture failed. Please try again.');
@@ -355,6 +356,8 @@ export function CheckoutView(props) {
 
     // 1. Create investMTG order on server
     createServerOrder('paypal').then(function(orderId) {
+      // Store investMTG order ID so onApprove can access it
+      investOrderIdRef.current = orderId;
       // 2. Create PayPal order on server
       var authToken = storageGetRaw('investmtg_auth_token', null);
       var headers = { 'Content-Type': 'application/json' };

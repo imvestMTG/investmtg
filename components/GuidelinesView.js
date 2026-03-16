@@ -100,7 +100,7 @@ export function GuidelinesView() {
       h('p', null, 'If there\u2019s a problem with an order:'),
       h('ol', null,
         h('li', null, h('strong', null, 'Contact the seller first.'), ' Most issues can be resolved directly between buyer and seller.'),
-        h('li', null, h('strong', null, 'If unresolved after 48 hours,'), ' file a dispute through investMTG by emailing ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' with your order ID and a description of the issue.'),
+        h('li', null, h('strong', null, 'If unresolved after 48 hours,'), ' file a dispute through investMTG by emailing ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), ' with your order ID and a description of the issue.'),
         h('li', null, h('strong', null, 'We\u2019ll review the case'), ' and mediate between the parties. Our goal is a fair resolution for both sides.')
       ),
       h('p', null, 'For PayPal payments, PayPal\u2019s buyer protection also applies. You can open a dispute through ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'), ' in addition to contacting the seller.')
@@ -108,7 +108,7 @@ export function GuidelinesView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, 'Reporting'),
-      h('p', null, 'To report a bad actor, counterfeit listing, or other guideline violation, email ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' with the following:'),
+      h('p', null, 'To report a bad actor, counterfeit listing, or other guideline violation, email ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), ' with the following:'),
       h('ul', null,
         h('li', null, 'The order ID (if applicable)'),
         h('li', null, 'The seller or buyer username involved'),
@@ -125,7 +125,7 @@ export function GuidelinesView() {
     ),
 
     h('section', { className: 'legal-section' },
-      h('p', null, 'Questions about these guidelines? Email us at ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), '.')
+      h('p', null, 'Questions about these guidelines? Email us at ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), '.')
     )
   );
 }

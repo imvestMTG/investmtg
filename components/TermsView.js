@@ -115,7 +115,7 @@ export function TermsView() {
       h('h3', null, 'Buyer Protection for Online Payments'),
       h('p', null, 'If you paid for an order via SumUp or PayPal and have a dispute regarding the transaction, you may file a dispute or chargeback directly with your card issuer (for SumUp) or through ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'), ' (for PayPal orders). investMTG has no ability to issue refunds on behalf of sellers \u2014 refunds are the responsibility of the individual seller. Contact the seller first; if unresolved, use your payment processor\u2019s dispute mechanism.'),
       h('h3', null, 'Reserve & Pay at Pickup'),
-      h('p', null, 'For reserved orders (no advance payment), if a seller fails to honor a reservation, contact the seller and, if unresolved, notify investMTG at ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), '. Repeated violations may result in seller suspension.'),
+      h('p', null, 'For reserved orders (no advance payment), if a seller fails to honor a reservation, contact the seller and, if unresolved, notify investMTG at ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), '. Repeated violations may result in seller suspension.'),
       h('p', null, 'Any disputes with investMTG itself shall be governed by the laws of the Territory of Guam, United States.')
     ),
 
@@ -132,7 +132,7 @@ export function TermsView() {
       ),
       h('h3', null, 'Seller Obligations'),
       h('p', null, 'Sellers are required to accurately describe card conditions. A buyer who receives a card materially different from the listed condition may request a refund from the seller. Sellers who repeatedly misrepresent cards may be suspended.'),
-      h('p', null, 'For unresolved disputes, email ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), '. We will make reasonable efforts to mediate.')
+      h('p', null, 'For unresolved disputes, email ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), '. We will make reasonable efforts to mediate.')
     ),
 
     h('section', { className: 'legal-section' },
@@ -144,12 +144,12 @@ export function TermsView() {
       h('h2', null, '15. Account Suspension and Termination'),
       h('p', null, 'investMTG reserves the right to suspend or terminate any user account, at our sole discretion, for violations of these Terms, including but not limited to: listing counterfeit or stolen items, fraudulent behavior, harassment of other users, or repeated failure to honor reservations.'),
       h('p', null, 'Upon termination: (a) your access to the marketplace will be revoked; (b) your active listings will be removed; (c) pending reservations will be cancelled with seller/buyer notifications; and (d) your personal data will be handled per our Privacy Policy.'),
-      h('p', null, 'You may terminate your own account at any time by contacting ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'), ' with a deletion request.')
+      h('p', null, 'You may terminate your own account at any time by contacting ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), ' with a deletion request.')
     ),
 
     h('section', { className: 'legal-section' },
       h('h2', null, '16. Contact'),
-      h('p', null, 'For questions about these Terms, contact us at: ', h('a', { href: 'mailto:bloodshutdawn@gmail.com' }, 'bloodshutdawn@gmail.com'))
+      h('p', null, 'For questions about these Terms, contact us at: ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'))
     )
   );
 }
