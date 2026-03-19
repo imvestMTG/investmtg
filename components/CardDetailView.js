@@ -1,6 +1,7 @@
 /* CardDetailView.js — Card detail with multi-source pricing waterfall */
 import React from 'react';
 import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail, backendFetch } from '../utils/api.js';
+import { SCRYFALL_API_BASE } from '../utils/config.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 import { usePriceResolver, getPriceSourceLabel, formatPriceChange } from '../utils/price-resolver.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -9,7 +10,7 @@ import { showToast } from './shared/Toast.js';
 import { ShareButton } from './shared/ShareButton.js';
 var h = React.createElement;
 
-var SCRYFALL_BASE = 'https://api.scryfall.com';
+var SCRYFALL_BASE = SCRYFALL_API_BASE;
 
 export function CardDetailView(props) {
   var cardId = props.cardId;
@@ -63,10 +64,7 @@ export function CardDetailView(props) {
   /* Fetch existing price alert for this card (if user is logged in) */
   React.useEffect(function() {
     if (!card || !state.user) return;
-    backendFetch('/api/price-alerts?card_id=' + card.id).then(function(res) {
-      if (!res.ok) return;
-      return res.json();
-    }).then(function(data) {
+    backendFetch('/api/price-alerts?card_id=' + card.id).then(function(data) {
       if (data && data.alert) {
         setExistingAlert(data.alert);
         setAlertPrice(String(data.alert.target_price));
@@ -95,9 +93,6 @@ export function CardDetailView(props) {
         target_price: targetPrice,
         current_price: price
       })
-    }).then(function(res) {
-      if (!res.ok) throw new Error('Failed to set alert');
-      return res.json();
     }).then(function(data) {
       setExistingAlert(data.alert || { target_price: targetPrice, direction: alertDirection });
       setShowAlertForm(false);
@@ -111,8 +106,7 @@ export function CardDetailView(props) {
     if (!existingAlert) return;
     backendFetch('/api/price-alerts?card_id=' + card.id + '&direction=' + existingAlert.direction, {
       method: 'DELETE'
-    }).then(function(res) {
-      if (!res.ok) throw new Error('Failed to remove alert');
+    }).then(function() {
       setExistingAlert(null);
       setAlertPrice('');
       setShowAlertForm(false);

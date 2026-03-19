@@ -3,6 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { CheckCircleIcon, StorePickupIcon, TruckIcon, MapPinIcon, OrderIcon } from './shared/Icons.js';
 import { storageGet } from '../utils/storage.js';
+import { STORAGE_KEYS } from '../utils/config.js';
 import { backendFetch } from '../utils/api.js';
 var h = React.createElement;
 
@@ -77,7 +78,7 @@ export function OrderConfirmation(props) {
       });
 
     function loadFromLocal() {
-      var orders = storageGet('investmtg-orders', []);
+      var orders = storageGet(STORAGE_KEYS.ORDERS, []);
       if (!Array.isArray(orders)) orders = [];
       var found = orders.find(function(o) { return o.id === orderId; });
       setOrder(found || null);

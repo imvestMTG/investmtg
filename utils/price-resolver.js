@@ -22,9 +22,11 @@ import React from 'react';
 import { getJustTCGPricing, batchJustTCGPricing } from './justtcg-api.js';
 import { getGradingPrices } from './echomtg-api.js';
 
-/* ── In-memory resolved-price cache ── */
+/* ── In-memory resolved-price cache (capped to prevent memory leaks) ── */
 var resolvedCache = {};
+var resolvedCacheCount = 0;
 var CACHE_TTL = 10 * 60 * 1000; // 10 min
+var CACHE_MAX = 200; // max entries before evicting oldest
 
 function getCached(key) {
   var entry = resolvedCache[key];
@@ -33,7 +35,18 @@ function getCached(key) {
 }
 
 function setCacheEntry(key, data) {
+  if (!resolvedCache[key]) resolvedCacheCount++;
   resolvedCache[key] = { data: data, ts: Date.now() };
+  /* Evict oldest entries when cache exceeds limit */
+  if (resolvedCacheCount > CACHE_MAX) {
+    var keys = Object.keys(resolvedCache);
+    keys.sort(function(a, b) { return resolvedCache[a].ts - resolvedCache[b].ts; });
+    var toRemove = Math.floor(CACHE_MAX * 0.25); // remove 25% oldest
+    for (var i = 0; i < toRemove && i < keys.length; i++) {
+      delete resolvedCache[keys[i]];
+      resolvedCacheCount--;
+    }
+  }
 }
 
 /* ── Extract Scryfall baseline (synchronous, always available) ── */

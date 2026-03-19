@@ -120,6 +120,7 @@ export function MarketMoversView() {
   var showReservedOnly = ref8[0], setShowReservedOnly = ref8[1];
 
   React.useEffect(function() {
+    var cancelled = false;
     var isEcho = activeCategory === 'echo-gainers' || activeCategory === 'echo-losers';
 
     setLoading(true);
@@ -132,6 +133,7 @@ export function MarketMoversView() {
       Promise.all(ECHO_SET_CODES.map(function(code) {
         return fetchFn(code, 8).catch(function() { return []; });
       })).then(function(results) {
+        if (cancelled) return;
         var merged = [];
         results.forEach(function(items) {
           items.forEach(function(item) { merged.push(item); });
@@ -142,6 +144,7 @@ export function MarketMoversView() {
         setCards([]);
         setLoading(false);
       }).catch(function() {
+        if (cancelled) return;
         setError('Could not load EchoMTG data. Please try again.');
         setLoading(false);
       });
@@ -150,6 +153,7 @@ export function MarketMoversView() {
       var backendCategory = CATEGORY_KEY_MAP[activeCategory] || activeCategory;
 
       fetchMovers(backendCategory).then(function(result) {
+        if (cancelled) return;
         var seen = {};
         var unique = [];
         result.forEach(function(card) {
@@ -161,12 +165,13 @@ export function MarketMoversView() {
         setCards(unique);
         setLoading(false);
 
-        /* Fetch JustTCG price data for each card via tcgplayer_id (fire-and-forget, progressive loading) */
+        /* Fetch JustTCG price data for each card via tcgplayer_id (progressive loading) */
         unique.forEach(function(card) {
           var cardId = card.id;
           var tcgId = card.tcgplayer_id || card.tcgplayerId;
           if (!tcgId) return; /* Skip cards without tcgplayer_id */
           fetchJustTCGDetail({ tcgplayerId: tcgId }).then(function(detail) {
+            if (cancelled) return;
             if (detail && detail.conditions && detail.conditions.NM) {
               setJtcgData(function(prev) {
                 var next = {};
@@ -175,13 +180,16 @@ export function MarketMoversView() {
                 return next;
               });
             }
-          });
+          }).catch(function() { /* swallow — progressive enhancement */ });
         });
       }).catch(function() {
+        if (cancelled) return;
         setError('Could not load market data. Please try again.');
         setLoading(false);
       });
     }
+
+    return function() { cancelled = true; };
   }, [activeCategory]);
 
   function toggleSort(key) {

@@ -3,7 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
 import { TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
-import { SHIPPING_FLAT_RATE, PROXY_BASE, SUMUP_PUBLIC_KEY } from '../utils/config.js';
+import { SHIPPING_FLAT_RATE, PROXY_BASE, SUMUP_PUBLIC_KEY, BACKEND_FETCH_TIMEOUT, STORAGE_KEYS } from '../utils/config.js';
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 import { storageGet, storageSet, storageGetRaw } from '../utils/storage.js';
@@ -198,10 +198,12 @@ export function CheckoutView(props) {
       status: (method === 'sumup' || method === 'paypal') ? 'paid' : 'reserved'
     };
 
-    var orders = storageGet('investmtg-orders', []);
+    var orders = storageGet(STORAGE_KEYS.ORDERS, []);
     if (!Array.isArray(orders)) orders = [];
     orders.unshift(savedOrder);
-    storageSet('investmtg-orders', orders);
+    /* Cap localStorage orders to prevent unbounded growth */
+    if (orders.length > 50) orders = orders.slice(0, 50);
+    storageSet(STORAGE_KEYS.ORDERS, orders);
     updateCart([]);
     setPaymentProcessing(false);
     setCompletedOrder(savedOrder);
@@ -228,16 +230,19 @@ export function CheckoutView(props) {
     // 1. Create order on server first to get the order ID
     createServerOrder('sumup').then(function(orderId) {
       // 2. Create SumUp checkout via worker
-      var authToken = storageGetRaw('investmtg_auth_token', null);
+      var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
       var headers = { 'Content-Type': 'application/json' };
       if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
 
+      var ac = new AbortController();
+      var tid = setTimeout(function() { ac.abort(); }, BACKEND_FETCH_TIMEOUT);
       return fetch(PROXY_BASE + '/api/sumup/checkout', {
         method: 'POST',
         credentials: 'include',
         headers: headers,
+        signal: ac.signal,
         body: JSON.stringify({ amount: total, order_id: orderId })
-      }).then(function(res) { return res.json(); })
+      }).then(function(res) { clearTimeout(tid); return res.json(); })
         .then(function(data) {
           if (!data.ok || !data.checkout_id) {
             throw new Error(data.detail || data.error || 'Failed to create checkout');
@@ -304,16 +309,19 @@ export function CheckoutView(props) {
           onApprove: function(data) {
             setPaymentProcessing(true);
             // data.orderID contains the PayPal order ID — capture it
-            var authToken = storageGetRaw('investmtg_auth_token', null);
+            var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
             var headers = { 'Content-Type': 'application/json' };
             if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
 
+            var ac2 = new AbortController();
+            var tid2 = setTimeout(function() { ac2.abort(); }, BACKEND_FETCH_TIMEOUT);
             fetch(PROXY_BASE + '/api/paypal/capture-order', {
               method: 'POST',
               credentials: 'include',
               headers: headers,
+              signal: ac2.signal,
               body: JSON.stringify({ paypal_order_id: data.orderID })
-            }).then(function(res) { return res.json(); })
+            }).then(function(res) { clearTimeout(tid2); return res.json(); })
               .then(function(result) {
                 if (result.ok) {
                   var orderId = result.order_id || investOrderIdRef.current || data.orderID;
@@ -359,16 +367,19 @@ export function CheckoutView(props) {
       // Store investMTG order ID so onApprove can access it
       investOrderIdRef.current = orderId;
       // 2. Create PayPal order on server
-      var authToken = storageGetRaw('investmtg_auth_token', null);
+      var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
       var headers = { 'Content-Type': 'application/json' };
       if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
 
+      var ac3 = new AbortController();
+      var tid3 = setTimeout(function() { ac3.abort(); }, BACKEND_FETCH_TIMEOUT);
       return fetch(PROXY_BASE + '/api/paypal/create-order', {
         method: 'POST',
         credentials: 'include',
         headers: headers,
+        signal: ac3.signal,
         body: JSON.stringify({ order_id: orderId, amount: total })
-      }).then(function(res) { return res.json(); })
+      }).then(function(res) { clearTimeout(tid3); return res.json(); })
         .then(function(data) {
           if (!data.ok || !data.paypal_order_id) {
             throw new Error(data.detail || data.error || 'Failed to create PayPal order');

@@ -8,6 +8,7 @@ import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings } from '../utils/api.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
+import { STORAGE_KEYS } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
 import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
@@ -1450,7 +1451,7 @@ export function SellerDashboard(props) {
 
   var listings = sellerListings;
   // Sales history from localStorage orders
-  var allOrders = storageGet('investmtg-orders', []);
+  var allOrders = storageGet(STORAGE_KEYS.ORDERS, []);
   if (!Array.isArray(allOrders)) allOrders = [];
   var sellerSales = allOrders.filter(function(o) {
     return o.items && o.items.some(function(i) { return i.seller === seller.name; });

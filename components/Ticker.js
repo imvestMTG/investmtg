@@ -3,11 +3,12 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { fetchTicker } from '../utils/api.js';
 import { storageGet, storageSet } from '../utils/storage.js';
+import { STORAGE_KEYS, CACHE_TTL_SHORT } from '../utils/config.js';
 var h = React.createElement;
 
-var CACHE_KEY = 'investmtg-ticker-cache';
-var PREV_KEY = 'investmtg-ticker-prev';
-var CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+var CACHE_KEY = STORAGE_KEYS.TICKER_CACHE;
+var PREV_KEY = STORAGE_KEYS.TICKER_PREV;
+var CACHE_TTL = CACHE_TTL_SHORT;
 
 function loadCache() {
   var cached = storageGet(CACHE_KEY, null);

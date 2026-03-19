@@ -1,5 +1,5 @@
 /* api.js — Scryfall API wrapper with rate limiting + backend proxy functions */
-import { SCRYFALL_RATE_LIMIT_MS, PROXY_BASE } from './config.js';
+import { SCRYFALL_RATE_LIMIT_MS, SCRYFALL_API_BASE, PROXY_BASE, BACKEND_FETCH_TIMEOUT, STORAGE_KEYS } from './config.js';
 import { storageGetRaw } from './storage.js';
 
 var lastRequestTime = 0;
@@ -26,7 +26,7 @@ function apiFetch(url) {
   });
 }
 
-var BASE = 'https://api.scryfall.com';
+var BASE = SCRYFALL_API_BASE;
 
 export function searchCards(query) {
   return apiFetch(BASE + '/cards/search?q=' + encodeURIComponent(query) + '+-is%3Adigital+has%3Ausd&order=usd&dir=desc');
@@ -130,7 +130,7 @@ export function backendFetch(path, options) {
   var opts = options || {};
   opts.credentials = 'include';
   // Include auth token from storage for cross-site requests
-  var token = storageGetRaw('investmtg_auth_token', null);
+  var token = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
   if (token) {
     opts.headers = opts.headers || {};
     if (!opts.headers['Authorization']) {
@@ -139,7 +139,7 @@ export function backendFetch(path, options) {
   }
   // Abort after 15 seconds to prevent indefinite loading states
   var controller = new AbortController();
-  var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+  var timeoutId = setTimeout(function() { controller.abort(); }, BACKEND_FETCH_TIMEOUT);
   opts.signal = controller.signal;
   return fetch(PROXY_BASE + path, opts).then(function(res) {
     clearTimeout(timeoutId);

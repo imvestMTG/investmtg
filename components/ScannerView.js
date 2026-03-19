@@ -348,14 +348,18 @@ export function ScannerView(props) {
   var canvasRef = React.useRef(null);
   var fileInputRef = React.useRef(null);
 
-  // Cleanup camera stream on unmount
+  // Cleanup camera stream + Tesseract worker on unmount
   React.useEffect(function() {
     return function() {
       if (stream) {
         stream.getTracks().forEach(function(t) { t.stop(); });
       }
+      /* Terminate OCR worker to reclaim ~20-40 MB WASM memory */
+      if (workerRef && typeof workerRef.terminate === 'function') {
+        workerRef.terminate().catch(function() {});
+      }
     };
-  }, [stream]);
+  }, [stream, workerRef]);
 
   // ===== Initialize Tesseract worker =====
   function initTesseract() {

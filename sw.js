@@ -1,6 +1,6 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v94';
+var CACHE_NAME = 'investmtg-v95';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
@@ -74,7 +74,7 @@ self.addEventListener('fetch', function(event) {
   /* Never intercept cross-origin requests (esm.sh, Scryfall, backend, etc.) */
   if (url.origin !== self.location.origin) return;
 
-  /* Scryfall card images — cache-first with size limit */
+  /* Scryfall card images — cache-first with LRU eviction */
   if (url.hostname === 'cards.scryfall.io') {
     event.respondWith(
       caches.match(req).then(function(cached) {
@@ -84,6 +84,15 @@ self.addEventListener('fetch', function(event) {
             var clone = response.clone();
             caches.open(IMG_CACHE).then(function(cache) {
               cache.put(req, clone);
+              /* Enforce max size — evict oldest entries beyond limit */
+              cache.keys().then(function(keys) {
+                if (keys.length > IMG_CACHE_MAX) {
+                  var toRemove = keys.length - IMG_CACHE_MAX;
+                  for (var i = 0; i < toRemove; i++) {
+                    cache.delete(keys[i]);
+                  }
+                }
+              });
             });
           }
           return response;

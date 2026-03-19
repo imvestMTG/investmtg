@@ -1,4 +1,5 @@
 /* helpers.js — Utility functions for investMTG */
+import { SCRYFALL_API_BASE } from './config.js';
 
 export function formatUSD(amount) {
   if (amount === null || amount === undefined || isNaN(amount)) return 'N/A';
@@ -17,7 +18,7 @@ export function getCardImageSmall(card) {
     return card.card_faces[0].image_uris.small;
   }
   // Fallback: use direct Scryfall API image endpoint (always works)
-  if (card.id) return 'https://api.scryfall.com/cards/' + card.id + '?format=image&version=small';
+  if (card.id) return SCRYFALL_API_BASE + '/cards/' + card.id + '?format=image&version=small';
   return '';
 }
 
@@ -29,7 +30,7 @@ export function getScryfallImageUrl(card, size) {
     return card.card_faces[0].image_uris[size];
   }
   // Fallback: use direct Scryfall API image endpoint (always works)
-  if (card.id) return 'https://api.scryfall.com/cards/' + card.id + '?format=image&version=' + size;
+  if (card.id) return SCRYFALL_API_BASE + '/cards/' + card.id + '?format=image&version=' + size;
   return '';
 }
 
@@ -37,14 +38,14 @@ export function getScryfallImageUrl(card, size) {
 export function scryfallImageFallback(scryfallId, size) {
   if (!scryfallId) return '';
   if (!size) size = 'small';
-  return 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
+  return SCRYFALL_API_BASE + '/cards/' + scryfallId + '?format=image&version=' + size;
 }
 
 /* onError handler for card images — switches to direct API endpoint, then card-name placeholder */
 export function handleImageError(e, scryfallId, size) {
   if (!scryfallId) return;
   if (!size) size = 'small';
-  var fallback = 'https://api.scryfall.com/cards/' + scryfallId + '?format=image&version=' + size;
+  var fallback = SCRYFALL_API_BASE + '/cards/' + scryfallId + '?format=image&version=' + size;
   if (e.target.src !== fallback) {
     e.target.src = fallback;
   } else {

@@ -86,6 +86,18 @@ const ORIGIN_WWW_HOSTNAME = 'origin-www.investmtg.com';
 const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const AUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 
+/* ── External API bases (centralized) ── */
+const SCRYFALL_API = 'https://api.scryfall.com';
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
+const SUMUP_API_BASE = 'https://api.sumup.com/v0.1/checkouts';
+const PAYPAL_API_BASE = 'https://api-m.paypal.com';
+const RESEND_API_URL = 'https://api.resend.com/emails';
+const SUMUP_MERCHANT_CODE = 'M55T011N';
+const ORDER_EMAIL_FROM = 'orders@investmtg.com';
+const SITE_URL = 'https://www.investmtg.com';
+
 // Ticker cards to track
 const TICKER_CARDS = [
   { name: 'Ragavan, Nimble Pilferer' },
@@ -388,7 +400,7 @@ function isRateLimited(key, max) {
 
 /* ── Scryfall helpers ── */
 
-const SCRYFALL_BASE = 'https://api.scryfall.com';
+const SCRYFALL_BASE = SCRYFALL_API;
 let lastScryfallCall = 0;
 
 async function scryfallFetch(path) {
@@ -627,7 +639,7 @@ async function handleGoogleAuth(request, env) {
 
   const url = new URL(request.url);
   const state = await createOAuthState(env);
-  const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  const googleUrl = new URL(GOOGLE_AUTH_URL);
   googleUrl.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
   googleUrl.searchParams.set('redirect_uri', OAUTH_REDIRECT_URI);
   googleUrl.searchParams.set('response_type', 'code');
@@ -651,7 +663,7 @@ async function handleAuthCallback(request, env) {
   if (!code) return json({ error: 'Missing code' }, 400, request);
   if (!(await verifyOAuthState(env, state))) return json({ error: 'Invalid state' }, 400, request);
 
-  const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+  const tokenResp = await fetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -671,7 +683,7 @@ async function handleAuthCallback(request, env) {
   const tokenData = await tokenResp.json();
   if (!tokenData.access_token) return json({ error: 'Missing access token' }, 502, request);
 
-  const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+  const userResp = await fetch(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
   });
 
@@ -1979,16 +1991,16 @@ async function handleSumUpCheckout(request, env) {
     checkout_reference: body.order_id,
     amount: amount,
     currency: 'USD',
-    merchant_code: 'M55T011N',
+    merchant_code: SUMUP_MERCHANT_CODE,
     description: 'investMTG Order ' + body.order_id,
   };
 
   // Only add redirect_url if needed for 3DS flow
-  const redirectUrl = (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id;
+  const redirectUrl = (env.FRONTEND_URL || SITE_URL) + '/#order/' + body.order_id;
   checkoutBody.redirect_url = redirectUrl;
 
   try {
-    const resp = await fetch('https://api.sumup.com/v0.1/checkouts', {
+    const resp = await fetch(SUMUP_API_BASE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2063,7 +2075,7 @@ async function handleSumUpWebhook(request, env) {
   // Validate by fetching the checkout from SumUp API
   if (env.SUMUP_SECRET_KEY) {
     try {
-      const checkoutResp = await fetch('https://api.sumup.com/v0.1/checkouts/' + body.id, {
+      const checkoutResp = await fetch(SUMUP_API_BASE + '/' + body.id, {
         headers: { 'Authorization': 'Bearer ' + env.SUMUP_SECRET_KEY }
       });
       const checkout = await checkoutResp.json();
@@ -2102,7 +2114,7 @@ async function handleSumUpWebhook(request, env) {
    Requires PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET wrangler secrets.
 */
 
-const PAYPAL_API_BASE = 'https://api-m.paypal.com'; // Live
+// PAYPAL_API_BASE defined at top of file
 
 async function getPayPalAccessToken(env) {
   const auth = btoa(env.PAYPAL_CLIENT_ID + ':' + env.PAYPAL_CLIENT_SECRET);
@@ -2161,8 +2173,8 @@ async function handlePayPalCreateOrder(request, env) {
             locale: 'en-US',
             landing_page: 'LOGIN',
             user_action: 'PAY_NOW',
-            return_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#order/' + body.order_id,
-            cancel_url: (env.FRONTEND_URL || 'https://www.investmtg.com') + '/#checkout',
+            return_url: (env.FRONTEND_URL || SITE_URL) + '/#order/' + body.order_id,
+            cancel_url: (env.FRONTEND_URL || SITE_URL) + '/#checkout',
           },
         },
       },
@@ -2332,7 +2344,7 @@ async function handleOrderPaymentStatus(request, env, orderId) {
   // If there's a checkout_id and payment isn't finalized, poll SumUp
   if (row.checkout_id && row.payment_status !== 'paid' && row.payment_status !== 'failed' && env.SUMUP_SECRET_KEY) {
     try {
-      const checkoutResp = await fetch('https://api.sumup.com/v0.1/checkouts/' + row.checkout_id, {
+      const checkoutResp = await fetch(SUMUP_API_BASE + '/' + row.checkout_id, {
         headers: { 'Authorization': 'Bearer ' + env.SUMUP_SECRET_KEY }
       });
       const checkout = await checkoutResp.json();
@@ -2749,14 +2761,14 @@ async function sendOrderConfirmationEmail(order, env, emailType) {
   const html = buildOrderEmailHtml(order, emailType);
 
   try {
-    const resp = await fetch('https://api.resend.com/emails', {
+    const resp = await fetch(RESEND_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + env.RESEND_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'investMTG <orders@investmtg.com>',
+        from: 'investMTG <' + ORDER_EMAIL_FROM + '>',
         to: [to],
         subject: subject,
         html: html,
@@ -2827,14 +2839,14 @@ async function sendOrderConfirmationEmail(order, env, emailType) {
           '<p style="margin:0;color:#8B8D94;font-size:12px">investMTG — Guam\'s MTG Marketplace</p></div>' +
           '</div></body></html>';
 
-        await fetch('https://api.resend.com/emails', {
+        await fetch(RESEND_API_URL, {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + env.RESEND_API_KEY,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'investMTG <orders@investmtg.com>',
+            from: 'investMTG <' + ORDER_EMAIL_FROM + '>',
             to: [sellerContact],
             subject: 'New Reservation — ' + order.id,
             html: sellerHtml,

@@ -2,6 +2,7 @@
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { storageGet } from '../utils/storage.js';
+import { STORAGE_KEYS } from '../utils/config.js';
 var h = React.createElement;
 
 function statusBadgeClass(status) {
@@ -33,7 +34,7 @@ export function OrdersView() {
   var loading = ref2[0], setLoading = ref2[1];
 
   React.useEffect(function() {
-    var stored = storageGet('investmtg-orders', []);
+    var stored = storageGet(STORAGE_KEYS.ORDERS, []);
     if (!Array.isArray(stored)) stored = [];
     // Sort by date descending (newest first)
     stored = stored.slice().sort(function(a, b) {
