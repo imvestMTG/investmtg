@@ -80,8 +80,8 @@ export function HomeView(props) {
       host: evt.host || '',
       description: evt.subtitle || evt.title || '',
       admission: evt.cost || 'Free',
-      link: null,
-      tags: Array.isArray(evt.tags) ? evt.tags : [],
+      link: evt.link || null,
+      tags: Array.isArray(evt.tags) ? evt.tags : (typeof evt.tags === 'string' ? (function() { try { var p = JSON.parse(evt.tags); return Array.isArray(p) ? p : []; } catch(e) { return []; } })() : []),
       image: evt.image_key || evt.image || '',
       featured: !evt.recurring
     };

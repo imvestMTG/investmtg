@@ -1397,6 +1397,29 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
+.pf-thumb-cell {
+  width: 48px;
+  padding: var(--space-1) !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.pf-card-thumb {
+  width: 36px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-interactive);
+}
+
+.pf-card-thumb:hover {
+  transform: scale(2.5);
+  z-index: 10;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;

@@ -1689,7 +1689,16 @@ async function handleEvents(request, env) {
   const rows = await env.DB.prepare(
     'SELECT * FROM events WHERE active = 1 ORDER BY id'
   ).all();
-  return json({ events: rows.results }, 200, request);
+  // Parse JSON-stringified tags into arrays
+  const events = (rows.results || []).map(function(evt) {
+    var parsed = evt;
+    if (typeof evt.tags === 'string') {
+      try { parsed = Object.assign({}, evt, { tags: JSON.parse(evt.tags) }); }
+      catch(e) { parsed = Object.assign({}, evt, { tags: [] }); }
+    }
+    return parsed;
+  });
+  return json({ events: events }, 200, request);
 }
 
 /* ── Cart routes ── */

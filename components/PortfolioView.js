@@ -838,11 +838,21 @@ export function PortfolioView(props) {
     }).catch(function() {});
   }
 
+  /* Build Scryfall small image URL from card ID */
+  function cardThumbUrl(item) {
+    if (item.image) return item.image;
+    if (item.id && item.id.length > 8 && item.id.indexOf('-') > 0) {
+      return 'https://cards.scryfall.io/small/front/' + item.id.charAt(0) + '/' + item.id.charAt(1) + '/' + item.id + '.jpg';
+    }
+    return '';
+  }
+
   /* Render a card table (used for both flat and grouped views) */
   function renderCardTable(items) {
     var sorted = sortItems(items);
     return h('table', { className: 'portfolio-table' },
       h('thead', null, h('tr', null,
+        h('th', { style: { width: '48px' } }),
         h(SortTh, { sortKey: 'name', label: 'Card' }),
         h(SortTh, { sortKey: 'set', label: 'Set' }),
         h(SortTh, { sortKey: 'condition', label: 'Cond' }),
@@ -856,7 +866,19 @@ export function PortfolioView(props) {
       h('tbody', null, sorted.map(function(item) {
         var gain = (item.currentPrice - item.buyPrice) * item.qty;
         var gainPct = item.buyPrice > 0 ? ((item.currentPrice - item.buyPrice) / item.buyPrice * 100) : 0;
+        var thumbSrc = cardThumbUrl(item);
         return h('tr', { key: item.id },
+          h('td', { className: 'pf-thumb-cell' },
+            thumbSrc
+              ? h('img', {
+                  src: thumbSrc,
+                  alt: item.name,
+                  className: 'pf-card-thumb',
+                  loading: 'lazy',
+                  onError: function(e) { e.target.style.display = 'none'; }
+                })
+              : null
+          ),
           h('td', null, h('a', { className: 'card-name-cell', href: '#card/' + item.id, onClick: function(e) { e.preventDefault(); window.location.hash = 'card/' + item.id; } }, item.name)),
           h('td', null, item.set || '\u2014'),
           h('td', null, h(ConditionSelector, { value: item.condition, onChange: function(v) { handleConditionChange(item.id, v); } })),
