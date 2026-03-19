@@ -1481,7 +1481,7 @@ async function handleListings(request, env) {
       language: r.language || 'English',
       finish: r.finish || 'nonfoil',
       price: r.price,
-      image: r.image_uri || '',
+      image: r.image_uri || (r.card_id ? 'https://cards.scryfall.io/small/front/' + r.card_id.charAt(0) + '/' + r.card_id.charAt(1) + '/' + r.card_id + '.jpg' : ''),
       notes: r.notes,
       status: r.status,
       type: r.price > 0 ? 'sale' : 'trade',
