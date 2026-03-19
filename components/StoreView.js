@@ -3,15 +3,18 @@ import React from 'react';
 import { filterMarketplace } from '../utils/marketplace-data.js';
 import { formatUSD } from '../utils/helpers.js';
 import { GUAM_STORES, getStoresAsync } from '../utils/stores.js';
-import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon } from './shared/Icons.js';
+import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon, EditIcon, TrashIcon } from './shared/Icons.js';
 import { ShareButton } from './shared/ShareButton.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
+import { deleteListing, updateListing } from '../utils/api.js';
 var h = React.createElement;
 
 export function StoreView(props) {
   var state = props.state;
+  var user = props.user;
   var updateCart = props.updateCart;
   var updateListings = props.updateListings;
+  var refreshMarketplace = props.refreshMarketplace;
   var onBuyLocal = props.onBuyLocal;
   var listings = state.listings;
   var ref1 = React.useState({ search: '', condition: '', type: '', sort: 'newest' });
@@ -24,6 +27,42 @@ export function StoreView(props) {
 
   var ref4 = React.useState(null);
   var contactModal = ref4[0], setContactModal = ref4[1];
+
+  var ref6 = React.useState(null);
+  var removeConfirm = ref6[0], setRemoveConfirm = ref6[1];
+
+  var ref7 = React.useState(null);
+  var flashMsg = ref7[0], setFlashMsg = ref7[1];
+
+  function flash(msg) {
+    setFlashMsg(msg);
+    setTimeout(function() { setFlashMsg(null); }, 2500);
+  }
+
+  function handleRemoveListing(listing) {
+    setRemoveConfirm(listing);
+  }
+
+  function confirmRemove() {
+    if (!removeConfirm) return;
+    var id = removeConfirm.id;
+    setRemoveConfirm(null);
+    deleteListing(id).then(function() {
+      flash('Listing removed.');
+      if (refreshMarketplace) refreshMarketplace();
+    }).catch(function() {
+      flash('Failed to remove listing.');
+    });
+  }
+
+  function handleEditListing(id, data) {
+    return updateListing(id, data).then(function() {
+      flash('Listing updated.');
+      if (refreshMarketplace) refreshMarketplace();
+    }).catch(function() {
+      flash('Failed to update listing.');
+    });
+  }
 
   // Dynamic stores state — start with static fallback, fetch from backend
   var ref5 = React.useState(GUAM_STORES);
@@ -213,12 +252,16 @@ export function StoreView(props) {
           )
         : h('div', { className: 'mp-grid' },
             filtered.map(function(listing) {
+              var isOwner = user && listing.userId && user.id === listing.userId;
               return h(ListingCard, {
                 key: listing.id,
                 listing: listing,
+                isOwner: isOwner,
                 onBuyLocal: onBuyLocal,
                 onAddToCart: handleAddToCart,
                 onContact: handleContact,
+                onRemove: handleRemoveListing,
+                onEdit: handleEditListing,
                 justAdded: addedToCart === listing.id
               });
             })
@@ -260,18 +303,77 @@ export function StoreView(props) {
       isAlert: true,
       onConfirm: function() { setContactModal(null); },
       onCancel: function() { setContactModal(null); }
-    })
+    }),
+
+    // Remove confirmation modal
+    removeConfirm && h(ConfirmModal, {
+      title: 'Remove Listing',
+      message: 'Remove "' + removeConfirm.cardName + '" from the marketplace? This cannot be undone.',
+      confirmLabel: 'Remove',
+      onConfirm: confirmRemove,
+      onCancel: function() { setRemoveConfirm(null); }
+    }),
+
+    // Flash notification
+    flashMsg && h('div', { className: 'mp-flash' }, flashMsg)
   );
 }
 
 function ListingCard(props) {
   var listing = props.listing;
+  var isOwner = props.isOwner;
   var onBuyLocal = props.onBuyLocal;
   var onAddToCart = props.onAddToCart;
   var onContact = props.onContact;
+  var onRemove = props.onRemove;
+  var onEdit = props.onEdit;
   var justAdded = props.justAdded;
+
+  var ref8 = React.useState(false);
+  var editing = ref8[0], setEditing = ref8[1];
+
+  var ref9 = React.useState(String(listing.price || '0'));
+  var editPrice = ref9[0], setEditPrice = ref9[1];
+
+  var ref10 = React.useState(listing.notes || '');
+  var editNotes = ref10[0], setEditNotes = ref10[1];
+
+  var ref11 = React.useState(listing.condition || 'NM');
+  var editCondition = ref11[0], setEditCondition = ref11[1];
+
+  var ref12 = React.useState(false);
+  var saving = ref12[0], setSaving = ref12[1];
+
+  function startEdit() {
+    setEditPrice(String(listing.price || '0'));
+    setEditNotes(listing.notes || '');
+    setEditCondition(listing.condition || 'NM');
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+  }
+
+  function saveEdit() {
+    var parsed = parseFloat(editPrice);
+    if (isNaN(parsed) || parsed < 0) return;
+    setSaving(true);
+    onEdit(listing.id, { price: parsed, notes: editNotes || null, condition: editCondition }).then(function() {
+      setEditing(false);
+      setSaving(false);
+    }).catch(function() {
+      setSaving(false);
+    });
+  }
+
   var condClass = { NM: 'cond-nm', LP: 'cond-lp', MP: 'cond-mp', HP: 'cond-hp' }[listing.condition] || 'cond-nm';
-  return h('div', { className: 'mp-listing-card' },
+
+  return h('div', { className: 'mp-listing-card' + (isOwner ? ' mp-listing-owned' : '') },
+
+    // Owner badge
+    isOwner && h('div', { className: 'mp-owner-badge' }, 'Your Listing'),
+
     h('div', { className: 'mp-listing-image' },
       listing.image
         ? h('img', { src: listing.image, alt: listing.cardName, loading: 'lazy' })
@@ -284,39 +386,98 @@ function ListingCard(props) {
     h('div', { className: 'mp-listing-info' },
       h('div', { className: 'mp-listing-name' }, listing.cardName),
       h('div', { className: 'mp-listing-set' }, listing.setName),
-      h('div', { className: 'mp-listing-price-row' },
-        h('span', { className: 'mp-listing-price' }, listing.type === 'sale' ? formatUSD(listing.price) : 'Trade'),
-        h('span', { className: 'mp-listing-seller' },
-          h('span', { className: 'mp-seller-badge' }, listing.seller)
-        )
-      ),
-      listing.notes && h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', lineHeight: '1.4' } }, listing.notes),
-      h('div', { className: 'mp-listing-actions' },
-        listing.type === 'sale' && h('button', {
-          className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
-          onClick: function() {
-            if (onAddToCart) onAddToCart(listing);
-          }
-        },
-          justAdded
-            ? '✓ Added'
-            : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
-        ),
-        listing.type === 'sale' && h('button', {
-          className: 'btn mp-btn-buylocal',
-          onClick: function() {
-            if (onBuyLocal) {
-              onBuyLocal({ id: listing.id, name: listing.cardName, set_name: listing.setName, prices: { usd: String(listing.price) } });
-            }
-          }
-        }, 'Buy Local'),
-        h('button', {
-          className: 'btn mp-btn-msg',
-          onClick: function() {
-            if (onContact) onContact(listing);
-          }
-        }, listing.type === 'trade' ? 'Trade Offer' : 'Message')
-      )
+
+      // Edit mode
+      editing
+        ? h('div', { className: 'mp-edit-form' },
+            h('label', { className: 'mp-edit-label' }, 'Price ($)'),
+            h('input', {
+              className: 'mp-edit-input',
+              type: 'number',
+              step: '0.01',
+              min: '0',
+              value: editPrice,
+              onChange: function(e) { setEditPrice(e.target.value); }
+            }),
+            h('label', { className: 'mp-edit-label' }, 'Condition'),
+            h('select', {
+              className: 'mp-edit-input',
+              value: editCondition,
+              onChange: function(e) { setEditCondition(e.target.value); }
+            },
+              ['NM', 'LP', 'MP', 'HP'].map(function(c) {
+                return h('option', { key: c, value: c }, c);
+              })
+            ),
+            h('label', { className: 'mp-edit-label' }, 'Notes'),
+            h('textarea', {
+              className: 'mp-edit-input mp-edit-textarea',
+              value: editNotes,
+              rows: 2,
+              onChange: function(e) { setEditNotes(e.target.value); }
+            }),
+            h('div', { className: 'mp-edit-actions' },
+              h('button', {
+                className: 'btn btn-primary btn-sm',
+                disabled: saving,
+                onClick: saveEdit
+              }, saving ? 'Saving...' : 'Save'),
+              h('button', {
+                className: 'btn btn-secondary btn-sm',
+                disabled: saving,
+                onClick: cancelEdit
+              }, 'Cancel')
+            )
+          )
+        : h(React.Fragment, null,
+            h('div', { className: 'mp-listing-price-row' },
+              h('span', { className: 'mp-listing-price' }, listing.type === 'sale' ? formatUSD(listing.price) : 'Trade'),
+              h('span', { className: 'mp-listing-seller' },
+                h('span', { className: 'mp-seller-badge' }, listing.seller)
+              )
+            ),
+            listing.notes && h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', lineHeight: '1.4' } }, listing.notes),
+
+            // Owner controls
+            isOwner && h('div', { className: 'mp-owner-controls' },
+              h('button', {
+                className: 'btn btn-sm mp-btn-edit',
+                onClick: startEdit
+              }, h(EditIcon, null), ' Edit'),
+              h('button', {
+                className: 'btn btn-sm mp-btn-remove',
+                onClick: function() { onRemove(listing); }
+              }, h(TrashIcon, null), ' Remove')
+            ),
+
+            // Public actions (hide for owner to reduce clutter, they can still use seller dashboard)
+            !isOwner && h('div', { className: 'mp-listing-actions' },
+              listing.type === 'sale' && h('button', {
+                className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
+                onClick: function() {
+                  if (onAddToCart) onAddToCart(listing);
+                }
+              },
+                justAdded
+                  ? '✓ Added'
+                  : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
+              ),
+              listing.type === 'sale' && h('button', {
+                className: 'btn mp-btn-buylocal',
+                onClick: function() {
+                  if (onBuyLocal) {
+                    onBuyLocal({ id: listing.id, name: listing.cardName, set_name: listing.setName, prices: { usd: String(listing.price) } });
+                  }
+                }
+              }, 'Buy Local'),
+              h('button', {
+                className: 'btn mp-btn-msg',
+                onClick: function() {
+                  if (onContact) onContact(listing);
+                }
+              }, listing.type === 'trade' ? 'Trade Offer' : 'Message')
+            )
+          )
     )
   );
 }

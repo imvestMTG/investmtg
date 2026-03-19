@@ -424,8 +424,10 @@ function App() {
       }),
       route.page === 'store' && h(StoreView, {
         state: gs.state,
+        user: authUser,
         updateCart: gs.updateCart,
         updateListings: gs.updateListings,
+        refreshMarketplace: gs.refreshMarketplace,
         onBuyLocal: setBuyLocalCard
       }),
       route.page === 'checkout' && h(CheckoutView, {
