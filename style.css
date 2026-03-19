@@ -667,9 +667,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .event-date-chip {
-  position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
+  align-self: flex-start;
   z-index: 3;
   background: oklch(from var(--color-primary) l c h / 0.9);
   color: #0D0F12;
@@ -683,6 +681,7 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.4;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  margin-bottom: var(--space-2);
 }
 
 .event-badge {
@@ -703,13 +702,19 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-backdrop-filter: blur(6px);
 }
 
+.event-card--small .event-badge {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
 .event-title {
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 700;
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-1);
   line-height: 1.2;
   color: #F0EDE8;
+  text-align: left;
 }
 
 .event-card--featured .event-title {
@@ -721,6 +726,7 @@ h1, h2, h3, h4, h5, h6 {
   color: rgba(240,237,232,0.7);
   margin: 0 0 var(--space-3);
   line-height: 1.5;
+  text-align: left;
 }
 
 .event-meta {
