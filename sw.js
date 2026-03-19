@@ -1,6 +1,6 @@
 /* sw.js — Service Worker for investMTG PWA */
 /* CACHE_VERSION: bump this on every deployment so browsers pick up new files */
-var CACHE_NAME = 'investmtg-v92';
+var CACHE_NAME = 'investmtg-v93';
 var STATIC_ASSETS = [
   '/style.css',
   '/base.css',
