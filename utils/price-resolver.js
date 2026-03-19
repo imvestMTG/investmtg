@@ -21,16 +21,16 @@
 import React from 'react';
 import { getJustTCGPricing, batchJustTCGPricing } from './justtcg-api.js';
 import { getGradingPrices } from './echomtg-api.js';
+import { CACHE_TTL_PRICE } from './config.js';
 
 /* ── In-memory resolved-price cache (capped to prevent memory leaks) ── */
 var resolvedCache = {};
 var resolvedCacheCount = 0;
-var CACHE_TTL = 10 * 60 * 1000; // 10 min
 var CACHE_MAX = 200; // max entries before evicting oldest
 
 function getCached(key) {
   var entry = resolvedCache[key];
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  if (entry && Date.now() - entry.ts < CACHE_TTL_PRICE) return entry.data;
   return null;
 }
 

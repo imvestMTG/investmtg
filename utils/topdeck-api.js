@@ -5,17 +5,16 @@
  *
  * Attribution required: "Data provided by TopDeck.gg"
  */
-import { PROXY_BASE } from './config.js';
+import { PROXY_BASE, CACHE_TTL_PRICE } from './config.js';
 
 var PROXY_URL = PROXY_BASE;
 
-/* Simple cache — 10 min TTL */
+/* Simple cache */
 var _cache = {};
-var CACHE_TTL = 10 * 60 * 1000;
 
 function cached(key, fn) {
   var hit = _cache[key];
-  if (hit && Date.now() - hit.ts < CACHE_TTL) {
+  if (hit && Date.now() - hit.ts < CACHE_TTL_PRICE) {
     return Promise.resolve(hit.data);
   }
   return fn().then(function(data) {

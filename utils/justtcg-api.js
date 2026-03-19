@@ -1,17 +1,16 @@
 /* justtcg-api.js — JustTCG pricing API integration
  * API key is stored server-side in the CORS proxy worker.
  * All requests route through the proxy — no secrets in browser JS. */
-import { PROXY_BASE as _PROXY } from './config.js';
+import { PROXY_BASE as _PROXY, CACHE_TTL_PRICE } from './config.js';
 
 var PROXY_BASE = _PROXY + '/justtcg';
 
 /* ── In-memory cache with TTL ── */
 var jtcgCache = {};
-var CACHE_TTL = 10 * 60 * 1000; // 10 min
 
 function getCached(key) {
   var entry = jtcgCache[key];
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  if (entry && Date.now() - entry.ts < CACHE_TTL_PRICE) return entry.data;
   return null;
 }
 

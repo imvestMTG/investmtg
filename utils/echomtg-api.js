@@ -9,15 +9,14 @@
  *   /echomtg?path=/api/data/set/&set_code=ONE&limit=50 — set cards with price changes
  */
 
-import { PROXY_BASE } from './config.js';
+import { PROXY_BASE, CACHE_TTL_MEDIUM } from './config.js';
 
 /* ─── In-memory cache ─── */
 var echoCache = {};
-var CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 function cachedFetch(key, url) {
   var now = Date.now();
-  if (echoCache[key] && (now - echoCache[key].ts) < CACHE_TTL) {
+  if (echoCache[key] && (now - echoCache[key].ts) < CACHE_TTL_MEDIUM) {
     return Promise.resolve(echoCache[key].data);
   }
   return fetch(url).then(function(res) {

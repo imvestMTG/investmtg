@@ -2,19 +2,18 @@
  * Public API: https://edhtop16.com/api/graphql (no key required)
  * Data: cEDH commander meta share, win rates, top cuts, staples, tournaments
  */
-import { PROXY_BASE } from './config.js';
+import { PROXY_BASE, CACHE_TTL_MEDIUM } from './config.js';
 
 var PROXY_URL = PROXY_BASE;
 var GRAPHQL_TARGET = 'https://edhtop16.com/api/graphql';
 var GRAPHQL_URL = PROXY_URL + '/?target=' + encodeURIComponent(GRAPHQL_TARGET);
 
-/* Simple in-memory cache — 15 min TTL */
+/* Simple in-memory cache */
 var _cache = {};
-var CACHE_TTL = 15 * 60 * 1000;
 
 function cached(key, fn) {
   var hit = _cache[key];
-  if (hit && Date.now() - hit.ts < CACHE_TTL) {
+  if (hit && Date.now() - hit.ts < CACHE_TTL_MEDIUM) {
     return Promise.resolve(hit.data);
   }
   return fn().then(function(data) {

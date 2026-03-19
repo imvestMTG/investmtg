@@ -4,21 +4,12 @@ import { CloseIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
 import { getCardPrice, formatUSD, getScryfallImageUrl } from '../utils/helpers.js';
 import { fetchConditionPrices } from '../utils/api.js';
+import { sanitizeInput } from '../utils/sanitize.js';
 var h = React.createElement;
 
 var FINISHES = ['nonfoil', 'foil', 'etched'];
 var FINISH_LABELS = { nonfoil: 'Non-Foil', foil: '\u2728 Foil', etched: '\u25C6 Etched' };
 var LANGUAGES = ['English', 'Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'Korean', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Russian', 'Phyrexian'];
-
-/* Input sanitization for marketplace listings */
-function sanitize(str, maxLen) {
-  if (!str) return '';
-  var s = str.trim().slice(0, maxLen || 200);
-  s = s.replace(/<[^>]*>/g, '');
-  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  s = s.replace(/javascript\s*:/gi, '').replace(/data\s*:/gi, '');
-  return s;
-}
 
 function sanitizePrice(val) {
   var p = parseFloat(val);
@@ -149,14 +140,14 @@ export function ListingModal(props) {
     var form = formRef.current;
     if (!form) return;
 
-    var cleanName = sanitize(cardName, 100);
-    var cleanSet = sanitize(setName, 100);
+    var cleanName = sanitizeInput(cardName, 100);
+    var cleanSet = sanitizeInput(setName, 100);
     var cleanPrice = sanitizePrice(price);
     var typeRadio = form.querySelector('input[name="listing-type"]:checked');
     var type = typeRadio ? typeRadio.value : 'sale';
-    var seller = sanitize(form.querySelector('#listing-seller').value, 60);
-    var contact = sanitize(form.querySelector('#listing-contact').value, 100);
-    var notes = sanitize(form.querySelector('#listing-notes').value, 500);
+    var seller = sanitizeInput(form.querySelector('#listing-seller').value, 60);
+    var contact = sanitizeInput(form.querySelector('#listing-contact').value, 100);
+    var notes = sanitizeInput(form.querySelector('#listing-notes').value, 500);
 
     if (!cleanName || !cleanSet || !condition || isNaN(cleanPrice) || !seller || !contact) return;
 

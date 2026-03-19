@@ -1,18 +1,17 @@
 /* moxfield-api.js — Moxfield decklist integration (unofficial public API)
  * Routed through Cloudflare Worker CORS proxy since Moxfield blocks browser CORS.
  */
-import { PROXY_BASE } from './config.js';
+import { PROXY_BASE, CACHE_TTL_MEDIUM } from './config.js';
 
 var PROXY_URL = PROXY_BASE;
 var MOXFIELD_API = 'https://api2.moxfield.com/v2';
 
 /* ── Cache ── */
 var moxCache = {};
-var CACHE_TTL = 15 * 60 * 1000; // 15 min
 
 function getCached(key) {
   var entry = moxCache[key];
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MEDIUM) return entry.data;
   return null;
 }
 

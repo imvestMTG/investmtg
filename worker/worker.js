@@ -97,6 +97,7 @@ const RESEND_API_URL = 'https://api.resend.com/emails';
 const SUMUP_MERCHANT_CODE = 'M55T011N';
 const ORDER_EMAIL_FROM = 'orders@investmtg.com';
 const SITE_URL = 'https://www.investmtg.com';
+const USER_AGENT = 'investMTG/3.0 (https://www.investmtg.com)';
 
 // Ticker cards to track
 const TICKER_CARDS = [
@@ -187,6 +188,16 @@ function json(data, status, request) {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(request) },
   });
+}
+
+/** Standard 405 response — replaces 14 inline copies */
+function methodNotAllowed(request) {
+  return json({ error: 'Method not allowed' }, 405, request);
+}
+
+/** Standard 401 response for unauthenticated requests */
+function authRequired(request, msg) {
+  return json({ error: msg || 'Authentication required' }, 401, request);
 }
 
 /* ── Session + auth helpers ── */
@@ -413,7 +424,7 @@ async function scryfallFetch(path) {
   const res = await fetch(SCRYFALL_BASE + path, {
     headers: {
       'Accept': 'application/json',
-      'User-Agent': 'investmtg/2.0 (https://www.investmtg.com)',
+      'User-Agent': USER_AGENT,
     },
   });
   if (!res.ok) {
@@ -1025,14 +1036,14 @@ async function handlePortfolio(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ── Batch portfolio import ── */
 
 async function handlePortfolioBatch(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required — bulk import needs a persistent account' }, 401, request);
+  if (!auth) return authRequired(request, 'Authentication required — bulk import needs a persistent account');
 
   const { token } = ensureSession(request);
   const body = await request.json().catch(() => null);
@@ -1089,7 +1100,7 @@ async function handlePortfolioBatch(request, env) {
 /* ── Enrich portfolio: batch-fetch Scryfall prices for imported cards ── */
 async function handlePortfolioEnrich(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
 
   const body = await request.json().catch(() => null);
   if (!body || !Array.isArray(body.card_ids) || body.card_ids.length === 0) {
@@ -1130,7 +1141,7 @@ async function handlePortfolioEnrich(request, env) {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'investmtg/2.0 (https://www.investmtg.com)',
+          'User-Agent': USER_AGENT,
         },
         body: JSON.stringify({ identifiers }),
       });
@@ -1164,7 +1175,7 @@ async function handlePortfolioEnrich(request, env) {
 
 async function handleBinders(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
   const method = request.method;
   const url = new URL(request.url);
   const parts = url.pathname.split('/');
@@ -1231,7 +1242,7 @@ async function handleBinders(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ══════════════════════════════════════
@@ -1240,7 +1251,7 @@ async function handleBinders(request, env) {
 
 async function handleLists(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
   const method = request.method;
   const url = new URL(request.url);
   const parts = url.pathname.split('/');
@@ -1291,7 +1302,7 @@ async function handleLists(request, env) {
       return json({ success: true }, 200, request);
     }
 
-    return json({ error: 'Method not allowed' }, 405, request);
+    return methodNotAllowed(request);
   }
 
   // ── List CRUD ──
@@ -1352,14 +1363,14 @@ async function handleLists(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ── Batch listing creation ── */
 
 async function handleListingsBatch(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
 
   const body = await request.json().catch(() => null);
   if (!body || !Array.isArray(body.listings) || body.listings.length === 0) {
@@ -1514,7 +1525,7 @@ async function handleListings(request, env) {
   }
 
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
 
   if (method === 'POST') {
     const body = await request.json().catch(() => null);
@@ -1571,7 +1582,7 @@ async function handleListings(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ── Seller routes ── */
@@ -1604,7 +1615,7 @@ async function handleSellers(request, env) {
   }
 
   if (method === 'POST') {
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+    if (!auth) return authRequired(request);
 
     const body = await request.json().catch(() => null);
     if (!body || !body.name) return json({ error: 'name required' }, 400, request);
@@ -1630,7 +1641,7 @@ async function handleSellers(request, env) {
 
   // PUT /api/sellers — update seller profile
   if (method === 'PUT') {
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+    if (!auth) return authRequired(request);
 
     const body = await request.json().catch(() => null);
     if (!body || !body.name) return json({ error: 'name required' }, 400, request);
@@ -1659,7 +1670,7 @@ async function handleSellers(request, env) {
 
   // DELETE /api/sellers — delete seller account + all listings
   if (method === 'DELETE') {
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+    if (!auth) return authRequired(request);
 
     const existing = await env.DB.prepare(
       'SELECT id FROM sellers WHERE user_id = ?'
@@ -1683,7 +1694,7 @@ async function handleSellers(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ── Store routes ── */
@@ -1757,7 +1768,7 @@ async function handleCart(request, env) {
     return json({ success: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ══════════════════════════════════════
@@ -1825,7 +1836,7 @@ async function handleOrders(request, env, orderId) {
   // ── GET /api/orders/:id ──
   if (method === 'GET' && orderId) {
     const auth = await getAuthUser(request, env);
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+    if (!auth) return authRequired(request);
 
     const row = await env.DB.prepare(
       'SELECT * FROM orders WHERE id = ? AND user_email = ?'
@@ -1848,7 +1859,7 @@ async function handleOrders(request, env, orderId) {
   // ── GET /api/orders ──
   if (method === 'GET') {
     const auth = await getAuthUser(request, env);
-    if (!auth) return json({ error: 'Authentication required' }, 401, request);
+    if (!auth) return authRequired(request);
 
     const rows = await env.DB.prepare(
       'SELECT * FROM orders WHERE user_email = ? ORDER BY created_at DESC'
@@ -1953,7 +1964,7 @@ async function handleOrders(request, env, orderId) {
     return json({ ok: true, order }, 201, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 /* ══════════════════════════════════════
@@ -1968,7 +1979,7 @@ async function handleOrders(request, env, orderId) {
 
 async function handleSumUpCheckout(request, env) {
   if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405, request);
+    return methodNotAllowed(request);
   }
 
   if (!env.SUMUP_SECRET_KEY) {
@@ -2135,7 +2146,7 @@ async function getPayPalAccessToken(env) {
 
 async function handlePayPalCreateOrder(request, env) {
   if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405, request);
+    return methodNotAllowed(request);
   }
 
   if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
@@ -2221,7 +2232,7 @@ async function handlePayPalCreateOrder(request, env) {
 
 async function handlePayPalCaptureOrder(request, env) {
   if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405, request);
+    return methodNotAllowed(request);
   }
 
   if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
@@ -2324,12 +2335,12 @@ async function handlePayPalCaptureOrder(request, env) {
 
 async function handleOrderPaymentStatus(request, env, orderId) {
   if (request.method !== 'GET') {
-    return json({ error: 'Method not allowed' }, 405, request);
+    return methodNotAllowed(request);
   }
 
   const auth = await getAuthUser(request, env);
   if (!auth) {
-    return json({ error: 'Authentication required' }, 401, request);
+    return authRequired(request);
   }
 
   // Fetch the order
@@ -2453,7 +2464,7 @@ async function handleTopDeck(request, env) {
 }
 
 async function handleChatbot(request) {
-  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, request);
+  if (request.method !== 'POST') return methodNotAllowed(request);
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   if (isRateLimited('chatbot:' + ip, RATE_MAX_CHATBOT)) {
     return json({ error: 'Too many requests. Please wait a moment.' }, 429, request);
@@ -2496,10 +2507,10 @@ async function handleMTGStocks(request, env) {
   try {
     const [printResp, priceResp] = await Promise.all([
       fetch(`https://api.mtgstocks.com/prints/${printId}`, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'investMTG/1.0' }
+        headers: { 'Accept': 'application/json', 'User-Agent': USER_AGENT }
       }),
       fetch(`https://api.mtgstocks.com/prints/${printId}/prices/tcgplayer`, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'investMTG/1.0' }
+        headers: { 'Accept': 'application/json', 'User-Agent': USER_AGENT }
       })
     ]);
 
@@ -2540,7 +2551,7 @@ async function handleGenericProxy(request) {
     headers: {
       'Content-Type': request.headers.get('Content-Type') || 'application/json',
       'Accept': request.headers.get('Accept') || 'application/json',
-      'User-Agent': 'investMTG/1.0 (Cloudflare Worker)',
+      'User-Agent': USER_AGENT,
     },
   };
   if (request.method === 'POST' || request.method === 'PUT') fetchOpts.body = await request.text();
@@ -2916,7 +2927,7 @@ async function handleEchoMTG(request, env) {
 
   try {
     const resp = await fetch(echoUrl, {
-      headers: { 'User-Agent': 'investMTG/1.0 (api.investmtg.com)' },
+      headers: { 'User-Agent': USER_AGENT },
     });
 
     const body = await resp.text();
@@ -3090,7 +3101,7 @@ async function handleSitemap(request, env) {
 /* ── Price Alerts CRUD ── */
 async function handlePriceAlerts(request, env) {
   const auth = await getAuthUser(request, env);
-  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+  if (!auth) return authRequired(request);
 
   const method = request.method;
   const url = new URL(request.url);
@@ -3154,7 +3165,7 @@ async function handlePriceAlerts(request, env) {
     return json({ ok: true }, 200, request);
   }
 
-  return json({ error: 'Method not allowed' }, 405, request);
+  return methodNotAllowed(request);
 }
 
 export default {

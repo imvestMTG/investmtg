@@ -8,7 +8,7 @@ import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
 import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings } from '../utils/api.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
-import { STORAGE_KEYS } from '../utils/config.js';
+import { STORAGE_KEYS, SCRYFALL_API_BASE } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
 import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
@@ -35,7 +35,7 @@ function useScryfallAutocomplete(query) {
     setLoading(true);
     var cancelled = false;
     var timerId = setTimeout(function() {
-      var url = 'https://api.scryfall.com/cards/autocomplete?q=' + encodeURIComponent(query) + '&include_extras=false';
+      var url = SCRYFALL_API_BASE + '/cards/autocomplete?q=' + encodeURIComponent(query) + '&include_extras=false';
       fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -77,7 +77,7 @@ function useScryfallPrintings(cardName) {
     var cancelled = false;
     // Small delay to respect Scryfall rate limits
     var timerId = setTimeout(function() {
-      var url = 'https://api.scryfall.com/cards/search?q=!' + encodeURIComponent('"' + cardName + '"') + '+-is%3Adigital&unique=prints&order=released&dir=desc';
+      var url = SCRYFALL_API_BASE + '/cards/search?q=!' + encodeURIComponent('"' + cardName + '"') + '+-is%3Adigital&unique=prints&order=released&dir=desc';
       fetch(url)
         .then(function(r) {
           if (!r.ok) throw new Error('Not found');
@@ -1580,8 +1580,8 @@ export function SellerDashboard(props) {
               var cardId = listing.cardId || listing.card_id || '';
               var imageUri = listing.image_uri || listing.imageUri || '';
               var thumbSrc = imageUri
-                || (cardId ? 'https://api.scryfall.com/cards/' + cardId + '?format=image&version=small' : '')
-                || (cardName ? 'https://api.scryfall.com/cards/named?format=image&version=small&exact=' + encodeURIComponent(cardName) : '');
+                || (cardId ? SCRYFALL_API_BASE + '/cards/' + cardId + '?format=image&version=small' : '')
+                || (cardName ? SCRYFALL_API_BASE + '/cards/named?format=image&version=small&exact=' + encodeURIComponent(cardName) : '');
 
               return h('div', { key: listingId, className: 'seller-listing-card' },
                 thumbSrc && h('img', {

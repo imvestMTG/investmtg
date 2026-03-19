@@ -1,13 +1,12 @@
 /* mtgstocks-api.js — MTGStocks price history integration */
-import { PROXY_BASE } from './config.js';
+import { PROXY_BASE, CACHE_TTL_LONG } from './config.js';
 var h = React.createElement;
 
 var cache = {};
-var CACHE_TTL = 1000 * 60 * 60; // 1 hour in-memory
 
 function getCached(key) {
   var entry = cache[key];
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  if (entry && Date.now() - entry.ts < CACHE_TTL_LONG) return entry.data;
   return null;
 }
 

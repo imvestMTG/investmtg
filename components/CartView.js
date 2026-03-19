@@ -92,11 +92,17 @@ export function CartView(props) {
   var ref2 = React.useState(false);
   var jtcgLoading = ref2[0], setJtcgLoading = ref2[1];
 
+  /* Stable key: re-fetch only when the set of cart tcgplayerIds changes */
+  var cartTcgKey = cart
+    .filter(function(item) { return item.tcgplayerId; })
+    .map(function(item) { return item.tcgplayerId; })
+    .sort()
+    .join(',');
+
   /* Fetch JustTCG condition prices for cart items that have tcgplayerId */
   React.useEffect(function() {
-    if (cart.length === 0) return;
+    if (!cartTcgKey) return;
     var itemsWithTcg = cart.filter(function(item) { return item.tcgplayerId; });
-    if (itemsWithTcg.length === 0) return;
 
     setJtcgLoading(true);
     var fetches = itemsWithTcg.map(function(item) {
@@ -118,7 +124,7 @@ export function CartView(props) {
     }).catch(function() {
       setJtcgLoading(false);
     });
-  }, [cart.length]);
+  }, [cartTcgKey]);
 
   var subtotal = cart.reduce(function(sum, item) { return sum + (item.price || 0) * (item.qty || 1); }, 0);
 

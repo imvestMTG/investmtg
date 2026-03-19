@@ -10,11 +10,10 @@ import {
   fetchLists, createList, deleteList, fetchListItems, addListItem, removeListItem
 } from '../utils/api.js';
 import { storageGet, storageSet } from '../utils/storage.js';
+import { CACHE_TTL_SHORT } from '../utils/config.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 var h = React.createElement;
-
 var PRICE_CACHE_KEY = 'investmtg-portfolio-prices';
-var PRICE_CACHE_TTL = 5 * 60 * 1000;
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
 var CONDITION_LABELS = { NM: 'Near Mint', LP: 'Lightly Played', MP: 'Moderately Played', HP: 'Heavily Played', DMG: 'Damaged' };
 var CONDITION_MULT = { NM: 1.0, LP: 0.85, MP: 0.70, HP: 0.50, DMG: 0.30 };
@@ -30,7 +29,7 @@ var GROUP_OPTIONS = [
 
 function loadPriceCache() {
   var cached = storageGet(PRICE_CACHE_KEY, null);
-  if (!cached || !cached.ts || Date.now() - cached.ts > PRICE_CACHE_TTL) return null;
+  if (!cached || !cached.ts || Date.now() - cached.ts > CACHE_TTL_SHORT) return null;
   return cached.data || null;
 }
 

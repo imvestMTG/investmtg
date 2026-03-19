@@ -41,9 +41,10 @@ export var PAYMENT_POLL_SLOW = 10000; // ms — slow poll after timeout
 export var PAYMENT_POLL_MAX_TIME = 300000; // ms — 5 min max polling
 
 /* ── Cache TTLs (client-side, ms) ── */
-export var CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 min — ticker, search
-export var CACHE_TTL_MEDIUM = 15 * 60 * 1000; // 15 min — movers
-export var CACHE_TTL_LONG = 60 * 60 * 1000; // 1 hr — carousels, events
+export var CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 min — ticker, search, portfolio prices
+export var CACHE_TTL_PRICE = 10 * 60 * 1000; // 10 min — justtcg, topdeck, price-resolver
+export var CACHE_TTL_MEDIUM = 15 * 60 * 1000; // 15 min — edhtop16, moxfield, echomtg
+export var CACHE_TTL_LONG = 60 * 60 * 1000; // 1 hr — carousels, events, mtgstocks
 
 /* ── SumUp — public key stays client-side (designed for browser use) ── */
 export var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
