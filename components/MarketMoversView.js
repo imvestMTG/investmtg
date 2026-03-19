@@ -116,6 +116,8 @@ export function MarketMoversView() {
 
   var ref7 = React.useState([]);
   var echoCards = ref7[0], setEchoCards = ref7[1];
+  var ref8 = React.useState(false);
+  var showReservedOnly = ref8[0], setShowReservedOnly = ref8[1];
 
   React.useEffect(function() {
     var isEcho = activeCategory === 'echo-gainers' || activeCategory === 'echo-losers';
@@ -207,6 +209,11 @@ export function MarketMoversView() {
     };
   });
 
+  /* Apply Reserved List filter */
+  if (showReservedOnly) {
+    sortedCards = sortedCards.filter(function(row) { return row.card.reserved; });
+  }
+
   sortedCards.sort(function(a, b) {
     var key = sortState.key;
     var dir = sortState.dir === 'asc' ? 1 : -1;
@@ -249,6 +256,21 @@ export function MarketMoversView() {
     ),
 
     activeCat && h('p', { className: 'market-cat-desc' }, activeCat.description),
+
+    /* Reserved List filter toggle */
+    !echoCards.length && h('div', { className: 'mv-filters' },
+      h('label', { className: 'mv-filter-toggle' },
+        h('input', {
+          type: 'checkbox',
+          checked: showReservedOnly,
+          onChange: function() { setShowReservedOnly(!showReservedOnly); }
+        }),
+        h('span', { className: 'mv-filter-label' },
+          h('span', { className: 'rl-badge', style: { marginRight: '4px' } }, 'RL'),
+          'Reserved List Only'
+        )
+      )
+    ),
 
     error && h('div', { className: 'decklist-error' }, error),
 
@@ -328,7 +350,10 @@ export function MarketMoversView() {
                           loading: 'lazy'
                         }),
                         h('div', { className: 'mv-card-info' },
-                          h('div', { className: 'mv-card-name' }, card.name),
+                          h('div', { className: 'mv-card-name' },
+                            card.name,
+                            card.reserved ? h('span', { className: 'rl-badge', title: 'Reserved List' }, 'RL') : null
+                          ),
                           h('div', { className: 'mv-card-set' }, card.set_name)
                         )
                       ),

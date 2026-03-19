@@ -3075,6 +3075,76 @@ async function handleSitemap(request, env) {
    MAIN ROUTER
    ══════════════════════════════════════ */
 
+/* ── Price Alerts CRUD ── */
+async function handlePriceAlerts(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return json({ error: 'Authentication required' }, 401, request);
+
+  const method = request.method;
+  const url = new URL(request.url);
+  const userEmail = auth.user.email;
+
+  if (method === 'GET') {
+    const cardId = url.searchParams.get('card_id');
+    if (cardId) {
+      const row = await env.DB.prepare(
+        'SELECT * FROM price_alerts WHERE user_email = ? AND card_id = ? LIMIT 1'
+      ).bind(userEmail, cardId).first();
+      return json({ alert: row || null }, 200, request);
+    }
+    const rows = await env.DB.prepare(
+      'SELECT * FROM price_alerts WHERE user_email = ? ORDER BY created_at DESC'
+    ).bind(userEmail).all();
+    return json({ alerts: rows.results }, 200, request);
+  }
+
+  if (method === 'POST') {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.card_id || !body.card_name || !body.direction || !body.target_price) {
+      return json({ error: 'card_id, card_name, direction, target_price required' }, 400, request);
+    }
+    if (body.direction !== 'above' && body.direction !== 'below') {
+      return json({ error: 'direction must be above or below' }, 400, request);
+    }
+    const targetPrice = parseFloat(body.target_price);
+    if (isNaN(targetPrice) || targetPrice <= 0) {
+      return json({ error: 'target_price must be a positive number' }, 400, request);
+    }
+    const currentPrice = body.current_price ? parseFloat(body.current_price) : null;
+
+    await env.DB.prepare(
+      `INSERT INTO price_alerts (user_email, card_id, card_name, direction, target_price, current_price)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_email, card_id, direction) DO UPDATE SET
+         target_price = excluded.target_price,
+         current_price = excluded.current_price,
+         card_name = excluded.card_name,
+         triggered_at = NULL`
+    ).bind(userEmail, body.card_id, body.card_name, body.direction, targetPrice, currentPrice).run();
+
+    return json({ ok: true, alert: { user_email: userEmail, card_id: body.card_id, direction: body.direction, target_price: targetPrice } }, 200, request);
+  }
+
+  if (method === 'DELETE') {
+    const cardId = url.searchParams.get('card_id');
+    const direction = url.searchParams.get('direction');
+    if (!cardId) return json({ error: 'card_id required' }, 400, request);
+
+    if (direction) {
+      await env.DB.prepare(
+        'DELETE FROM price_alerts WHERE user_email = ? AND card_id = ? AND direction = ?'
+      ).bind(userEmail, cardId, direction).run();
+    } else {
+      await env.DB.prepare(
+        'DELETE FROM price_alerts WHERE user_email = ? AND card_id = ?'
+      ).bind(userEmail, cardId).run();
+    }
+    return json({ ok: true }, 200, request);
+  }
+
+  return json({ error: 'Method not allowed' }, 405, request);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return handleOptions(request);
@@ -3162,6 +3232,7 @@ export default {
       if (path === '/api/sumup-webhook')                      return handleSumUpWebhook(request, env);
       if (path === '/api/paypal/create-order')                return handlePayPalCreateOrder(request, env);
       if (path === '/api/paypal/capture-order')               return handlePayPalCaptureOrder(request, env);
+      if (path === '/api/price-alerts')                         return handlePriceAlerts(request, env);
 
       // Admin-only: manual carousel refresh trigger
       if (path === '/api/admin/refresh-carousels' && request.method === 'POST') {

@@ -1,6 +1,6 @@
 /* CardDetailView.js — Card detail with multi-source pricing waterfall */
 import React from 'react';
-import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail } from '../utils/api.js';
+import { backendGetCard, getCardPrintings, addToPortfolioAPI, fetchLists, addListItem, fetchJustTCGDetail, backendFetch } from '../utils/api.js';
 import { formatUSD, getCardPrice, getScryfallImageUrl, handleImageError } from '../utils/helpers.js';
 import { usePriceResolver, getPriceSourceLabel, formatPriceChange } from '../utils/price-resolver.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -41,6 +41,16 @@ export function CardDetailView(props) {
   var ref10 = React.useState(true);
   var jtcgLoading = ref10[0], setJtcgLoading = ref10[1];
 
+  /* Price alert state */
+  var ref11 = React.useState(false);
+  var showAlertForm = ref11[0], setShowAlertForm = ref11[1];
+  var ref12 = React.useState('');
+  var alertPrice = ref12[0], setAlertPrice = ref12[1];
+  var ref13 = React.useState('below');
+  var alertDirection = ref13[0], setAlertDirection = ref13[1];
+  var ref14 = React.useState(null);
+  var existingAlert = ref14[0], setExistingAlert = ref14[1];
+
   /* Multi-source price resolver (JustTCG → EchoMTG → Scryfall) */
   var priceRef = usePriceResolver(card);
   var resolved = priceRef.resolved;
@@ -49,6 +59,68 @@ export function CardDetailView(props) {
   React.useEffect(function() {
     fetchLists().then(function(data) { setUserLists(data.lists || []); }).catch(function() {});
   }, []);
+
+  /* Fetch existing price alert for this card (if user is logged in) */
+  React.useEffect(function() {
+    if (!card || !state.user) return;
+    backendFetch('/api/price-alerts?card_id=' + card.id).then(function(res) {
+      if (!res.ok) return;
+      return res.json();
+    }).then(function(data) {
+      if (data && data.alert) {
+        setExistingAlert(data.alert);
+        setAlertPrice(String(data.alert.target_price));
+        setAlertDirection(data.alert.direction);
+      }
+    }).catch(function() {});
+  }, [card, state.user]);
+
+  function handleSetAlert() {
+    var targetPrice = parseFloat(alertPrice);
+    if (isNaN(targetPrice) || targetPrice <= 0) {
+      showToast('Enter a valid price', 'error');
+      return;
+    }
+    if (!state.user) {
+      showToast('Sign in to set price alerts', 'error');
+      return;
+    }
+    backendFetch('/api/price-alerts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        card_id: card.id,
+        card_name: card.name,
+        direction: alertDirection,
+        target_price: targetPrice,
+        current_price: price
+      })
+    }).then(function(res) {
+      if (!res.ok) throw new Error('Failed to set alert');
+      return res.json();
+    }).then(function(data) {
+      setExistingAlert(data.alert || { target_price: targetPrice, direction: alertDirection });
+      setShowAlertForm(false);
+      showToast('Alert set: notify when ' + (alertDirection === 'below' ? 'below' : 'above') + ' ' + formatUSD(targetPrice), 'success');
+    }).catch(function(err) {
+      showToast(err.message || 'Failed to set alert', 'error');
+    });
+  }
+
+  function handleDeleteAlert() {
+    if (!existingAlert) return;
+    backendFetch('/api/price-alerts?card_id=' + card.id + '&direction=' + existingAlert.direction, {
+      method: 'DELETE'
+    }).then(function(res) {
+      if (!res.ok) throw new Error('Failed to remove alert');
+      setExistingAlert(null);
+      setAlertPrice('');
+      setShowAlertForm(false);
+      showToast('Price alert removed', 'default');
+    }).catch(function(err) {
+      showToast(err.message || 'Failed to remove alert', 'error');
+    });
+  }
 
   /* ── Diagnostic: verify props on mount ── */
   React.useEffect(function() {
@@ -275,7 +347,8 @@ export function CardDetailView(props) {
               }, 50);
             }
           }, card.set_name),
-          ' \u00B7 ', card.rarity, ' \u00B7 #', card.collector_number
+          ' \u00B7 ', card.rarity, ' \u00B7 #', card.collector_number,
+          card.reserved ? h('span', { className: 'rl-badge rl-badge--detail', title: 'This card is on the Reserved List and will never be reprinted' }, 'Reserved List') : null
         ),
 
         /* ── Price Boxes (multi-source waterfall) ── */
@@ -503,6 +576,12 @@ export function CardDetailView(props) {
           },
             h(StarIcon, null), inWatchlist ? ' Watching' : ' Watch'
           ),
+          /* Price Alert button */
+          h('button', {
+            className: 'btn btn-ghost' + (existingAlert ? ' btn-alert-active' : ''),
+            onClick: function() { setShowAlertForm(!showAlertForm); },
+            title: existingAlert ? 'Alert set: ' + existingAlert.direction + ' ' + formatUSD(existingAlert.target_price) : 'Set price alert'
+          }, existingAlert ? '\uD83D\uDD14 Alert Set' : '\uD83D\uDD14 Set Alert'),
           h(ShareButton, {
             title: card.name + ' | investMTG',
             text: card.name + (card.set_name ? ' (' + card.set_name + ')' : '') + ' \u2014 ' + (card.prices && card.prices.usd ? '$' + Number(card.prices.usd).toFixed(2) : 'Price N/A') + '\nTrack prices on investMTG',
@@ -521,6 +600,43 @@ export function CardDetailView(props) {
               }
             }
           }, 'Create Guam Listing')
+        ),
+
+        /* ── Price Alert Form ── */
+        showAlertForm && h('div', { className: 'cd-alert-form' },
+          h('h4', { className: 'cd-alert-title' }, existingAlert ? 'Update Price Alert' : 'Set Price Alert'),
+          h('div', { className: 'cd-alert-row' },
+            h('span', { className: 'cd-alert-label' }, 'Notify me when price goes'),
+            h('select', {
+              className: 'cd-alert-select',
+              value: alertDirection,
+              onChange: function(e) { setAlertDirection(e.target.value); }
+            },
+              h('option', { value: 'below' }, 'Below'),
+              h('option', { value: 'above' }, 'Above')
+            ),
+            h('div', { className: 'cd-alert-input-wrap' },
+              h('span', { className: 'cd-alert-dollar' }, '$'),
+              h('input', {
+                type: 'number',
+                className: 'cd-alert-input',
+                placeholder: price > 0 ? (price * (alertDirection === 'below' ? 0.8 : 1.2)).toFixed(2) : '0.00',
+                value: alertPrice,
+                onChange: function(e) { setAlertPrice(e.target.value); },
+                min: '0.01',
+                step: '0.01'
+              })
+            )
+          ),
+          price > 0 && h('p', { className: 'cd-alert-hint' }, 'Current price: ' + formatUSD(price)),
+          h('div', { className: 'cd-alert-actions' },
+            h('button', { className: 'btn btn-primary btn-sm', onClick: handleSetAlert },
+              existingAlert ? 'Update Alert' : 'Set Alert'
+            ),
+            existingAlert && h('button', { className: 'btn btn-ghost btn-sm', onClick: handleDeleteAlert }, 'Remove Alert'),
+            h('button', { className: 'btn btn-ghost btn-sm', onClick: function() { setShowAlertForm(false); } }, 'Cancel')
+          ),
+          !state.user && h('p', { className: 'cd-alert-hint cd-alert-hint--warn' }, 'Sign in to set price alerts. We\u2019ll email you when the price triggers.')
         ),
 
         /* ── Purchase Links ── */

@@ -54,7 +54,10 @@ export function CardGrid(props) {
           })
         ),
         h('div', { className: 'mtg-card-info' },
-          h('div', { className: 'mtg-card-name' }, card.name),
+          h('div', { className: 'mtg-card-name' },
+            card.name,
+            card.reserved ? h('span', { className: 'rl-badge', title: 'Reserved List' }, 'RL') : null
+          ),
           h('div', { className: 'mtg-card-set' }, card.set_name),
           h('div', { className: 'mtg-card-price-row' },
             h('span', { className: 'mtg-card-price' }, price > 0 ? formatUSD(price) : 'N/A'),

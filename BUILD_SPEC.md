@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v51`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v94`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -93,11 +93,11 @@ These rules apply to all root-level `.js` files and must not be violated:
 |------|-------|---------|
 | `components/HomeView.js` | `#home` | Hero with static stats, community events, card carousels (featured/trending/budget — daily auto-refresh via Scryfall cron) |
 | `components/SearchView.js` | `#search` | Card search via `/api/search` |
-| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()` with inline condition selector (NM/LP/MP/HP/DMG) and "Add to List" dropdown for quick list assignment. v59: JustTCG condition breakdown (NM/LP/MP/HP/DMG price grid with 7d % change), price trend row (24h/7d/30d/90d), 30-day sparkline chart, all-time high/low + 52-week range. |
+| `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()` with inline condition selector (NM/LP/MP/HP/DMG) and "Add to List" dropdown for quick list assignment. v59: JustTCG condition breakdown (NM/LP/MP/HP/DMG price grid with 7d % change), price trend row (24h/7d/30d/90d), 30-day sparkline chart, all-time high/low + 52-week range. v94: Reserved List badge, price alert set/update/delete UI wired to `/api/price-alerts`. |
 | `components/PortfolioView.js` | `#portfolio` | v58 rewrite (~840 lines). Tabbed interface: Collection tab with binder sidebar (colored chip filters, All Cards/Unassigned built-ins), condition selector per card (NM/LP/MP/HP/DMG with color-coded badges), condition-adjusted pricing (NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%), group-by controls (set/color/type/rarity/condition/binder). Lists tab with full CRUD for Wishlist/Buylist/Trade lists. CreateBinderModal and CreateListModal. Import button + modal still present. v59: all table columns sortable asc/desc (Card, Set, Cond, Qty, Buy Price, Current, Gain/Loss). |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
 | `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint. Profile tab: inline-editable fields (click-to-edit per field with Save/Cancel), section-based layout (Personal Info, Contact & Store, Account Details, Session), collapsible Danger Zone with type-to-confirm DELETE gate. PUT/DELETE /api/sellers for profile update/account deletion. |
-| `components/MarketMoversView.js` | `#movers` | v59 rewrite: sortable data table with columns (Rank, Card, Price, 7D/30D/90D change, 30D sparkline). JustTCG condition data loaded progressively per card. Click column headers to sort asc/desc. Categories: Most Valuable, Modern Staples, Commander Staples, Budget Finds. |
+| `components/MarketMoversView.js` | `#movers` | v59 rewrite: sortable data table with columns (Rank, Card, Price, 7D/30D/90D change, 30D sparkline). JustTCG condition data loaded progressively per card. Click column headers to sort asc/desc. Categories: Most Valuable, Modern Staples, Commander Staples, Budget Finds. v94: Reserved List badge in table rows, RL-only filter toggle. |
 | `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (card-style layout: colored dot + abbreviation + full name + price per condition), all conditions displayed, checkout gated until all conditions chosen |
 | `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
 | `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. Real-time payment status polling for SumUp orders (5s intervals, 5min max). Status-aware banner and badge (reserved/pending/paid/failed/expired). |
@@ -111,7 +111,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/TermsGate.js` | site-wide overlay | First-visit ToS acceptance modal (versioned `2026-03-09`). Stores acceptance in localStorage. Also exports `TermsCheckbox` component used in seller registration and checkout. |
 | `components/CookieNotice.js` | site-wide banner | Third-party cookie consent notice |
 | `components/Chatbot.js` | floating | AI chatbot via Worker `/chatbot` proxy |
-| `components/Ticker.js` | persistent | Live price ticker via `/api/ticker` |
+| `components/Ticker.js` | persistent | Live price ticker via `/api/ticker`. v94: localStorage-based % change tracking (hourly baseline), green/red +/-% indicators next to prices. |
 | `components/ListingModal.js` | modal overlay | Quick-list modal (opened from card detail via "Create Guam Listing" button). Uses `mp-modal-overlay` CSS. On open, fetches all 5 condition prices (NM/LP/MP/HP/DMG) from JustTCG API via `fetchConditionPrices()`. Condition dropdown change auto-populates the real-time market price for that condition. Price remains editable; "Reset to market price" link restores JustTCG price. |
 | `components/BuyLocalModal.js` | modal overlay | Buy-local modal: requires selecting a community listing (seller + price) and a store before adding to cart. Shows empty state if no listings exist. |
 
@@ -119,7 +119,7 @@ These rules apply to all root-level `.js` files and must not be violated:
 | File | Purpose |
 |------|---------|
 | `components/shared/CardCarousel.js` | Horizontal scrolling carousel for homepage card sections (scroll-snap, arrow nav, touch-friendly) |
-| `components/shared/CardGrid.js` | Reusable card grid layout (used in search results) |
+| `components/shared/CardGrid.js` | Reusable card grid layout (used in search results). v94: Reserved List "RL" badge next to card names for reserved cards. |
 | `components/shared/ConfirmModal.js` | Styled confirmation/alert modal |
 | `components/shared/ErrorBoundary.js` | React error boundary wrapper |
 | `components/shared/Icons.js` | SVG icon components |
@@ -159,7 +159,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
-| D1 Database | `investmtg-db` | 14-table SQLite database (users, auth_sessions, prices, portfolios, listings, sellers, events, stores, cart_items, orders, order_counters, binders, lists, list_items) |
+| D1 Database | `investmtg-db` | 15-table SQLite database (users, auth_sessions, prices, portfolios, listings, sellers, events, stores, cart_items, orders, order_counters, binders, lists, list_items, price_alerts) |
 | KV Namespace | `INVESTMTG_CACHE` | Edge cache for market and discovery responses |
 | Worker | `investmtg-proxy` | Unified backend + proxy |
 | SumUp | Checkouts API | Online card payment processing via Card Widget |
@@ -196,6 +196,7 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/topdeck` | proxy | Tournament data |
 | `/chatbot` | proxy | Chat relay |
 | `/?target=` | proxy | Allowlisted generic proxy |
+| `/api/price-alerts` | GET/POST/DELETE | Price alerts CRUD. Auth required. GET `?card_id=X` returns single alert; GET without card_id returns all user alerts. POST creates/updates alert (upsert on user+card+direction). DELETE `?card_id=X&direction=Y` removes alert. |
 | `/api/admin/refresh-carousels` | POST | Admin-only: manually trigger carousel name refresh from Scryfall + clear card data cache. Requires `Authorization: Bearer <ADMIN_TOKEN>`. |
 
 ### Worker files
