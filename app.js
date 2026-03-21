@@ -70,6 +70,7 @@ var ListingModal = lazyComponent(function() { return import('./components/Listin
 var BuyLocalModal = lazyComponent(function() { return import('./components/BuyLocalModal.js'); }, 'BuyLocalModal');
 var OrdersView = lazyComponent(function() { return import('./components/OrdersView.js'); }, 'OrdersView');
 var ScannerView = lazyComponent(function() { return import('./components/ScannerView.js'); }, 'ScannerView');
+var ShopView = lazyComponent(function() { return import('./components/ShopView.js'); }, 'ShopView');
 
 // ===== ROUTER HOOK =====
 function useRouter() {
@@ -95,6 +96,9 @@ function parseHash() {
   }
   if (hash.startsWith('order/')) {
     return { page: 'order', id: hash.slice(6) };
+  }
+  if (hash.startsWith('shop/')) {
+    return { page: 'shop', sellerId: hash.slice(5) };
   }
   if (hash === 'search') return { page: 'search' };
   if (hash === 'portfolio') return { page: 'portfolio' };
@@ -325,6 +329,7 @@ function App() {
       seller: 'Seller Dashboard \u2014 investMTG',
       orders: 'My Orders \u2014 investMTG',
       scan: 'Card Scanner \u2014 investMTG',
+      shop: 'Seller Shop \u2014 investMTG',
       pricing: 'Pricing Methodology \u2014 investMTG',
       faq: 'FAQ \u2014 investMTG',
       guidelines: 'Community Guidelines \u2014 investMTG',
@@ -342,7 +347,8 @@ function App() {
       pricing: 'How investMTG sources card pricing data. Scryfall market prices for site-wide display, JustTCG for checkout.',
       faq: 'Frequently asked questions about investMTG. Learn how buying, selling, pricing, and accounts work on the Guam-based MTG marketplace.',
       guidelines: 'Community guidelines for buying and selling on investMTG. Card grading standards, seller expectations, dispute resolution, and the Fair Play Economy.',
-      scan: 'Scan physical MTG cards with your camera to instantly look up prices and details.'
+      scan: 'Scan physical MTG cards with your camera to instantly look up prices and details.',
+      shop: 'Browse and purchase MTG products from sellers on investMTG. Secure Stripe checkout.'
     };
     document.title = titles[route.page] || titles.home;
     var metaDesc = document.querySelector('meta[name="description"]');
@@ -441,7 +447,8 @@ function App() {
       route.page === 'faq' && h(FAQView, null),
       route.page === 'guidelines' && h(GuidelinesView, null),
       route.page === 'orders' && h(OrdersView, null),
-      route.page === 'scan' && h(ScannerView, null)
+      route.page === 'scan' && h(ScannerView, null),
+      route.page === 'shop' && h(ShopView, { sellerId: route.sellerId })
       )
     ),
     h(Footer, null),

@@ -6,7 +6,7 @@ import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
-import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings, stripeCreateConnectAccount, stripeGetAccountLink, stripeGetAccountStatus, stripeGetDashboardLink, stripeGetSellerPayouts, stripeGetSellerBalance, stripeGetSellerSales } from '../utils/api.js';
+import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings, stripeGetSellerPayouts, stripeGetSellerBalance, stripeGetSellerSales, stripeV2CreateAccount, stripeV2GetAccountLink, stripeV2GetAccountStatus, stripeCreateProduct, stripeListProducts, stripeCreateCheckout } from '../utils/api.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 import { STORAGE_KEYS, SCRYFALL_API_BASE } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
@@ -1313,6 +1313,18 @@ export function SellerDashboard(props) {
   var refStripeBalance = React.useState(null);
   var stripeBalance = refStripeBalance[0], setStripeBalance = refStripeBalance[1];
 
+  var refProducts = React.useState([]);
+  var products = refProducts[0], setProducts = refProducts[1];
+
+  var refProductsLoading = React.useState(false);
+  var productsLoading = refProductsLoading[0], setProductsLoading = refProductsLoading[1];
+
+  var refNewProduct = React.useState({ name: '', description: '', price: '' });
+  var newProduct = refNewProduct[0], setNewProduct = refNewProduct[1];
+
+  var refProductError = React.useState(null);
+  var productError = refProductError[0], setProductError = refProductError[1];
+
   // On mount: check if user is already registered via session cookie
   React.useEffect(function() {
     // Fetch store options async
@@ -1336,7 +1348,7 @@ export function SellerDashboard(props) {
   React.useEffect(function() {
     var hash = window.location.hash || '';
     if (hash.indexOf('stripe_return=true') !== -1 && seller && seller.id) {
-      stripeGetAccountStatus(seller.id).then(function(data) {
+      stripeV2GetAccountStatus(seller.id).then(function(data) {
         if (data && !data.error) {
           setSeller(function(prev) {
             return Object.assign({}, prev, {
@@ -1363,13 +1375,13 @@ export function SellerDashboard(props) {
     var promise;
     if (seller.stripe_account_id) {
       // Already has account, just get onboarding link
-      promise = stripeGetAccountLink(seller.id);
+      promise = stripeV2GetAccountLink(seller.id);
     } else {
-      // Create account first, then get link
-      promise = stripeCreateConnectAccount(seller.id).then(function(result) {
+      // Create V2 account first, then get link
+      promise = stripeV2CreateAccount(seller.id).then(function(result) {
         if (result.error) throw new Error(result.error);
         setSeller(function(prev) { return Object.assign({}, prev, { stripe_account_id: result.stripe_account_id }); });
-        return stripeGetAccountLink(seller.id);
+        return stripeV2GetAccountLink(seller.id);
       });
     }
 
@@ -1384,11 +1396,11 @@ export function SellerDashboard(props) {
     });
   }
 
-  /* ── Stripe Connect: open dashboard ── */
+  /* ── Stripe Connect: open dashboard via V2 account link ── */
   function handleStripeDashboard() {
     if (!seller || !seller.id) return;
     setStripeConnectLoading(true);
-    stripeGetDashboardLink(seller.id).then(function(data) {
+    stripeV2GetAccountLink(seller.id).then(function(data) {
       setStripeConnectLoading(false);
       if (data.url) {
         window.open(data.url, '_blank');
@@ -1411,6 +1423,50 @@ export function SellerDashboard(props) {
         setStripeBalance(data);
       }
     }).catch(function() { /* ignore */ });
+  }
+
+  /* ── Stripe Products: load + create ── */
+  function loadProducts() {
+    if (!seller || !seller.id) return;
+    setProductsLoading(true);
+    stripeListProducts(seller.id).then(function(data) {
+      setProductsLoading(false);
+      if (data && data.products) {
+        setProducts(data.products);
+      } else if (data && Array.isArray(data)) {
+        setProducts(data);
+      }
+    }).catch(function() {
+      setProductsLoading(false);
+      setProductError('Failed to load products.');
+    });
+  }
+
+  function handleCreateProduct() {
+    if (!newProduct.name || !newProduct.price) {
+      setProductError('Name and price are required.');
+      return;
+    }
+    var priceCents = Math.round(parseFloat(newProduct.price) * 100);
+    if (isNaN(priceCents) || priceCents <= 0) {
+      setProductError('Price must be a positive number.');
+      return;
+    }
+    setProductError(null);
+    setProductsLoading(true);
+    stripeCreateProduct(seller.id, newProduct.name, newProduct.description || '', priceCents, 'usd').then(function(result) {
+      setProductsLoading(false);
+      if (result.error) {
+        setProductError(result.error);
+      } else {
+        setNewProduct({ name: '', description: '', price: '' });
+        flash('Product created on Stripe.');
+        loadProducts();
+      }
+    }).catch(function(err) {
+      setProductsLoading(false);
+      setProductError(err.message || 'Failed to create product.');
+    });
   }
 
   function flash(msg) {
@@ -1655,7 +1711,10 @@ export function SellerDashboard(props) {
         { key: 'add', label: 'Add Listing' },
         { key: 'bulk', label: 'Bulk Import' },
         { key: 'history', label: 'Sales History' }
-      ].concat(seller.stripe_charges_enabled ? [{ key: 'payouts', label: 'Sales & Payouts' }] : []).concat([
+      ].concat(seller.stripe_charges_enabled ? [
+        { key: 'payouts', label: 'Sales & Payouts' },
+        { key: 'products', label: 'Products' }
+      ] : []).concat([
         { key: 'profile', label: 'Profile' }
       ]),
       activeKey: activeTab,
@@ -1663,6 +1722,7 @@ export function SellerDashboard(props) {
         setActiveTab(key);
         if (key === 'listings' || key === 'add') { setEditingListing(null); }
         if (key === 'payouts') { loadStripeSalesData(); }
+        if (key === 'products') { loadProducts(); }
       }
     }),
 
@@ -1932,6 +1992,114 @@ export function SellerDashboard(props) {
           disabled: stripeConnectLoading,
           onClick: handleStripeDashboard
         }, stripeConnectLoading ? 'Opening\u2026' : 'Open Stripe Dashboard')
+      )
+    ),
+
+    // ===== PRODUCTS TAB =====
+    activeTab === 'products' && h('div', { className: 'seller-tab-content' },
+      h('h2', { className: 'seller-section-title' }, 'Stripe Products'),
+      h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' } },
+        'Create products on your Stripe account. Buyers can purchase these directly with card payment.'
+      ),
+      h('div', { className: 'shop-link-box' },
+        h('span', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' } }, 'Your shop link: '),
+        h('a', {
+          href: '#shop/' + seller.id,
+          style: { fontSize: 'var(--text-sm)', color: 'var(--color-primary)', wordBreak: 'break-all' }
+        }, window.location.origin + '/#shop/' + seller.id),
+        h('button', {
+          className: 'btn btn-secondary btn-sm',
+          style: { marginLeft: 'var(--space-2)' },
+          onClick: function() {
+            var url = window.location.origin + '/#shop/' + seller.id;
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(url);
+              flash('Shop link copied to clipboard.');
+            }
+          }
+        }, 'Copy')
+      ),
+      productError && h('div', { className: 'flash-message flash-error', style: { marginBottom: 'var(--space-4)' } }, productError),
+
+      // Create product form
+      h('div', { className: 'pf-section' },
+        h('h3', { className: 'pf-section-title' }, 'New Product'),
+        h('div', { className: 'pf-fields' },
+          h('div', { className: 'pf-field-row' },
+            h('label', { className: 'pf-field-label' }, 'Product Name'),
+            h('input', {
+              type: 'text',
+              className: 'pf-edit-input',
+              placeholder: 'e.g. Black Lotus NM',
+              value: newProduct.name,
+              onChange: function(e) { setNewProduct(Object.assign({}, newProduct, { name: e.target.value })); }
+            })
+          ),
+          h('div', { className: 'pf-field-row' },
+            h('label', { className: 'pf-field-label' }, 'Description'),
+            h('textarea', {
+              className: 'pf-edit-input',
+              placeholder: 'Optional description',
+              value: newProduct.description,
+              rows: 2,
+              onChange: function(e) { setNewProduct(Object.assign({}, newProduct, { description: e.target.value })); }
+            })
+          ),
+          h('div', { className: 'pf-field-row' },
+            h('label', { className: 'pf-field-label' }, 'Price (USD)'),
+            h('input', {
+              type: 'number',
+              className: 'pf-edit-input',
+              placeholder: '0.00',
+              min: '0.01',
+              step: '0.01',
+              value: newProduct.price,
+              onChange: function(e) { setNewProduct(Object.assign({}, newProduct, { price: e.target.value })); },
+              style: { maxWidth: '160px' }
+            })
+          ),
+          h('button', {
+            className: 'btn btn-primary',
+            onClick: handleCreateProduct,
+            disabled: productsLoading,
+            style: { marginTop: 'var(--space-3)' }
+          }, productsLoading ? 'Creating...' : 'Create Product')
+        )
+      ),
+
+      // Product list
+      h('div', { className: 'pf-section', style: { marginTop: 'var(--space-6)' } },
+        h('h3', { className: 'pf-section-title' }, 'Your Products'),
+        productsLoading && products.length === 0
+          ? h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading products...')
+          : products.length === 0
+            ? h('div', { className: 'empty-state' },
+                h('h3', null, 'No products yet'),
+                h('p', null, 'Create your first product above to start selling with Stripe checkout.')
+              )
+            : h('div', { className: 'seller-listings-grid' },
+                products.map(function(prod) {
+                  var priceAmt = prod.default_price && prod.default_price.unit_amount
+                    ? prod.default_price.unit_amount
+                    : (prod.price_cents || 0);
+                  var priceDisplay = formatUSD(priceAmt / 100);
+                  var isActive = prod.active !== false;
+                  return h('div', { key: prod.id, className: 'seller-listing-card' },
+                    h('div', { className: 'seller-listing-top' },
+                      h('div', null,
+                        h('div', { className: 'seller-listing-name' }, prod.name || 'Untitled'),
+                        prod.description && h('div', { className: 'seller-listing-set' }, prod.description)
+                      ),
+                      h('div', { className: 'seller-listing-badges' },
+                        h('span', { className: 'badge ' + (isActive ? 'badge-success' : 'badge-neutral') },
+                          isActive ? 'Active' : 'Inactive'
+                        )
+                      )
+                    ),
+                    h('div', { className: 'seller-listing-price' }, priceDisplay)
+                  );
+                })
+              )
       )
     ),
 

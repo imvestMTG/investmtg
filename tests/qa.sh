@@ -417,7 +417,7 @@ if run_remote; then
   # ── JS modules (standard+) ──
   if is_standard || is_full; then
     header "JS Modules"
-    for comp in CheckoutView HomeView StoreView SearchView CardDetailView CartView PortfolioView SellerDashboard MarketMoversView Header Footer Ticker; do
+    for comp in CheckoutView HomeView StoreView SearchView CardDetailView CartView PortfolioView SellerDashboard MarketMoversView ShopView Header Footer Ticker; do
       check_status "$comp.js" "$SITE/components/${comp}.js"
     done
     for util in api auth config helpers sanitize storage; do

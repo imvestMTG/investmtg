@@ -236,6 +236,30 @@ async function stripeRequest(method, path, env, body, connectAccountId) {
   return { ok: res.ok, status: res.status, data };
 }
 
+/** Stripe V2 REST API helper — uses JSON body + Bearer auth (not form-encoded) */
+async function stripeV2Request(method, path, env, bodyObj, connectAccountId) {
+  const headers = {
+    'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY,
+    'Content-Type': 'application/json',
+    'User-Agent': USER_AGENT,
+  };
+  if (connectAccountId) {
+    headers['Stripe-Account'] = connectAccountId;
+  }
+  const opts = { method, headers };
+  if (bodyObj && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+    opts.body = JSON.stringify(bodyObj);
+  }
+  // V2 endpoints live under /v2, so build full URL: https://api.stripe.com + path
+  const url = 'https://api.stripe.com' + path;
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) {
+    console.error('[StripeV2]', method, path, data.error?.message || JSON.stringify(data));
+  }
+  return { ok: res.ok, status: res.status, data };
+}
+
 /* ── Session + auth helpers ── */
 
 function getCookie(request, name) {
@@ -3842,6 +3866,453 @@ async function handleStripeSellerSales(request, env) {
   }, 200, request);
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   Stripe Connect V2 Endpoints
+   ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * POST /api/stripe/v2/create-account
+ * Creates a Stripe Connect V2 account with full dashboard access.
+ * Uses the V2 /v2/core/accounts endpoint with JSON body.
+ */
+async function handleStripeV2CreateAccount(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const sellerId = body?.seller_id;
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  // Check seller exists and doesn't already have a Stripe account
+  const seller = await env.DB.prepare(
+    'SELECT * FROM sellers WHERE id = ? AND user_id = ?'
+  ).bind(sellerId, auth.user.id).first();
+  if (!seller) return json({ error: 'Seller not found' }, 404, request);
+  if (seller.stripe_account_id) {
+    return json({ error: 'Seller already has a Stripe account', stripe_account_id: seller.stripe_account_id }, 409, request);
+  }
+
+  // Create V2 Connect account with full dashboard and card_payments capability
+  const { ok, data } = await stripeV2Request('POST', '/v2/core/accounts', env, {
+    display_name: body.display_name || auth.user.name || 'investMTG Seller',
+    contact_email: body.contact_email || auth.user.email,
+    identity: { country: 'us' },
+    dashboard: 'full',
+    defaults: {
+      responsibilities: {
+        fees_collector: 'stripe',
+        losses_collector: 'stripe',
+      },
+    },
+    configuration: {
+      customer: {},
+      merchant: {
+        capabilities: {
+          card_payments: { requested: true },
+        },
+      },
+    },
+    metadata: {
+      seller_id: String(sellerId),
+      platform: 'investmtg',
+    },
+  });
+  if (!ok) return json({ error: 'Failed to create Stripe V2 account', detail: data.error?.message }, 502, request);
+
+  // Save the new account ID to D1
+  await env.DB.prepare(
+    'UPDATE sellers SET stripe_account_id = ?, stripe_onboarding_complete = 0, stripe_charges_enabled = 0, stripe_payouts_enabled = 0 WHERE id = ?'
+  ).bind(data.id, sellerId).run();
+
+  return json({ stripe_account_id: data.id }, 201, request);
+}
+
+/**
+ * POST /api/stripe/v2/account-link
+ * Creates a V2 account onboarding link for the connected account.
+ * Uses /v2/core/account_links with the account_onboarding use_case.
+ */
+async function handleStripeV2AccountLink(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const sellerId = body?.seller_id;
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare(
+    'SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?'
+  ).bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) {
+    return json({ error: 'No Stripe account found — create one first' }, 404, request);
+  }
+
+  // V2 account links use a use_case object instead of flat params
+  const { ok, data } = await stripeV2Request('POST', '/v2/core/account_links', env, {
+    account: seller.stripe_account_id,
+    use_case: {
+      type: 'account_onboarding',
+      account_onboarding: {
+        configurations: ['merchant', 'customer'],
+        refresh_url: SITE_URL + '/#seller?stripe_refresh=true',
+        return_url: SITE_URL + '/#seller?stripe_return=true',
+      },
+    },
+  });
+  if (!ok) return json({ error: 'Failed to create V2 account link', detail: data.error?.message }, 502, request);
+
+  return json({ url: data.url, expires_at: data.expires_at }, 200, request);
+}
+
+/**
+ * GET /api/stripe/v2/account-status?seller_id=X
+ * Retrieves V2 account details including merchant capabilities and requirements.
+ * Uses /v2/core/accounts/{id} with include[] params.
+ */
+async function handleStripeV2AccountStatus(request, env) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const url = new URL(request.url);
+  const sellerId = url.searchParams.get('seller_id');
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare(
+    'SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?'
+  ).bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+  // Fetch V2 account with merchant config and requirements included
+  const accountPath = '/v2/core/accounts/' + seller.stripe_account_id
+    + '?include[]=configuration.merchant&include[]=requirements';
+  const { ok, data } = await stripeV2Request('GET', accountPath, env);
+  if (!ok) return json({ error: 'Failed to retrieve V2 account', detail: data.error?.message }, 502, request);
+
+  // Determine charges_enabled from merchant capabilities
+  const cardPaymentsStatus = data.configuration?.merchant?.capabilities?.card_payments?.status;
+  const chargesEnabled = cardPaymentsStatus === 'active' ? 1 : 0;
+
+  // Determine onboarding status from requirements
+  const requirementsSummary = data.requirements?.summary;
+  const onboardingComplete = (requirementsSummary?.minimum_deadline?.status === 'met' ||
+    requirementsSummary?.minimum_deadline?.status === 'not_applicable') ? 1 : 0;
+  const payoutsEnabled = chargesEnabled; // If charges are active, payouts should be too
+
+  // Sync status to D1
+  await env.DB.prepare(
+    'UPDATE sellers SET stripe_onboarding_complete = ?, stripe_charges_enabled = ?, stripe_payouts_enabled = ? WHERE id = ?'
+  ).bind(onboardingComplete, chargesEnabled, payoutsEnabled, sellerId).run();
+
+  return json({
+    stripe_account_id: data.id,
+    charges_enabled: chargesEnabled === 1,
+    payouts_enabled: payoutsEnabled === 1,
+    onboarding_complete: onboardingComplete === 1,
+    card_payments_status: cardPaymentsStatus || 'inactive',
+    requirements: data.requirements || null,
+    dashboard: data.dashboard || null,
+  }, 200, request);
+}
+
+/**
+ * POST /api/stripe/products  — Create a product on the connected account (V1 + Stripe-Account header)
+ * GET  /api/stripe/products?seller_id=X — List active products on the connected account
+ */
+async function handleStripeProducts(request, env) {
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  if (request.method === 'POST') {
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+    const { seller_id, name, description, price_cents, currency } = body;
+    if (!seller_id || !name || !price_cents) {
+      return json({ error: 'seller_id, name, and price_cents are required' }, 400, request);
+    }
+
+    const seller = await env.DB.prepare(
+      'SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?'
+    ).bind(seller_id, auth.user.id).first();
+    if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+    // Create product with default_price_data on the connected account using V1 API
+    const params = {
+      name,
+      'default_price_data[unit_amount]': String(Math.round(price_cents)),
+      'default_price_data[currency]': currency || 'usd',
+      'metadata[platform]': 'investmtg',
+      'metadata[seller_id]': String(seller_id),
+    };
+    if (description) params.description = description;
+
+    const { ok, data } = await stripeRequest('POST', '/products', env, params, seller.stripe_account_id);
+    if (!ok) return json({ error: 'Failed to create product', detail: data.error?.message }, 502, request);
+
+    return json({
+      product_id: data.id,
+      name: data.name,
+      default_price: data.default_price,
+    }, 201, request);
+  }
+
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const sellerId = url.searchParams.get('seller_id');
+    if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+    const seller = await env.DB.prepare(
+      'SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?'
+    ).bind(sellerId, auth.user.id).first();
+    if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+    // List active products on the connected account
+    const { ok, data } = await stripeRequest('GET', '/products?active=true&limit=100', env, null, seller.stripe_account_id);
+    if (!ok) return json({ error: 'Failed to list products', detail: data.error?.message }, 502, request);
+
+    return json({ products: data.data || [] }, 200, request);
+  }
+
+  return methodNotAllowed(request);
+}
+
+/**
+ * POST /api/stripe/checkout
+ * Creates a Stripe Checkout Session with direct charge + application fee.
+ * The payment is processed on the connected account with our platform fee deducted.
+ */
+async function handleStripeCheckout(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+  const { seller_id, product_id, price_id, quantity } = body;
+  if (!seller_id || !price_id) {
+    return json({ error: 'seller_id and price_id are required' }, 400, request);
+  }
+
+  const seller = await env.DB.prepare(
+    'SELECT stripe_account_id FROM sellers WHERE id = ?'
+  ).bind(seller_id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'Seller not found or no Stripe account' }, 404, request);
+
+  // Fetch the price to calculate the application fee
+  const priceRes = await stripeRequest('GET', '/prices/' + price_id, env, null, seller.stripe_account_id);
+  if (!priceRes.ok) return json({ error: 'Failed to fetch price', detail: priceRes.data.error?.message }, 502, request);
+
+  const unitAmount = priceRes.data.unit_amount || 0;
+  const qty = quantity || 1;
+  const totalAmount = unitAmount * qty;
+  const applicationFee = Math.round(totalAmount * PLATFORM_FEE_PERCENT / 100);
+
+  // Create Checkout Session on the connected account (direct charge)
+  const params = {
+    mode: 'payment',
+    'line_items[0][price]': price_id,
+    'line_items[0][quantity]': String(qty),
+    'payment_intent_data[application_fee_amount]': String(applicationFee),
+    'success_url': SITE_URL + '/#order/success?session_id={CHECKOUT_SESSION_ID}',
+    'cancel_url': SITE_URL + '/#shop/' + seller_id,
+    'metadata[platform]': 'investmtg',
+    'metadata[seller_id]': String(seller_id),
+  };
+  if (product_id) params['metadata[product_id]'] = product_id;
+
+  const { ok, data } = await stripeRequest('POST', '/checkout/sessions', env, params, seller.stripe_account_id);
+  if (!ok) return json({ error: 'Failed to create checkout session', detail: data.error?.message }, 502, request);
+
+  return json({
+    checkout_url: data.url,
+    session_id: data.id,
+  }, 200, request);
+}
+
+/**
+ * POST /api/stripe/subscribe
+ * Creates a subscription Checkout Session using the V2 customer_account pattern.
+ * The connected account IS the customer — they subscribe to a platform plan.
+ */
+async function handleStripeSubscribe(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+  const { account_id, price_id } = body;
+  if (!account_id || !price_id) {
+    return json({ error: 'account_id and price_id are required' }, 400, request);
+  }
+
+  // Verify this account belongs to the authenticated user's seller
+  const seller = await env.DB.prepare(
+    'SELECT id FROM sellers WHERE stripe_account_id = ? AND user_id = ?'
+  ).bind(account_id, auth.user.id).first();
+  if (!seller) return json({ error: 'Account not found for this user' }, 404, request);
+
+  // Create subscription checkout using customer_account (V2 pattern)
+  const params = {
+    customer_account: account_id,
+    mode: 'subscription',
+    'line_items[0][price]': price_id,
+    'line_items[0][quantity]': '1',
+    'success_url': SITE_URL + '/#seller?subscription=success',
+    'cancel_url': SITE_URL + '/#seller?subscription=cancelled',
+  };
+
+  const { ok, data } = await stripeRequest('POST', '/checkout/sessions', env, params);
+  if (!ok) return json({ error: 'Failed to create subscription checkout', detail: data.error?.message }, 502, request);
+
+  return json({
+    checkout_url: data.url,
+    session_id: data.id,
+  }, 200, request);
+}
+
+/**
+ * POST /api/stripe/billing-portal
+ * Creates a Stripe Billing Portal session for the connected account.
+ * Uses customer_account (V2 pattern) so the connected account manages their own subscriptions.
+ */
+async function handleStripeBillingPortal(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+  const { account_id } = body;
+  if (!account_id) return json({ error: 'account_id required' }, 400, request);
+
+  // Verify this account belongs to the authenticated user's seller
+  const seller = await env.DB.prepare(
+    'SELECT id FROM sellers WHERE stripe_account_id = ? AND user_id = ?'
+  ).bind(account_id, auth.user.id).first();
+  if (!seller) return json({ error: 'Account not found for this user' }, 404, request);
+
+  // Create billing portal session using customer_account
+  const params = {
+    customer_account: account_id,
+    return_url: SITE_URL + '/#seller',
+  };
+
+  const { ok, data } = await stripeRequest('POST', '/billing_portal/sessions', env, params);
+  if (!ok) return json({ error: 'Failed to create billing portal session', detail: data.error?.message }, 502, request);
+
+  return json({ url: data.url }, 200, request);
+}
+
+/**
+ * POST /api/stripe/v2/webhook
+ * Handles V2 thin events (account updates) and V1 events (subscriptions).
+ *
+ * V2 thin events deliver a minimal payload; we fetch the full event via the events API.
+ * V1 events are handled inline with the full payload in the webhook body.
+ */
+async function handleStripeV2Webhook(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const body = await request.text();
+
+  // Verify webhook signature if secret is configured
+  if (env.STRIPE_WEBHOOK_SECRET) {
+    const sig = request.headers.get('stripe-signature');
+    if (!sig) return json({ error: 'Missing stripe-signature header' }, 400, request);
+    const verified = await verifyStripeSignature(body, sig, env.STRIPE_WEBHOOK_SECRET);
+    if (!verified) return json({ error: 'Invalid signature' }, 400, request);
+  }
+
+  let event;
+  try {
+    event = JSON.parse(body);
+  } catch (e) {
+    return json({ error: 'Invalid JSON body' }, 400, request);
+  }
+
+  const type = event.type;
+  console.log('[StripeV2 Webhook]', type, event.id);
+
+  // ── V2 thin events (account-related) ──
+  // These come with minimal data; fetch full event details from the events API
+  if (type === 'v2.core.account.requirements.updated' ||
+      type === 'v2.core.account.configuration.merchant.capability_status_updated') {
+    try {
+      // Fetch full event details using the V2 events endpoint
+      const fullEvent = await stripeV2Request('GET', '/v2/core/events/' + event.id, env);
+      if (!fullEvent.ok) {
+        console.error('[StripeV2 Webhook] Failed to fetch full event:', event.id);
+        return json({ received: true, warning: 'Could not fetch full event' }, 200, request);
+      }
+
+      // Extract the account ID from the related_object
+      const accountId = fullEvent.data.related_object?.id || event.related_object?.id;
+      if (!accountId) {
+        console.log('[StripeV2 Webhook] No account ID in event:', event.id);
+        return json({ received: true }, 200, request);
+      }
+
+      // Fetch updated account status to sync to D1
+      const accountRes = await stripeV2Request('GET',
+        '/v2/core/accounts/' + accountId + '?include[]=configuration.merchant&include[]=requirements',
+        env
+      );
+      if (accountRes.ok) {
+        const acct = accountRes.data;
+        const cardStatus = acct.configuration?.merchant?.capabilities?.card_payments?.status;
+        const chargesEnabled = cardStatus === 'active' ? 1 : 0;
+        const reqSummary = acct.requirements?.summary;
+        const onboardingComplete = (reqSummary?.minimum_deadline?.status === 'met' ||
+          reqSummary?.minimum_deadline?.status === 'not_applicable') ? 1 : 0;
+
+        await env.DB.prepare(
+          'UPDATE sellers SET stripe_onboarding_complete = ?, stripe_charges_enabled = ?, stripe_payouts_enabled = ? WHERE stripe_account_id = ?'
+        ).bind(onboardingComplete, chargesEnabled, chargesEnabled, accountId).run().catch(() => {});
+        console.log('[StripeV2 Webhook] Synced account status for', accountId, '→ charges:', chargesEnabled);
+      }
+    } catch (e) {
+      console.error('[StripeV2 Webhook] Error processing thin event:', e);
+    }
+    return json({ received: true }, 200, request);
+  }
+
+  // ── V1 events (subscription lifecycle) ──
+  const obj = event.data?.object;
+
+  switch (type) {
+    case 'customer.subscription.updated': {
+      // Subscription status changed — log it
+      console.log('[StripeV2 Webhook] Subscription updated:', obj?.id, 'status:', obj?.status);
+      // TODO: Update subscription status in D1 if a subscriptions table exists
+      break;
+    }
+    case 'customer.subscription.deleted': {
+      console.log('[StripeV2 Webhook] Subscription cancelled:', obj?.id);
+      // TODO: Mark subscription as cancelled in D1
+      break;
+    }
+    case 'invoice.paid': {
+      console.log('[StripeV2 Webhook] Invoice paid:', obj?.id, 'subscription:', obj?.subscription);
+      // TODO: Record successful payment for the subscription period
+      break;
+    }
+    case 'invoice.payment_failed': {
+      console.log('[StripeV2 Webhook] Invoice payment failed:', obj?.id);
+      // TODO: Handle failed subscription payment (notify seller, retry logic)
+      break;
+    }
+    default:
+      console.log('[StripeV2 Webhook] Unhandled event type:', type);
+  }
+
+  return json({ received: true }, 200, request);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return handleOptions(request);
@@ -3942,6 +4413,19 @@ export default {
       if (path === '/api/stripe/seller/balance')             return handleStripeSellerBalance(request, env);
       if (path === '/api/stripe/seller/sales')               return handleStripeSellerSales(request, env);
       if (path === '/api/stripe/refund')                     return handleStripeRefund(request, env);
+      // Stripe Connect V2
+      if (path === '/api/stripe/v2/create-account')          return handleStripeV2CreateAccount(request, env);
+      if (path === '/api/stripe/v2/account-link')            return handleStripeV2AccountLink(request, env);
+      if (path === '/api/stripe/v2/account-status')          return handleStripeV2AccountStatus(request, env);
+      // Stripe Products (on connected accounts)
+      if (path === '/api/stripe/products')                   return handleStripeProducts(request, env);
+      // Stripe Checkout (direct charge)
+      if (path === '/api/stripe/checkout')                   return handleStripeCheckout(request, env);
+      // Stripe Subscriptions (V2 customer_account pattern)
+      if (path === '/api/stripe/subscribe')                  return handleStripeSubscribe(request, env);
+      if (path === '/api/stripe/billing-portal')             return handleStripeBillingPortal(request, env);
+      // Stripe V2 thin events webhook
+      if (path === '/api/stripe/v2/webhook')                 return handleStripeV2Webhook(request, env);
       if (path === '/api/price-alerts')                         return handlePriceAlerts(request, env);
       if (path === '/api/scan/detect')                           return handleScanDetect(request, env);
 

@@ -697,3 +697,71 @@ export function stripeRefundPayment(paymentIntentId, amount, reason) {
     }),
   });
 }
+
+/* ══════════════════════════════════════════════════
+ * Stripe Connect V2 API functions
+ * ══════════════════════════════════════════════════ */
+
+/** Create a V2 Connect account for a seller */
+export function stripeV2CreateAccount(sellerId) {
+  return backendFetch('/api/stripe/v2/create-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}
+
+/** Generate V2 onboarding link */
+export function stripeV2GetAccountLink(sellerId) {
+  return backendFetch('/api/stripe/v2/account-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}
+
+/** Get V2 account status (merchant capabilities + requirements) */
+export function stripeV2GetAccountStatus(sellerId) {
+  return backendFetch('/api/stripe/v2/account-status?seller_id=' + sellerId);
+}
+
+/** Create a product on a connected account */
+export function stripeCreateProduct(sellerId, name, description, priceCents, currency) {
+  return backendFetch('/api/stripe/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId, name: name, description: description, price_cents: priceCents, currency: currency || 'usd' }),
+  });
+}
+
+/** List products on a connected account */
+export function stripeListProducts(sellerId) {
+  return backendFetch('/api/stripe/products?seller_id=' + sellerId);
+}
+
+/** Create a checkout session (direct charge on connected account) */
+export function stripeCreateCheckout(sellerId, priceId, quantity) {
+  return backendFetch('/api/stripe/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId, price_id: priceId, quantity: quantity || 1 }),
+  });
+}
+
+/** Create a subscription checkout */
+export function stripeCreateSubscription(accountId, priceId) {
+  return backendFetch('/api/stripe/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ account_id: accountId, price_id: priceId }),
+  });
+}
+
+/** Create a billing portal session */
+export function stripeCreateBillingPortal(accountId) {
+  return backendFetch('/api/stripe/billing-portal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ account_id: accountId }),
+  });
+}
