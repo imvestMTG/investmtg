@@ -95,6 +95,50 @@ img { max-width: 100%; display: block; }
   line-height: 1.5;
 }
 
+/* ===== Self-hosted Fonts ===== */
+@font-face {
+  font-family: 'Clash Display';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/clash-display-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Clash Display';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/clash-display-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Clash Display';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/clash-display-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/satoshi-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/satoshi-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/satoshi-700.woff2') format('woff2');
+}
+
 /* ===== Shared Components ===== */
 
 /* ── LoadingSpinner ── */

@@ -79,7 +79,7 @@ const ALLOWED_PROXY_HOSTS = [
 ];
 
 // Cache TTLs (seconds)
-const TTL_TICKER = 300;       // 5 minutes
+const TTL_TICKER = 900;       // 15 minutes (was 5min — batch fetch makes cold miss fast now)
 const TTL_FEATURED = 3600;    // 1 hour
 const TTL_TRENDING = 1800;    // 30 minutes
 const TTL_BUDGET = 3600;      // 1 hour
@@ -656,10 +656,58 @@ async function getCachedCardsByNames(db, cache, cacheKey, names, ttl) {
   const found = new Map(rows.results.map(r => [r.name, r]));
   const missing = names.filter(n => !found.has(n));
 
-  // Fetch missing from Scryfall
-  for (const name of missing) {
-    const card = await fetchAndCacheCard(db, name);
-    if (card) found.set(name, card);
+  // Batch-fetch missing cards using Scryfall /cards/collection (single request, up to 75 cards)
+  if (missing.length > 0) {
+    try {
+      const identifiers = missing.map(name => ({ name }));
+      const res = await fetch(SCRYFALL_API + '/cards/collection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': USER_AGENT,
+        },
+        body: JSON.stringify({ identifiers }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const fetchedCards = data.data || [];
+        for (const card of fetchedCards) {
+          // Skip digital-only cards
+          if (card.digital && !getBestUsdPrice(card)) continue;
+          const imageUris = extractImageUris(card);
+          const allFaces = extractAllFaceImages(card);
+          const prices = extractPrices(card);
+          const entry = {
+            card_id: card.id, name: card.name, set_code: card.set, set_name: card.set_name,
+            rarity: card.rarity,
+            mana_cost: getCardField(card, 'mana_cost'),
+            type_line: getCardField(card, 'type_line'),
+            price_usd: prices.usd, price_usd_foil: prices.usd_foil,
+            price_usd_etched: prices.usd_etched,
+            image_small: imageUris.small || '', image_normal: imageUris.normal || '',
+            image_back: allFaces.length > 1 ? (allFaces[1].normal || '') : '',
+            scryfall_uri: card.scryfall_uri || '',
+            treatment: getTreatmentLabel(card),
+            finishes: card.finishes || [],
+            is_dfc: allFaces.length > 1,
+            updated_at: now,
+          };
+          found.set(card.name, entry);
+          // Cache each card to D1 in background (fire-and-forget)
+          cacheCardToD1(db, card, now).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.error('[getCachedCardsByNames] Batch Scryfall fetch failed:', e.message);
+      // Fallback: sequential fetch for remaining missing
+      for (const name of missing) {
+        if (!found.has(name)) {
+          const card = await fetchAndCacheCard(db, name);
+          if (card) found.set(name, card);
+        }
+      }
+    }
   }
 
   // Build result in original order

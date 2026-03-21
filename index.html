@@ -125,8 +125,7 @@
 </script>
 
 <!-- Preconnect for fonts -->
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<!-- Fonts self-hosted from /fonts/ — eliminates external font request + FOUT -->
 
 <!-- Preconnect for Scryfall API -->
 <link rel="preconnect" href="https://api.scryfall.com" crossorigin>
@@ -138,19 +137,21 @@
 <script
   src="https://js.sentry-cdn.com/a0d6e361294e2db9e4c93fa920d9ffd1.min.js"
   crossorigin="anonymous"
+  defer
 ></script>
 
 <!-- Preload hero LCP image -->
 <link rel="preload" href="./images/hero-bg.webp" as="image" type="image/webp" fetchpriority="high">
 
 <!-- Fonts — display:swap already set, move after preloads for better waterfall -->
-<link rel="preload" href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" as="style">
+<link rel="preload" href="./fonts/clash-display-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/satoshi-400.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- Styles — base.css is tiny (2KB), style.css preloaded for parallel fetch -->
 <link rel="preload" href="./style.css" as="style">
 <link rel="stylesheet" href="./base.css">
 <link rel="stylesheet" href="./style.css">
-<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+
 
 <!-- Global error handler — show message if modules fail to load -->
 <script>

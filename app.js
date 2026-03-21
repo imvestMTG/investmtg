@@ -290,34 +290,24 @@ function App() {
       return cartFallback;
     });
 
-    // Safety timeout — if backend is unreachable, clear loading after 6s
-    var safetyTimer = setTimeout(function() {
-      if (globalState.loading) {
-        globalState.portfolio = portfolioFallback;
-        globalState.listings = [];
-        globalState.cart = cartFallback;
-        globalState.loading = false;
-        notify();
-      }
-    }, 6000);
+    // Render immediately with localStorage fallbacks — don't block on API
+    globalState.portfolio = portfolioFallback;
+    globalState.listings = [];
+    globalState.cart = cartFallback;
+    globalState.loading = false;
+    notify();
 
+    // Hydrate from backend in background (non-blocking)
     Promise.all([portfolioPromise, listingsPromise, cartPromise]).then(function(results) {
-      clearTimeout(safetyTimer);
       globalState.portfolio = results[0];
       globalState.listings = results[1];
       globalState.cart = results[2];
-      globalState.loading = false;
       notify();
     }).catch(function() {
-      clearTimeout(safetyTimer);
-      globalState.portfolio = portfolioFallback;
-      globalState.listings = [];
-      globalState.cart = cartFallback;
-      globalState.loading = false;
-      notify();
+      /* Already using localStorage fallbacks — no action needed */
     });
 
-    return function() { clearTimeout(safetyTimer); };
+    return function() {};
   }, []);
 
   // ===== SEO: Dynamic document.title + meta per route =====
