@@ -109,7 +109,7 @@ export function StoreView(props) {
     setContactModal({ contact: listing.contact || listing.seller, notes: listing.notes });
   }
 
-  return h('div', { className: 'container store-page' },
+  return h('main', { className: 'container store-page', role: 'main' },
 
     // Page header
     h('div', { className: 'store-page-header' },
@@ -191,7 +191,8 @@ export function StoreView(props) {
           type: 'search',
           placeholder: 'Search listings...',
           value: filter.search,
-          onChange: function(e) { updateFilter('search', e.target.value); }
+          onChange: function(e) { updateFilter('search', e.target.value); },
+          'aria-label': 'Search listings'
         }),
         h('select', {
           className: 'mp-filter-select',

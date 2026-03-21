@@ -6,6 +6,7 @@ import { SkeletonCard } from './shared/SkeletonCard.js';
 import { ShareButton } from './shared/ShareButton.js';
 import { ChevronLeftIcon, SearchIcon } from './shared/Icons.js';
 import { showToast } from './shared/Toast.js';
+import { TabBar } from './shared/TabBar.js';
 var h = React.createElement;
 
 /* ── Format tabs ── */
@@ -185,7 +186,8 @@ export function DecklistView() {
           placeholder: 'Paste a Moxfield deck URL or ID...',
           value: deckUrl,
           onChange: function(e) { setDeckUrl(e.target.value); },
-          className: 'decklist-input'
+          className: 'decklist-input',
+          'aria-label': 'Moxfield deck URL or ID'
         }),
         h('button', { type: 'submit', className: 'btn btn-primary', disabled: loadingDeck },
           loadingDeck ? 'Loading...' : 'Import Deck'
@@ -195,15 +197,12 @@ export function DecklistView() {
       deckError && h('div', { className: 'decklist-error' }, deckError),
 
       /* Format filter tabs */
-      h('div', { className: 'dk-format-tabs' },
-        FORMAT_TABS.map(function(tab) {
-          return h('button', {
-            key: tab.key,
-            className: 'dk-format-tab' + (activeFormat === tab.key ? ' dk-format-tab--active' : ''),
-            onClick: function() { setActiveFormat(tab.key); }
-          }, tab.label);
-        })
-      ),
+      h(TabBar, {
+        variant: 'pill',
+        tabs: FORMAT_TABS,
+        activeKey: activeFormat,
+        onChange: setActiveFormat
+      }),
 
       /* Deck grid */
       loading

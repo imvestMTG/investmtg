@@ -6,6 +6,7 @@ import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from 
 import { CardCarousel } from './shared/CardCarousel.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon, MapPinIcon, ClockIcon } from './shared/Icons.js';
+import { StatCard, StatGrid } from './shared/StatCard.js';
 var h = React.createElement;
 
 export function HomeView(props) {
@@ -113,12 +114,9 @@ export function HomeView(props) {
           'aria-label': 'Search cards'
         })
       ),
-      h('div', { className: 'hero-stats' },
+      h(StatGrid, { className: 'hero-stats' },
         stats.map(function(s) {
-          return h('div', { key: s.label, className: 'hero-stat' },
-            h('div', { className: 'hero-stat-value' }, s.value),
-            h('div', { className: 'hero-stat-label' }, s.label)
-          );
+          return h(StatCard, { key: s.label, label: s.label, value: s.value });
         })
       )
     ),

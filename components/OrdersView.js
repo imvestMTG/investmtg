@@ -3,6 +3,7 @@ import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { storageGet } from '../utils/storage.js';
 import { STORAGE_KEYS } from '../utils/config.js';
+import { EmptyState } from './shared/EmptyState.js';
 var h = React.createElement;
 
 function statusBadgeClass(status) {
@@ -55,7 +56,7 @@ export function OrdersView() {
     );
   }
 
-  return h('div', { className: 'container orders-page' },
+  return h('main', { className: 'container orders-page', role: 'main' },
     h('div', { className: 'orders-header' },
       h('h1', { className: 'page-heading' }, 'My Orders'),
       h('p', { className: 'orders-subheading' },
@@ -66,12 +67,13 @@ export function OrdersView() {
     ),
 
     orders.length === 0
-      ? h('div', { className: 'empty-state' },
-          h('div', { className: 'empty-state-icon' }, '\uD83D\uDCE6'),
-          h('h3', null, 'No orders yet'),
-          h('p', null, 'No orders yet. Browse the marketplace to get started.'),
-          h('a', { href: '#store', className: 'btn btn-primary' }, 'Browse Marketplace')
-        )
+      ? h(EmptyState, {
+          icon: '\uD83D\uDCE6',
+          title: 'No orders yet',
+          message: 'Browse the marketplace to get started.',
+          onAction: function() { window.location.hash = 'store'; },
+          actionLabel: 'Browse Marketplace'
+        })
       : h('div', { className: 'orders-list' },
           orders.map(function(order) {
             var orderDate = new Date(order.date || order.created_at || 0);

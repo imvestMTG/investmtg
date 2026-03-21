@@ -169,7 +169,8 @@ export function Chatbot() {
           ref: inputRef,
           placeholder: 'Ask about MTG cards...',
           autoComplete: 'off',
-          onKeyDown: onKeyDown
+          onKeyDown: onKeyDown,
+          'aria-label': 'Ask about MTG cards'
         }),
         h('button', {
           id: 'chatbot-send',

@@ -161,7 +161,7 @@ export function SearchView(props) {
   });
 
   return h('div', { className: 'container' },
-    h('div', { className: 'search-page' },
+    h('main', { className: 'search-page', role: 'main' },
       h('aside', { className: 'filter-sidebar' },
         h('div', { className: 'filter-group' },
           h('h3', null, 'Colors'),

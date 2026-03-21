@@ -309,7 +309,7 @@ export function CardDetailView(props) {
   var otherPrintings = printings.filter(function(p) { return p.id !== card.id; });
   var visiblePrintings = showAllPrintings ? otherPrintings : otherPrintings.slice(0, 6);
 
-  return h('div', { className: 'container card-detail' },
+  return h('article', { className: 'container card-detail' },
     h('a', {
       className: 'back-link',
       onClick: function() { window.history.back(); },
@@ -618,7 +618,8 @@ export function CardDetailView(props) {
                 value: alertPrice,
                 onChange: function(e) { setAlertPrice(e.target.value); },
                 min: '0.01',
-                step: '0.01'
+                step: '0.01',
+                'aria-label': 'Price alert threshold'
               })
             )
           ),

@@ -10,6 +10,10 @@ function scryfallArtUrl(cardName) {
   return 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(cardName) + '&format=image&version=art_crop';
 }
 import { SkeletonCard } from './shared/SkeletonCard.js';
+import { LoadingSpinner } from './shared/LoadingSpinner.js';
+import { EmptyState } from './shared/EmptyState.js';
+import { StatCard, StatGrid } from './shared/StatCard.js';
+import { TabBar } from './shared/TabBar.js';
 
 var h = React.createElement;
 
@@ -127,23 +131,11 @@ function CommanderDetailPanel(props) {
     ),
 
     /* Stats grid */
-    h('div', { className: 'meta-detail-stats' },
-      h('div', { className: 'meta-stat-card' },
-        h('span', { className: 'meta-stat-label' }, 'Entries'),
-        h('span', { className: 'meta-stat-value' }, detail.stats.count.toLocaleString())
-      ),
-      h('div', { className: 'meta-stat-card' },
-        h('span', { className: 'meta-stat-label' }, 'Win Rate'),
-        h('span', { className: 'meta-stat-value' }, pct(detail.stats.winRate))
-      ),
-      h('div', { className: 'meta-stat-card' },
-        h('span', { className: 'meta-stat-label' }, 'Meta Share'),
-        h('span', { className: 'meta-stat-value' }, pct(detail.stats.metaShare))
-      ),
-      h('div', { className: 'meta-stat-card' },
-        h('span', { className: 'meta-stat-label' }, 'Conversion'),
-        h('span', { className: 'meta-stat-value' }, pct(detail.stats.conversionRate))
-      )
+    h(StatGrid, null,
+      h(StatCard, { label: 'Entries', value: detail.stats.count.toLocaleString() }),
+      h(StatCard, { label: 'Win Rate', value: pct(detail.stats.winRate) }),
+      h(StatCard, { label: 'Meta Share', value: pct(detail.stats.metaShare) }),
+      h(StatCard, { label: 'Conversion', value: pct(detail.stats.conversionRate) })
     ),
 
     /* Staples */
@@ -201,13 +193,10 @@ function TournamentsList(props) {
   var loading = props.loading;
 
   if (loading) {
-    return h('div', { className: 'meta-loading' },
-      h('div', { className: 'meta-spinner' }),
-      'Loading tournaments...'
-    );
+    return h(LoadingSpinner, { text: 'Loading tournaments...' });
   }
   if (!tournaments || tournaments.length === 0) {
-    return h('div', { className: 'meta-empty' }, 'No recent tournaments found.');
+    return h(EmptyState, { message: 'No recent tournaments found.' });
   }
 
   return h('div', { className: 'meta-tournaments-list' },
@@ -254,13 +243,10 @@ function StaplesList(props) {
   var loading = props.loading;
 
   if (loading) {
-    return h('div', { className: 'meta-loading' },
-      h('div', { className: 'meta-spinner' }),
-      'Loading staples...'
-    );
+    return h(LoadingSpinner, { text: 'Loading staples...' });
   }
   if (!staples || staples.length === 0) {
-    return h('div', { className: 'meta-empty' }, 'No staple data available.');
+    return h(EmptyState, { message: 'No staple data available.' });
   }
 
   return h('div', { className: 'meta-staples-table' },
@@ -424,17 +410,21 @@ export function MetaView() {
     ),
 
     /* Tabs */
-    h('div', { className: 'meta-tabs' },
-      h(TabBtn, { label: 'Top Commanders', active: tab === 'commanders', onClick: function() { setTab('commanders'); } }),
-      h(TabBtn, { label: 'Recent Tournaments', active: tab === 'tournaments', onClick: function() { setTab('tournaments'); } }),
-      h(TabBtn, { label: 'Staple Cards', active: tab === 'staples', onClick: function() { setTab('staples'); } })
-    ),
+    h(TabBar, {
+      tabs: [
+        { key: 'commanders', label: 'Top Commanders' },
+        { key: 'tournaments', label: 'Recent Tournaments' },
+        { key: 'staples', label: 'Staple Cards' }
+      ],
+      activeKey: tab,
+      onChange: setTab
+    }),
 
     /* Detail panel overlay */
     selectedCommander && h('div', { className: 'meta-detail-overlay', onClick: closeDetail },
       h('div', { className: 'meta-detail-container', onClick: function(e) { e.stopPropagation(); } },
         detailLoading
-          ? h('div', { className: 'meta-loading' }, h('div', { className: 'meta-spinner' }), 'Loading commander data...')
+          ? h(LoadingSpinner, { text: 'Loading commander data...' })
           : h(CommanderDetailPanel, { detail: commanderDetail, onClose: closeDetail })
       )
     ),
@@ -471,10 +461,7 @@ export function MetaView() {
 
       /* Loading state */
       loading
-        ? h('div', { className: 'meta-loading' },
-            h('div', { className: 'meta-spinner' }),
-            'Loading cEDH metagame...'
-          )
+        ? h(LoadingSpinner, { text: 'Loading cEDH metagame...' })
         : h('div', { className: 'meta-table-wrapper' },
             h('table', { className: 'meta-commanders-table' },
               h('thead', null,

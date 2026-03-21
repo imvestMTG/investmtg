@@ -240,7 +240,7 @@ export function MarketMoversView() {
 
   var activeCat = CATEGORIES.find(function(c) { return c.key === activeCategory; });
 
-  return h('div', { className: 'container market-movers-view' },
+  return h('main', { className: 'container market-movers-view', role: 'main' },
     h('div', { className: 'page-header-row' },
       h('h1', null, h(TrendingIcon, null), ' Market Movers'),
       h(ShareButton, {

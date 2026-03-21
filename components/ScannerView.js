@@ -758,7 +758,8 @@ export function ScannerView(props) {
           h('button', {
             className: 'scanner-control-btn',
             onClick: flipCamera,
-            title: 'Flip Camera'
+            title: 'Flip Camera',
+            'aria-label': 'Flip Camera'
           }, h(FlipIcon))
         )
       ),

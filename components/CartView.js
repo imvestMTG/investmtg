@@ -5,6 +5,7 @@ import { getJustTCGPricing } from '../utils/justtcg-api.js';
 import { TrashIcon, MapPinIcon, TruckIcon, ChevronRightIcon } from './shared/Icons.js';
 import { CART_MAX_QUANTITY } from '../utils/config.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
+import { EmptyState } from './shared/EmptyState.js';
 var h = React.createElement;
 
 /* LockIcon — small inline SVG for trust badges */
@@ -159,17 +160,19 @@ export function CartView(props) {
   }
 
   if (cart.length === 0) {
-    return h('div', { className: 'container cart-page' },
+    return h('main', { className: 'container cart-page', role: 'main' },
       h('h1', { className: 'page-heading' }, 'Your Cart'),
-      h('div', { className: 'empty-state' },
-        h('h3', null, 'Your cart is empty'),
-        h('p', null, 'Search for cards and add them to your cart.'),
-        h('a', { href: '#search', className: 'btn btn-primary' }, 'Browse Cards')
-      )
+      h(EmptyState, {
+        icon: '\uD83D\uDED2',
+        title: 'Your cart is empty',
+        message: 'Search for cards and add them to your cart.',
+        onAction: function() { window.location.hash = 'search'; },
+        actionLabel: 'Browse Cards'
+      })
     );
   }
 
-  return h('div', { className: 'container cart-page' },
+  return h('main', { className: 'container cart-page', role: 'main' },
     h('div', { className: 'cart-page-header' },
       h('h1', { className: 'page-heading' }, 'Your Cart'),
       h('button', {

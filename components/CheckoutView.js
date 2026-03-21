@@ -314,7 +314,7 @@ export function CheckoutView(props) {
     );
   }
 
-  return h('div', { className: 'container checkout-page' },
+  return h('main', { className: 'container checkout-page', role: 'main' },
 
     // ===== CONFIRMATION MODAL (for reserve only) =====
     showConfirm && h('div', { className: 'checkout-confirm-overlay' },

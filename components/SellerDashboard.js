@@ -11,6 +11,8 @@ import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 import { STORAGE_KEYS, SCRYFALL_API_BASE } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
 import { TermsCheckbox } from './TermsGate.js';
+import { StatCard, StatGrid } from './shared/StatCard.js';
+import { TabBar } from './shared/TabBar.js';
 var h = React.createElement;
 
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
@@ -518,12 +520,14 @@ function ListingForm(props) {
             h('button', {
               type: 'button',
               className: 'lf-view-btn' + (viewMode === 'grid' ? ' active' : ''),
-              onClick: function() { setViewMode('grid'); }
+              onClick: function() { setViewMode('grid'); },
+              'aria-label': 'Grid view'
             }, h(GridIcon, null)),
             h('button', {
               type: 'button',
               className: 'lf-view-btn' + (viewMode === 'list' ? ' active' : ''),
-              onClick: function() { setViewMode('list'); }
+              onClick: function() { setViewMode('list'); },
+              'aria-label': 'List view'
             }, h(ListIcon, null))
           )
         ),
@@ -575,7 +579,7 @@ function ListingForm(props) {
             },
               p.imageSmall && h('img', {
                 src: p.imageSmall,
-                alt: '',
+                alt: p.setName || 'Card printing',
                 className: 'lf-plist-thumb',
                 loading: 'lazy',
                 onError: function(e) { handleImageError(e, p.scryfallId, 'small'); }
@@ -1592,23 +1596,11 @@ export function SellerDashboard(props) {
     ),
 
     // Stats row
-    h('div', { className: 'seller-stats-row' },
-      h('div', { className: 'seller-stat-card' },
-        h('div', { className: 'seller-stat-value' }, listings.length),
-        h('div', { className: 'seller-stat-label' }, 'Active Listings')
-      ),
-      h('div', { className: 'seller-stat-card' },
-        h('div', { className: 'seller-stat-value' }, listings.filter(function(l) { return l.type === 'sale'; }).length),
-        h('div', { className: 'seller-stat-label' }, 'For Sale')
-      ),
-      h('div', { className: 'seller-stat-card' },
-        h('div', { className: 'seller-stat-value' }, listings.filter(function(l) { return l.type === 'trade'; }).length),
-        h('div', { className: 'seller-stat-label' }, 'For Trade')
-      ),
-      h('div', { className: 'seller-stat-card' },
-        h('div', { className: 'seller-stat-value' }, formatUSD(salesTotal)),
-        h('div', { className: 'seller-stat-label' }, 'Sales History')
-      )
+    h(StatGrid, null,
+      h(StatCard, { label: 'Active Listings', value: String(listings.length) }),
+      h(StatCard, { label: 'For Sale', value: String(listings.filter(function(l) { return l.type === 'sale'; }).length) }),
+      h(StatCard, { label: 'For Trade', value: String(listings.filter(function(l) { return l.type === 'trade'; }).length) }),
+      h(StatCard, { label: 'Sales History', value: formatUSD(salesTotal) })
     ),
 
     // ── Stripe Connect status card ──
@@ -1657,32 +1649,22 @@ export function SellerDashboard(props) {
     ),
 
     // Tab nav — now includes Bulk Import tab and Sales & Payouts
-    h('div', { className: 'seller-tabs' },
-      h('button', {
-        className: 'seller-tab' + (activeTab === 'listings' ? ' active' : ''),
-        onClick: function() { setActiveTab('listings'); setEditingListing(null); }
-      }, h(TagIcon, null), ' My Listings'),
-      h('button', {
-        className: 'seller-tab' + (activeTab === 'add' ? ' active' : ''),
-        onClick: function() { setActiveTab('add'); setEditingListing(null); }
-      }, h(PlusIcon, null), ' Add Listing'),
-      h('button', {
-        className: 'seller-tab' + (activeTab === 'bulk' ? ' active' : ''),
-        onClick: function() { setActiveTab('bulk'); }
-      }, h(LayersIcon, null), ' Bulk Import'),
-      h('button', {
-        className: 'seller-tab' + (activeTab === 'history' ? ' active' : ''),
-        onClick: function() { setActiveTab('history'); }
-      }, h(OrderIcon, null), ' Sales History'),
-      seller.stripe_charges_enabled && h('button', {
-        className: 'seller-tab' + (activeTab === 'payouts' ? ' active' : ''),
-        onClick: function() { setActiveTab('payouts'); loadStripeSalesData(); }
-      }, '\uD83D\uDCB3 Sales & Payouts'),
-      h('button', {
-        className: 'seller-tab' + (activeTab === 'profile' ? ' active' : ''),
-        onClick: function() { setActiveTab('profile'); }
-      }, h(UserIcon, null), ' Profile')
-    ),
+    h(TabBar, {
+      tabs: [
+        { key: 'listings', label: 'My Listings' },
+        { key: 'add', label: 'Add Listing' },
+        { key: 'bulk', label: 'Bulk Import' },
+        { key: 'history', label: 'Sales History' }
+      ].concat(seller.stripe_charges_enabled ? [{ key: 'payouts', label: 'Sales & Payouts' }] : []).concat([
+        { key: 'profile', label: 'Profile' }
+      ]),
+      activeKey: activeTab,
+      onChange: function(key) {
+        setActiveTab(key);
+        if (key === 'listings' || key === 'add') { setEditingListing(null); }
+        if (key === 'payouts') { loadStripeSalesData(); }
+      }
+    }),
 
     // ===== LISTINGS TAB =====
     activeTab === 'listings' && h('div', { className: 'seller-tab-content' },
@@ -1841,42 +1823,27 @@ export function SellerDashboard(props) {
       // ---- Balance Card ----
       h('div', { className: 'pf-section' },
         h('h3', { className: 'pf-section-title' }, 'Balance'),
-        stripeBalance ? h('div', { className: 'stats-row' },
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' },
-              formatUSD(((stripeBalance.available && stripeBalance.available[0] && stripeBalance.available[0].amount) || 0) / 100)
-            ),
-            h('div', { className: 'stat-label' }, 'Available')
-          ),
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' },
-              formatUSD(((stripeBalance.pending && stripeBalance.pending[0] && stripeBalance.pending[0].amount) || 0) / 100)
-            ),
-            h('div', { className: 'stat-label' }, 'Pending')
-          )
+        stripeBalance ? h(StatGrid, null,
+          h(StatCard, {
+            label: 'Available',
+            value: formatUSD(((stripeBalance.available && stripeBalance.available[0] && stripeBalance.available[0].amount) || 0) / 100),
+            variant: 'success'
+          }),
+          h(StatCard, {
+            label: 'Pending',
+            value: formatUSD(((stripeBalance.pending && stripeBalance.pending[0] && stripeBalance.pending[0].amount) || 0) / 100)
+          })
         ) : h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading balance\u2026')
       ),
 
       // ---- Analytics Summary ----
       h('div', { className: 'pf-section' },
         h('h3', { className: 'pf-section-title' }, 'Sales Analytics'),
-        stripeSalesData && stripeSalesData.analytics ? h('div', { className: 'stats-row' },
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' }, String(stripeSalesData.analytics.total_sales || 0)),
-            h('div', { className: 'stat-label' }, 'Total Sales')
-          ),
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.total_revenue_cents || 0) / 100)),
-            h('div', { className: 'stat-label' }, 'Total Revenue')
-          ),
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.total_platform_fees_cents || 0) / 100)),
-            h('div', { className: 'stat-label' }, 'Platform Fees')
-          ),
-          h('div', { className: 'stat-card' },
-            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.net_revenue_cents || 0) / 100)),
-            h('div', { className: 'stat-label' }, 'Net Earnings')
-          )
+        stripeSalesData && stripeSalesData.analytics ? h(StatGrid, null,
+          h(StatCard, { label: 'Total Sales', value: String(stripeSalesData.analytics.total_sales || 0), variant: 'primary' }),
+          h(StatCard, { label: 'Total Revenue', value: formatUSD((stripeSalesData.analytics.total_revenue_cents || 0) / 100), variant: 'success' }),
+          h(StatCard, { label: 'Platform Fees', value: formatUSD((stripeSalesData.analytics.total_platform_fees_cents || 0) / 100), variant: 'warning' }),
+          h(StatCard, { label: 'Net Earnings', value: formatUSD((stripeSalesData.analytics.net_revenue_cents || 0) / 100), variant: 'success' })
         ) : h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading analytics\u2026')
       ),
 

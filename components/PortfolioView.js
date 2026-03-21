@@ -12,6 +12,7 @@ import {
 import { storageGet, storageSet } from '../utils/storage.js';
 import { CACHE_TTL_SHORT } from '../utils/config.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
+import { TabBar } from './shared/TabBar.js';
 var h = React.createElement;
 var PRICE_CACHE_KEY = 'investmtg-portfolio-prices';
 var CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
@@ -270,7 +271,7 @@ function PortfolioImportModal(props) {
     h('div', { className: 'mp-modal import-modal', onClick: function(e) { e.stopPropagation(); } },
       h('div', { className: 'import-modal-header' },
         h('h3', null, 'Import to Portfolio'),
-        h('button', { className: 'mp-modal-close import-modal-close', onClick: onClose }, h(XIcon, null))
+        h('button', { className: 'mp-modal-close import-modal-close', onClick: onClose, 'aria-label': 'Close' }, h(XIcon, null))
       ),
       h('div', { className: 'import-modal-body' },
         resultMsg
@@ -284,11 +285,16 @@ function PortfolioImportModal(props) {
               }, style: { marginTop: 'var(--space-4)' } }, 'Done')
             )
           : h(React.Fragment, null,
-              h('div', { className: 'import-tabs' },
-                h('button', { type: 'button', className: 'import-tab' + (importTab === 'csv' ? ' import-tab--active' : ''), onClick: function() { setImportTab('csv'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'CSV Import'),
-                h('button', { type: 'button', className: 'import-tab' + (importTab === 'text' ? ' import-tab--active' : ''), onClick: function() { setImportTab('text'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'Text / MTGA'),
-                h('button', { type: 'button', className: 'import-tab' + (importTab === 'moxfield' ? ' import-tab--active' : ''), onClick: function() { setImportTab('moxfield'); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); } }, 'Moxfield')
-              ),
+              h(TabBar, {
+                variant: 'compact',
+                tabs: [
+                  { key: 'csv', label: 'CSV Import' },
+                  { key: 'text', label: 'Text / MTGA' },
+                  { key: 'moxfield', label: 'Moxfield' }
+                ],
+                activeKey: importTab,
+                onChange: function(key) { setImportTab(key); setParsedResult(null); setMoxError(null); setMoxDeckInfo(null); }
+              }),
               !isAuth && h('p', { style: { fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'center', margin: 'var(--space-2) 0 0', opacity: 0.8 } }, 'Cards will be saved to this browser. Sign in to sync across devices.'),
               importTab === 'csv' && h(React.Fragment, null,
                 h('div', { className: 'form-group' },
@@ -392,7 +398,7 @@ function CreateBinderModal(props) {
     h('div', { className: 'mp-modal', style: { maxWidth: '400px' }, onClick: function(e) { e.stopPropagation(); } },
       h('div', { className: 'import-modal-header' },
         h('h3', null, 'New Binder'),
-        h('button', { className: 'mp-modal-close', onClick: props.onClose }, h(XIcon, null))
+        h('button', { className: 'mp-modal-close', onClick: props.onClose, 'aria-label': 'Close' }, h(XIcon, null))
       ),
       h('div', { style: { padding: 'var(--space-4)' } },
         h('input', {
@@ -442,7 +448,7 @@ function CreateListModal(props) {
     h('div', { className: 'mp-modal', style: { maxWidth: '400px' }, onClick: function(e) { e.stopPropagation(); } },
       h('div', { className: 'import-modal-header' },
         h('h3', null, 'New List'),
-        h('button', { className: 'mp-modal-close', onClick: props.onClose }, h(XIcon, null))
+        h('button', { className: 'mp-modal-close', onClick: props.onClose, 'aria-label': 'Close' }, h(XIcon, null))
       ),
       h('div', { style: { padding: 'var(--space-4)' } },
         h('input', {
@@ -911,7 +917,7 @@ export function PortfolioView(props) {
     { key: 'lists', label: 'Lists' }
   ];
 
-  return h('div', { className: 'container portfolio-page' },
+  return h('main', { className: 'container portfolio-page', role: 'main' },
     /* Header */
     h('div', { className: 'portfolio-header-row' },
       h('h1', { className: 'page-heading' }, 'My Portfolio'),
@@ -928,15 +934,7 @@ export function PortfolioView(props) {
     ),
 
     /* Tab bar: Collection | Lists */
-    h('div', { className: 'pf-tabs' },
-      tabs.map(function(tab) {
-        return h('button', {
-          key: tab.key, type: 'button',
-          className: 'pf-tab' + (activeTab === tab.key ? ' pf-tab--active' : ''),
-          onClick: function() { setActiveTab(tab.key); }
-        }, tab.label);
-      })
-    ),
+    h(TabBar, { tabs: tabs, activeKey: activeTab, onChange: setActiveTab }),
 
     /* Lists tab */
     activeTab === 'lists' && h(ListsPanel, { authUser: authUser }),
