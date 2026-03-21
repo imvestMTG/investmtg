@@ -374,20 +374,21 @@ function App() {
     }
   }, [route.page]);
 
-  // While loading, show a minimal loading indicator
-  if (gs.state.loading) {
-    return h('div', {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        color: 'var(--color-text-muted, #8B8D94)',
-        fontFamily: 'var(--font-body, system-ui, sans-serif)',
-        fontSize: '14px'
-      }
-    }, 'Loading…');
-  }
+  // Loading gate removed — renders immediately with localStorage fallbacks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   var cartCount = gs.state.cart.reduce(function(sum, item) { return sum + (item.qty || 1); }, 0);
 
