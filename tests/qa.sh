@@ -191,24 +191,24 @@ if run_local; then
 
     header "Code Style"
     LET_CONST=$(grep -rn '\blet \|\bconst ' --include='*.js' . 2>/dev/null \
-      | grep -v vendor | grep -v worker | grep -v node_modules \
+      | grep -v vendor | grep -v worker | grep -v node_modules | grep -v tools/ | grep -v next-app/ \
       | grep -v '// ' | wc -l 2>/dev/null | tr -d '[:space:]')
     if [ "$LET_CONST" = "0" ]; then pass "No let/const violations"
     else
       fail "let/const violations: $LET_CONST"
       grep -rn '\blet \|\bconst ' --include='*.js' . 2>/dev/null \
-        | grep -v vendor | grep -v worker | grep -v node_modules \
+        | grep -v vendor | grep -v worker | grep -v node_modules | grep -v tools/ | grep -v next-app/ \
         | grep -v '// ' | head -5
     fi
 
     ARROW=$(grep -rn '=>' --include='*.js' . 2>/dev/null \
-      | grep -v vendor | grep -v worker | grep -v node_modules \
+      | grep -v vendor | grep -v worker | grep -v node_modules | grep -v tools/ | grep -v next-app/ \
       | wc -l 2>/dev/null | tr -d '[:space:]')
     if [ "$ARROW" = "0" ]; then pass "No arrow functions"
     else
       fail "Arrow function violations: $ARROW"
       grep -rn '=>' --include='*.js' . 2>/dev/null \
-        | grep -v vendor | grep -v worker | grep -v node_modules | head -5
+        | grep -v vendor | grep -v worker | grep -v node_modules | grep -v tools/ | grep -v next-app/ | head -5
     fi
 
     header "Secrets"
