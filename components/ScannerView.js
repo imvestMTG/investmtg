@@ -373,7 +373,6 @@ export function ScannerView(props) {
 
   // ===== Initialize Tesseract worker =====
   function initTesseract() {
-    setPhase('loading-ocr');
     setStatusMsg('Loading card recognition engine\u2026');
 
     var timeout = new Promise(function(_, reject) {
@@ -420,13 +419,10 @@ export function ScannerView(props) {
 
     navigator.mediaDevices.getUserMedia(constraints).then(function(mediaStream) {
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
+      /* Video element wiring is handled by the useEffect watching [stream, phase] */
+      /* Preload Tesseract in background — non-blocking, camera shows immediately */
       if (!workerRef) {
-        initTesseract().catch(function(err) {
-          console.warn('OCR preload failed (will retry on capture):', err.message);
-        });
+        loadTesseract().catch(function() { /* will retry on capture */ });
       }
     }).catch(function(err) {
       console.warn('Camera error:', err);
@@ -672,11 +668,10 @@ export function ScannerView(props) {
         h('div', { className: 'scanner-actions' },
           h('button', {
             className: 'btn-primary scanner-start-btn',
-            onClick: startCamera,
-            disabled: phase === 'loading-ocr'
+            onClick: startCamera
           },
             h(CameraIcon),
-            phase === 'loading-ocr' ? ' Loading\u2026' : ' Start Camera'
+            ' Start Camera'
           ),
           h('button', {
             className: 'btn-secondary scanner-upload-btn',
