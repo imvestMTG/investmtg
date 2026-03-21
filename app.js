@@ -224,6 +224,16 @@ function App() {
 
   // ===== ASYNC STATE INITIALIZATION =====
   React.useEffect(function() {
+    // Safety timeout — clear loading gate after 6 seconds no matter what
+    var safetyTimer = setTimeout(function() {
+      if (globalState.loading) {
+        console.warn('[investMTG] Safety timeout: clearing loading gate');
+        globalState.loading = false;
+        notify();
+      }
+    }, 6000);
+
+    try {
     var portfolioFallback = storageGet('investmtg-portfolio', []);
     var cartFallback = storageGet('investmtg-cart', []);
 
@@ -300,6 +310,7 @@ function App() {
     globalState.listings = [];
     globalState.cart = cartFallback;
     globalState.loading = false;
+    clearTimeout(safetyTimer);
     notify();
 
     // Hydrate from backend in background (non-blocking)
@@ -312,7 +323,12 @@ function App() {
       /* Already using localStorage fallbacks — no action needed */
     });
 
-    return function() {};
+    } catch(err) {
+      console.error('[investMTG] Init error:', err);
+      globalState.loading = false;
+      notify();
+    }
+    return function() { clearTimeout(safetyTimer); };
   }, []);
 
   // ===== SEO: Dynamic document.title + meta per route =====
