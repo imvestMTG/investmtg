@@ -19,9 +19,16 @@ export function BuyLocalModal(props) {
     ? listings.filter(function(l) { return l.cardName === card.name && l.type === 'sale'; })
     : [];
 
-  /* Require selecting a real listing with a seller */
-  var ref3 = React.useState(null);
+  /* Require selecting a real listing with a seller — auto-select if only one */
+  var ref3 = React.useState(cardListings.length === 1 ? cardListings[0] : null);
   var selectedListing = ref3[0], setSelectedListing = ref3[1];
+
+  // Auto-select when listings change and there's only one
+  React.useEffect(function() {
+    if (cardListings.length === 1 && !selectedListing) {
+      setSelectedListing(cardListings[0]);
+    }
+  }, [cardListings.length]);
 
   function handleConfirm() {
     console.log('[BuyLocal] handleConfirm called', { selectedStore: !!selectedStore, selectedListing: !!selectedListing });
