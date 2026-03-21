@@ -5,7 +5,11 @@ import { formatUSD } from '../utils/helpers.js';
 import { GUAM_STORES_SIMPLE } from '../utils/stores.js';
 var h = React.createElement;
 
-export function BuyLocalModal({ card, listings, updateCart, onClose }) {
+export function BuyLocalModal(props) {
+  var card = props.card;
+  var listings = props.listings;
+  var updateCart = props.updateCart;
+  var onClose = props.onClose;
   var ref1 = React.useState(null);
   var selectedStore = ref1[0], setSelectedStore = ref1[1];
   var ref2 = React.useState(false);

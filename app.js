@@ -142,7 +142,8 @@ function notify() {
 }
 
 function updateCart(newCart) {
-  globalState.cart = Array.isArray(newCart) ? newCart : [];
+  var resolved = typeof newCart === 'function' ? newCart(globalState.cart || []) : newCart;
+  globalState.cart = Array.isArray(resolved) ? resolved : [];
   storageSet('investmtg-cart', globalState.cart);
   notify();
 }
