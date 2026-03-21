@@ -3893,32 +3893,19 @@ async function handleStripeV2CreateAccount(request, env) {
     return json({ error: 'Seller already has a Stripe account', stripe_account_id: seller.stripe_account_id }, 409, request);
   }
 
-  // Create V2 Connect account with full dashboard and card_payments capability
-  const { ok, data } = await stripeV2Request('POST', '/v2/core/accounts', env, {
-    display_name: body.display_name || auth.user.name || 'investMTG Seller',
-    contact_email: body.contact_email || auth.user.email,
-    identity: { country: 'us' },
-    dashboard: 'full',
-    defaults: {
-      responsibilities: {
-        fees_collector: 'stripe',
-        losses_collector: 'stripe',
-      },
-    },
-    configuration: {
-      customer: {},
-      merchant: {
-        capabilities: {
-          card_payments: { requested: true },
-        },
-      },
-    },
-    metadata: {
-      seller_id: String(sellerId),
-      platform: 'investmtg',
-    },
+  // Create Express connected account via V1 API (V2 /v2/core/accounts requires preview access)
+  const { ok, data } = await stripeRequest('POST', '/accounts', env, {
+    type: 'express',
+    country: 'US',
+    email: body.contact_email || auth.user.email || undefined,
+    'capabilities[card_payments][requested]': 'true',
+    'capabilities[transfers][requested]': 'true',
+    business_type: 'individual',
+    'business_profile[url]': SITE_URL,
+    'metadata[seller_id]': String(sellerId),
+    'metadata[platform]': 'investmtg',
   });
-  if (!ok) return json({ error: 'Failed to create Stripe V2 account', detail: data.error?.message }, 502, request);
+  if (!ok) return json({ error: 'Failed to create Stripe account', detail: data.error?.message }, 502, request);
 
   // Save the new account ID to D1
   await env.DB.prepare(
@@ -3949,19 +3936,14 @@ async function handleStripeV2AccountLink(request, env) {
     return json({ error: 'No Stripe account found — create one first' }, 404, request);
   }
 
-  // V2 account links use a use_case object instead of flat params
-  const { ok, data } = await stripeV2Request('POST', '/v2/core/account_links', env, {
+  // V1 Account Links API for Express onboarding
+  const { ok, data } = await stripeRequest('POST', '/account_links', env, {
     account: seller.stripe_account_id,
-    use_case: {
-      type: 'account_onboarding',
-      account_onboarding: {
-        configurations: ['merchant', 'customer'],
-        refresh_url: SITE_URL + '/#seller?stripe_refresh=true',
-        return_url: SITE_URL + '/#seller?stripe_return=true',
-      },
-    },
+    type: 'account_onboarding',
+    refresh_url: SITE_URL + '/#seller?stripe_refresh=true',
+    return_url: SITE_URL + '/#seller?stripe_return=true',
   });
-  if (!ok) return json({ error: 'Failed to create V2 account link', detail: data.error?.message }, 502, request);
+  if (!ok) return json({ error: 'Failed to create account link', detail: data.error?.message }, 502, request);
 
   return json({ url: data.url, expires_at: data.expires_at }, 200, request);
 }
@@ -3985,21 +3967,14 @@ async function handleStripeV2AccountStatus(request, env) {
   ).bind(sellerId, auth.user.id).first();
   if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
 
-  // Fetch V2 account with merchant config and requirements included
-  const accountPath = '/v2/core/accounts/' + seller.stripe_account_id
-    + '?include[]=configuration.merchant&include[]=requirements';
-  const { ok, data } = await stripeV2Request('GET', accountPath, env);
-  if (!ok) return json({ error: 'Failed to retrieve V2 account', detail: data.error?.message }, 502, request);
+  // Fetch V1 account details
+  const { ok, data } = await stripeRequest('GET', '/accounts/' + seller.stripe_account_id, env);
+  if (!ok) return json({ error: 'Failed to retrieve account', detail: data.error?.message }, 502, request);
 
-  // Determine charges_enabled from merchant capabilities
-  const cardPaymentsStatus = data.configuration?.merchant?.capabilities?.card_payments?.status;
-  const chargesEnabled = cardPaymentsStatus === 'active' ? 1 : 0;
-
-  // Determine onboarding status from requirements
-  const requirementsSummary = data.requirements?.summary;
-  const onboardingComplete = (requirementsSummary?.minimum_deadline?.status === 'met' ||
-    requirementsSummary?.minimum_deadline?.status === 'not_applicable') ? 1 : 0;
-  const payoutsEnabled = chargesEnabled; // If charges are active, payouts should be too
+  const chargesEnabled = data.charges_enabled ? 1 : 0;
+  const payoutsEnabled = data.payouts_enabled ? 1 : 0;
+  const onboardingComplete = data.details_submitted ? 1 : 0;
+  const cardPaymentsStatus = data.capabilities?.card_payments || 'inactive';
 
   // Sync status to D1
   await env.DB.prepare(
@@ -4011,9 +3986,9 @@ async function handleStripeV2AccountStatus(request, env) {
     charges_enabled: chargesEnabled === 1,
     payouts_enabled: payoutsEnabled === 1,
     onboarding_complete: onboardingComplete === 1,
-    card_payments_status: cardPaymentsStatus || 'inactive',
+    details_submitted: data.details_submitted || false,
+    card_payments_status: cardPaymentsStatus,
     requirements: data.requirements || null,
-    dashboard: data.dashboard || null,
   }, 200, request);
 }
 
