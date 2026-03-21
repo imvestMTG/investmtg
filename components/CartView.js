@@ -18,7 +18,7 @@ function LockIcon() {
 
 /* ShieldIcon — small inline SVG for buyer protection */
 function ShieldIcon() {
-  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'truclassName: 'u-flex-shrink-0' 0 } },
+  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', className: 'u-flex-shrink-0' },
     h('path', { d: 'M12 2l8 4v6c0 5.25-3.38 10.13-8 12-4.62-1.87-8-6.75-8-12V6l8-4z', stroke: 'currentColor', strokeWidth: 2, strokeLinejoin: 'round' }),
     h('path', { d: 'M9 12l2 2 4-4', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' })
   );
@@ -26,7 +26,7 @@ function ShieldIcon() {
 
 /* CardPayIcon — small inline SVG for accepted cards */
 function CardPayIcon() {
-  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': className: 'u-flex-shrink-0'ink: 0 } },
+  return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', className: 'u-flex-shrink-0' },
     h('rect', { x: 2, y: 5, width: 20, height: 14, rx: 2, stroke: 'currentColor', strokeWidth: 2 }),
     h('path', { d: 'M2 10h20', stroke: 'currentColor', strokeWidth: 2 })
   );
@@ -77,7 +77,7 @@ function ConditionChip(_ref) {
 
 /* WarningIcon — small inline SVG for alerts */
 function WarningIcon() {
-  return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hiddeclassName: 'u-flex-shrink-0'xShrink: 0 } },
+  return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': 'true', className: 'u-flex-shrink-0' },
     h('path', { d: 'M8 1.5L1 14h14L8 1.5z', stroke: 'currentColor', strokeWidth: 1.5, strokeLinejoin: 'round', fill: 'none' }),
     h('path', { d: 'M8 6v3.5', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
     h('circle', { cx: 8, cy: 12, r: 0.75, fill: 'currentColor' })
