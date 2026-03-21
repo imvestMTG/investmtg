@@ -103,7 +103,7 @@ export function GuidelinesView() {
         h('li', null, h('strong', null, 'If unresolved after 48 hours,'), ' file a dispute through investMTG by emailing ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), ' with your order ID and a description of the issue.'),
         h('li', null, h('strong', null, 'We\u2019ll review the case'), ' and mediate between the parties. Our goal is a fair resolution for both sides.')
       ),
-      h('p', null, 'For PayPal payments, PayPal\u2019s buyer protection also applies. You can open a dispute through ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'), ' in addition to contacting the seller.')
+      h('p', null, 'For online payments via Stripe, you can also file a chargeback through your card issuer. Stripe\u2019s dispute process includes evidence submission from both parties.')
     ),
 
     h('section', { className: 'legal-section' },
