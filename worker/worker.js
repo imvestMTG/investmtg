@@ -3316,16 +3316,16 @@ async function handleScanDetect(request, env) {
     } catch (e) { console.warn('[Scan] Ximilar identification failed:', e.message); }
   }
 
-  // Strategy 3: If OCR text provided (from client-side Tesseract), do Scryfall fuzzy match
+  // Strategy 3: If OCR text provided, do Scryfall fuzzy match
   if (body.ocr_text) {
-    try {
-      // Clean the OCR text — extract likely card name
-      const lines = body.ocr_text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-      const cardNameGuess = lines[0] || '';
-      if (cardNameGuess.length >= 3) {
-        const fuzzyRes = await fetch(SCRYFALL_API + '/cards/named?fuzzy=' + encodeURIComponent(cardNameGuess), {
-          headers: { 'User-Agent': USER_AGENT },
-        });
+    const lines = body.ocr_text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+    const cardNameGuess = lines[0] || body.ocr_text.trim();
+    if (cardNameGuess.length >= 2) {
+      try {
+        const fuzzyUrl = SCRYFALL_API + '/cards/named?fuzzy=' + encodeURIComponent(cardNameGuess);
+        console.log('[Scan] Fuzzy lookup:', fuzzyUrl);
+        const fuzzyRes = await fetch(fuzzyUrl, { headers: { 'User-Agent': USER_AGENT } });
+        console.log('[Scan] Fuzzy status:', fuzzyRes.status);
         if (fuzzyRes.ok) {
           const card = await fuzzyRes.json();
           results.push({
@@ -3336,9 +3336,13 @@ async function handleScanDetect(request, env) {
               mana_cost: card.mana_cost, type_line: card.type_line,
             },
           });
+        } else {
+          console.warn('[Scan] Fuzzy non-ok:', fuzzyRes.status, await fuzzyRes.text().catch(() => ''));
         }
+      } catch (e) {
+        console.error('[Scan] Fuzzy match error:', e.message);
       }
-    } catch (e) { console.warn('[Scan] Scryfall fuzzy match failed:', e.message, e.stack); }
+    }
   }
 
   // Strategy 4: If collector number + set code provided, do exact lookup
