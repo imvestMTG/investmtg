@@ -98,6 +98,7 @@ const AUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 
 /* ── External API bases (centralized) ── */
 const SCRYFALL_API = 'https://api.scryfall.com';
+const MTGIO_API = 'https://api.magicthegathering.io/v1'; // Fallback card data source (no pricing)
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
@@ -468,6 +469,42 @@ async function scryfallFetch(path) {
   return res.json();
 }
 
+/**
+ * Fallback: fetch a card by name from magicthegathering.io when Scryfall is down.
+ * Returns a Scryfall-like shape so callers don't need to change.
+ */
+async function mtgioFallbackSearch(name) {
+  try {
+    const res = await fetch(MTGIO_API + '/cards?name=' + encodeURIComponent(name) + '&pageSize=1', {
+      headers: { 'User-Agent': USER_AGENT },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const card = (data.cards || [])[0];
+    if (!card) return null;
+    // Map to Scryfall-like shape
+    return {
+      id: card.id || card.multiverseid,
+      name: card.name,
+      set: (card.set || '').toLowerCase(),
+      set_name: card.setName || card.set,
+      rarity: (card.rarity || '').toLowerCase(),
+      mana_cost: card.manaCost || '',
+      type_line: card.type || '',
+      oracle_text: card.text || '',
+      image_uris: card.imageUrl ? { small: card.imageUrl, normal: card.imageUrl } : null,
+      prices: { usd: null, usd_foil: null }, // mtgio has no pricing
+      legalities: {},
+      reserved: card.reserved || false,
+      digital: false,
+      _source: 'magicthegathering.io',
+    };
+  } catch (e) {
+    console.warn('[MTGIO fallback] Error:', e.message);
+    return null;
+  }
+}
+
 /* ── Card v2 helpers: image extraction, DFC fields, treatments, prices ── */
 
 const MULTI_FACE_LAYOUTS = new Set([
@@ -636,6 +673,20 @@ async function fetchAndCacheCard(db, name) {
     };
   } catch (e) {
     console.error('fetchAndCacheCard error:', name, e.message);
+    // Fallback to magicthegathering.io if Scryfall fails
+    console.log('[fetchAndCacheCard] Trying MTGIO fallback for:', name);
+    var fallback = await mtgioFallbackSearch(name);
+    if (fallback) {
+      var now = Math.floor(Date.now() / 1000);
+      return {
+        card_id: fallback.id, name: fallback.name, set_code: fallback.set, set_name: fallback.set_name,
+        rarity: fallback.rarity, mana_cost: fallback.mana_cost, type_line: fallback.type_line,
+        price_usd: null, price_usd_foil: null, price_usd_etched: null,
+        image_small: fallback.image_uris?.small || '', image_normal: fallback.image_uris?.normal || '',
+        image_back: '', scryfall_uri: '', treatment: '', finishes: [], is_dfc: false,
+        updated_at: now, _source: 'magicthegathering.io',
+      };
+    }
     return null;
   }
 }
@@ -919,8 +970,28 @@ async function handleSearch(request, env) {
     const data = await scryfallFetch(scryfallUrl);
     return json(data, 200, request);
   } catch (e) {
-    console.error('Search error:', e.message);
-    return json({ error: 'Search failed' }, 502, request);
+    console.error('Search error (Scryfall):', e.message);
+    // Fallback to magicthegathering.io
+    try {
+      const mtgRes = await fetch(MTGIO_API + '/cards?name=' + encodeURIComponent(q) + '&pageSize=20', {
+        headers: { 'User-Agent': USER_AGENT },
+      });
+      if (mtgRes.ok) {
+        const mtgData = await mtgRes.json();
+        const cards = (mtgData.cards || []).map(c => ({
+          id: c.id, name: c.name, set: (c.set || '').toLowerCase(), set_name: c.setName || c.set,
+          rarity: (c.rarity || '').toLowerCase(), mana_cost: c.manaCost || '',
+          type_line: c.type || '', oracle_text: c.text || '',
+          image_uris: c.imageUrl ? { small: c.imageUrl, normal: c.imageUrl } : null,
+          prices: { usd: null, usd_foil: null },
+          reserved: c.reserved || false, _source: 'magicthegathering.io',
+        }));
+        return json({ data: cards, has_more: false, total_cards: cards.length, _fallback: true }, 200, request);
+      }
+    } catch (fallbackErr) {
+      console.error('Search fallback (MTGIO) also failed:', fallbackErr.message);
+    }
+    return json({ error: 'Search failed — both Scryfall and fallback unavailable' }, 502, request);
   }
 }
 
