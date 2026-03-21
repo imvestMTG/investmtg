@@ -344,7 +344,7 @@ export function SearchView(props) {
             })
           )
         ),
-        !loading && !error && h(CardGrid, {
+        !loading && !error && filteredResults.length > 0 && h(CardGrid, {
           cards: filteredResults,
           state: state,
           updateCart: updateCart,
