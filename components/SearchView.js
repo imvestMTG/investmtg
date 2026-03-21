@@ -1,6 +1,6 @@
 /* SearchView.js */
 import React from 'react';
-import { backendSearch, autocomplete } from '../utils/api.js';
+import { backendSearch, autocomplete, fetchListings } from '../utils/api.js';
 import { formatUSD, getCardPrice, debounce } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -80,6 +80,30 @@ export function SearchView(props) {
   var priceRange = ref10[0], setPriceRange = ref10[1];
 
   var inputRef = React.useRef(null);
+
+  // Marketplace listings (in-stock items)
+  var refListings = React.useState([]);
+  var inStockListings = refListings[0], setInStockListings = refListings[1];
+  var refListingsLoading = React.useState(false);
+  var listingsLoading = refListingsLoading[0], setListingsLoading = refListingsLoading[1];
+
+  // On mount: load in-stock marketplace listings if no cached search
+  React.useEffect(function() {
+    if (!cached || cached.results.length === 0) {
+      setListingsLoading(true);
+      fetchListings().then(function(data) {
+        var listings = Array.isArray(data) ? data : (data && data.listings ? data.listings : []);
+        // Filter to available items only
+        var available = listings.filter(function(l) {
+          return l.availability_status !== 'sold_out';
+        });
+        setInStockListings(available);
+        setListingsLoading(false);
+      }).catch(function() {
+        setListingsLoading(false);
+      });
+    }
+  }, []);
 
   // Listen for hero search events
   React.useEffect(function() {
@@ -261,7 +285,66 @@ export function SearchView(props) {
           h('p', null, 'No cards match the current filters.')
         ),
         !loading && !error && results.length === 0 && query && h('div', { className: 'empty-state' },
-          h('p', null, 'Search for Magic cards above.')
+          h('p', null, 'No results found. Try a different search.')
+        ),
+        // Show in-stock marketplace listings when no search query
+        !query && !loading && filteredResults.length === 0 && h('div', { className: 'search-instock' },
+          h('h2', {
+            style: { fontSize: 'var(--text-lg)', fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }
+          }, 'In Stock Now'),
+          h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' } },
+            'Cards available from local Guam sellers.'
+          ),
+          listingsLoading && h('div', { className: 'card-grid' }, [1,2,3,4].map(function(i) { return h(SkeletonCard, { key: i }); })),
+          !listingsLoading && inStockListings.length === 0 && h('div', { className: 'empty-state' },
+            h('p', null, 'No listings available right now. Check back soon or search the full card database above.')
+          ),
+          !listingsLoading && inStockListings.length > 0 && h('div', { className: 'search-listings-grid' },
+            inStockListings.map(function(listing) {
+              var cardName = listing.card_name || listing.cardName || '';
+              var setName = listing.set_name || listing.setName || '';
+              var listingPrice = listing.price || 0;
+              var condition = listing.condition || 'NM';
+              var finish = listing.finish || 'nonfoil';
+              var sellerName = listing.seller_name || 'Seller';
+              var availStatus = listing.availability_status || 'available';
+              var stockQty = listing.stock_quantity || 1;
+              var imageUri = listing.image_uri || '';
+              var cardId = listing.card_id || '';
+              var thumbSrc = imageUri
+                || (cardId ? 'https://api.scryfall.com/cards/' + cardId + '?format=image&version=small' : '')
+                || (cardName ? 'https://api.scryfall.com/cards/named?format=image&version=small&exact=' + encodeURIComponent(cardName) : '');
+
+              return h('a', {
+                key: listing.id,
+                className: 'search-listing-card',
+                href: cardId ? '#card/' + cardId : '#search',
+                style: { textDecoration: 'none', color: 'inherit' }
+              },
+                thumbSrc && h('img', {
+                  src: thumbSrc,
+                  className: 'search-listing-img',
+                  alt: cardName,
+                  loading: 'lazy'
+                }),
+                h('div', { className: 'search-listing-info' },
+                  h('div', { className: 'search-listing-name' }, cardName),
+                  h('div', { className: 'search-listing-set' }, setName),
+                  h('div', { className: 'search-listing-meta' },
+                    h('span', { className: 'mp-badge-condition cond-' + condition.toLowerCase() }, condition),
+                    finish !== 'nonfoil' && h('span', { className: 'finish-badge finish-' + finish }, finish === 'foil' ? '\u2728 Foil' : '\u25C6 Etched'),
+                    h('span', { className: 'avail-badge avail-badge--' + availStatus.replace('_', '-') },
+                      availStatus === 'low_stock' ? 'Low Stock' : stockQty + ' avail'
+                    )
+                  ),
+                  h('div', { className: 'search-listing-bottom' },
+                    h('span', { className: 'search-listing-price' }, formatUSD(listingPrice)),
+                    h('span', { className: 'search-listing-seller' }, sellerName)
+                  )
+                )
+              );
+            })
+          )
         ),
         !loading && !error && h(CardGrid, {
           cards: filteredResults,
