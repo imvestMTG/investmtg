@@ -1366,6 +1366,23 @@ export function SellerDashboard(props) {
     }
   }, [seller && seller.id]);
 
+  // Auto-sync Stripe status on mount when account exists but charges not yet enabled
+  React.useEffect(function() {
+    if (seller && seller.id && seller.stripe_account_id && !seller.stripe_charges_enabled) {
+      stripeV2GetAccountStatus(seller.id).then(function(data) {
+        if (data && !data.error && data.charges_enabled) {
+          setSeller(function(prev) {
+            return Object.assign({}, prev, {
+              stripe_charges_enabled: 1,
+              stripe_payouts_enabled: data.payouts_enabled ? 1 : 0,
+              stripe_onboarding_complete: data.details_submitted ? 1 : 0
+            });
+          });
+        }
+      }).catch(function() { /* non-critical */ });
+    }
+  }, [seller && seller.id && seller.stripe_account_id]);
+
   /* ── Stripe Connect: create account ── */
   function handleStripeConnect() {
     if (!seller || !seller.id) return;
