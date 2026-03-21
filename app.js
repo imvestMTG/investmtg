@@ -524,8 +524,8 @@ if ('serviceWorker' in navigator) {
   // Listen for SW update messages — auto-reload when new version activates
   navigator.serviceWorker.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'SW_UPDATED') {
-      console.log('[investMTG] Service worker updated to ' + event.data.version + ', reloading...');
-      window.location.reload();
+      console.log('[investMTG] Service worker updated to ' + event.data.version + ', will reload...');
+      setTimeout(function() { window.location.reload(); }, 500);
     }
   });
 }
