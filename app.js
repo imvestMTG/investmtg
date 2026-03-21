@@ -127,7 +127,7 @@ var globalState = {
   watchlist: storageGet('investmtg-watchlist', []),
   listings: [],
   priceCache: {},
-  loading: true
+  loading: false
 };
 
 var stateListeners = [];
