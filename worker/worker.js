@@ -3338,7 +3338,7 @@ async function handleScanDetect(request, env) {
           });
         }
       }
-    } catch (e) { console.warn('[Scan] Scryfall fuzzy match failed:', e.message); }
+    } catch (e) { console.warn('[Scan] Scryfall fuzzy match failed:', e.message, e.stack); }
   }
 
   // Strategy 4: If collector number + set code provided, do exact lookup
@@ -3358,7 +3358,7 @@ async function handleScanDetect(request, env) {
           },
         });
       }
-    } catch (e) { console.warn('[Scan] Scryfall exact lookup failed:', e.message); }
+    } catch (e) { console.warn('[Scan] Scryfall exact lookup failed:', e.message, e.stack); }
   }
 
   return json({
