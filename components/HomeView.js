@@ -108,11 +108,12 @@ export function HomeView(props) {
         h('div', { className: 'search-icon' }, h(SearchIcon, null)),
         h('input', {
           type: 'search',
-          placeholder: 'Search any printed Magic card...',
+          placeholder: 'Search for Sheoldred, Black Lotus...',
           value: heroSearch,
           onChange: function(e) { setHeroSearch(e.target.value); },
           'aria-label': 'Search cards'
-        })
+        }),
+        h('button', { type: 'submit', className: 'hero-search-btn' }, 'Search')
       ),
       h(StatGrid, { className: 'hero-stats' },
         stats.map(function(s) {
@@ -121,49 +122,55 @@ export function HomeView(props) {
       ),
       h('div', { className: 'hero-cta-row' },
         h('a', { href: '#search', className: 'hero-cta-card hero-cta-buyer' },
-          h('div', { className: 'hero-cta-icon' }, '\uD83D\uDCE6'),
-          h('div', { className: 'hero-cta-content' },
+          h('div', { className: 'hero-cta-ghost-icon' }, '\uD83D\uDED2'),
+          h('div', { className: 'hero-cta-body' },
+            h('span', { className: 'hero-cta-badge hero-cta-badge--buy' }, 'BUY'),
             h('h3', { className: 'hero-cta-title' }, 'Browse & Buy'),
-            h('p', { className: 'hero-cta-desc' }, 'Search 25,000+ cards with live market prices. Find deals from local Guam sellers.')
+            h('p', { className: 'hero-cta-desc' }, 'Search 25,000+ cards with live market prices. Find deals from local Guam sellers and buy with confidence.')
           ),
-          h('span', { className: 'hero-cta-arrow' }, '\u2192')
+          h('span', { className: 'hero-cta-link hero-cta-link--buy' }, 'Explore Market ', '\u2192')
         ),
         h('a', { href: '#seller', className: 'hero-cta-card hero-cta-seller' },
-          h('div', { className: 'hero-cta-icon' }, '\uD83D\uDCB0'),
-          h('div', { className: 'hero-cta-content' },
+          h('div', { className: 'hero-cta-ghost-icon' }, '\uD83C\uDFF7\uFE0F'),
+          h('div', { className: 'hero-cta-body' },
+            h('span', { className: 'hero-cta-badge hero-cta-badge--sell' }, 'SELL'),
             h('h3', { className: 'hero-cta-title' }, 'Start Selling'),
-            h('p', { className: 'hero-cta-desc' }, 'List your cards in minutes. Get paid via Stripe. Zero listing fees.')
+            h('p', { className: 'hero-cta-desc' }, 'List your cards in minutes. Get paid via Stripe. Zero listing fees. Turn your collection into cash.')
           ),
-          h('span', { className: 'hero-cta-arrow' }, '\u2192')
+          h('span', { className: 'hero-cta-link hero-cta-link--sell' }, 'List Cards ', '\u2192')
         )
       )
     ),
     h('div', { className: 'container' },
       h('section', { className: 'how-it-works' },
-        h('div', { className: 'section-header-centered' },
-          h('h2', null, 'How It Works'),
-          h('p', { className: 'section-subtitle' }, 'Whether you\u2019re buying or selling, we keep it simple')
+        h('div', { className: 'section-header' },
+          h('h2', null, 'The Process'),
+          h('p', { className: 'section-subtitle' }, 'From discovery to execution in four steps.')
         ),
         h('div', { className: 'hiw-grid' },
           h('div', { className: 'hiw-step' },
-            h('div', { className: 'hiw-number' }, '1'),
-            h('h3', null, 'Search Any Card'),
-            h('p', null, 'Browse the entire Magic: The Gathering catalog with real-time market pricing from multiple sources.')
+            h('div', { className: 'hiw-bg-number' }, '01'),
+            h('div', { className: 'hiw-icon-box' }, h(SearchIcon, null)),
+            h('h3', null, 'Search'),
+            h('p', null, 'Find any card using real-time data. View live pricing from multiple market sources.')
           ),
           h('div', { className: 'hiw-step' },
-            h('div', { className: 'hiw-number' }, '2'),
-            h('h3', null, 'Compare & Choose'),
-            h('p', null, 'See NM, LP, MP, HP condition prices side-by-side. Find local sellers on Guam or track cards in your portfolio.')
+            h('div', { className: 'hiw-bg-number' }, '02'),
+            h('div', { className: 'hiw-icon-box' }, '\u2696\uFE0F'),
+            h('h3', null, 'Compare'),
+            h('p', null, 'See NM, LP, MP, HP condition prices side-by-side. Make data-backed decisions.')
           ),
           h('div', { className: 'hiw-step' },
-            h('div', { className: 'hiw-number' }, '3'),
+            h('div', { className: 'hiw-bg-number' }, '03'),
+            h('div', { className: 'hiw-icon-box' }, '\uD83D\uDED2'),
             h('h3', null, 'Buy or Reserve'),
-            h('p', null, 'Pay online with Stripe (cards, Apple Pay, Google Pay) or reserve for local pickup. Your choice.')
+            h('p', null, 'Pay online with Stripe or reserve for local pickup at a Guam store.')
           ),
           h('div', { className: 'hiw-step hiw-step--seller' },
-            h('div', { className: 'hiw-number' }, '4'),
-            h('h3', null, 'Sell Your Cards'),
-            h('p', null, 'Register as a seller, connect Stripe, and list cards in minutes. Get paid automatically when orders come in.'),
+            h('div', { className: 'hiw-bg-number' }, '04'),
+            h('div', { className: 'hiw-icon-box' }, '\uD83D\uDCB0'),
+            h('h3', null, 'Sell & Profit'),
+            h('p', null, 'Connect Stripe, list cards, get paid automatically. Zero listing fees.'),
             h('a', { href: '#seller', className: 'hiw-seller-link' }, 'Start selling \u2192')
           )
         )
