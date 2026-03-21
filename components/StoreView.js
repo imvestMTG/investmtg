@@ -6,7 +6,7 @@ import { GUAM_STORES, getStoresAsync } from '../utils/stores.js';
 import { MapPinIcon, PhoneIcon, ClockIcon, GlobeIcon, PlusIcon, SellerIcon, ShoppingCartIcon, EditIcon, TrashIcon } from './shared/Icons.js';
 import { ShareButton } from './shared/ShareButton.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
-import { deleteListing, updateListing } from '../utils/api.js';
+import { deleteListing, updateListing, joinWaitlist } from '../utils/api.js';
 var h = React.createElement;
 
 export function StoreView(props) {
@@ -345,6 +345,35 @@ function ListingCard(props) {
   var ref12 = React.useState(false);
   var saving = ref12[0], setSaving = ref12[1];
 
+  // Waitlist state
+  var refWlShow = React.useState(false);
+  var showWaitlistForm = refWlShow[0], setShowWaitlistForm = refWlShow[1];
+
+  var refWlEmail = React.useState('');
+  var waitlistEmail = refWlEmail[0], setWaitlistEmail = refWlEmail[1];
+
+  var refWlResult = React.useState(null);
+  var waitlistResult = refWlResult[0], setWaitlistResult = refWlResult[1];
+
+  var refWlLoading = React.useState(false);
+  var waitlistLoading = refWlLoading[0], setWaitlistLoading = refWlLoading[1];
+
+  var availStatus = listing.availability_status || 'available';
+  var isSoldOut = availStatus === 'sold_out';
+
+  function handleJoinWaitlist() {
+    if (!waitlistEmail) return;
+    setWaitlistLoading(true);
+    joinWaitlist(listing.userId, waitlistEmail, listing.id, null).then(function(data) {
+      setWaitlistLoading(false);
+      setWaitlistResult(data);
+      setShowWaitlistForm(false);
+    }).catch(function() {
+      setWaitlistLoading(false);
+      setWaitlistResult({ error: 'Failed to join waitlist' });
+    });
+  }
+
   function startEdit() {
     setEditPrice(String(listing.price || '0'));
     setEditNotes(listing.notes || '');
@@ -381,7 +410,10 @@ function ListingCard(props) {
         : h('div', { style: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)' } }, listing.cardName),
       h('div', { className: 'mp-listing-badges' },
         h('span', { className: 'mp-badge-condition ' + condClass }, listing.condition),
-        h('span', { className: 'mp-badge-type type-' + listing.type }, listing.type === 'sale' ? 'For Sale' : 'Trade')
+        h('span', { className: 'mp-badge-type type-' + listing.type }, listing.type === 'sale' ? 'For Sale' : 'Trade'),
+        h('span', {
+          className: 'avail-badge avail-badge--' + (availStatus === 'low_stock' ? 'low-stock' : availStatus === 'sold_out' ? 'sold-out' : 'available')
+        }, availStatus === 'low_stock' ? 'Low Stock' : availStatus === 'sold_out' ? 'Sold Out' : 'In Stock')
       )
     ),
     h('div', { className: 'mp-listing-info' },
@@ -453,25 +485,57 @@ function ListingCard(props) {
 
             // Public actions (hide for owner to reduce clutter, they can still use seller dashboard)
             !isOwner && h('div', { className: 'mp-listing-actions' },
-              listing.type === 'sale' && h('button', {
-                className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
-                onClick: function() {
-                  if (onAddToCart) onAddToCart(listing);
-                }
-              },
-                justAdded
-                  ? '✓ Added'
-                  : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
-              ),
-              listing.type === 'sale' && h('button', {
-                className: 'btn mp-btn-buylocal',
-                onClick: function() {
-                  if (onBuyLocal) {
-                    onBuyLocal({ id: listing.id, name: listing.cardName, set_name: listing.setName, prices: { usd: String(listing.price) } });
-                  }
-                }
-              }, 'Buy Local'),
-              h('button', {
+              isSoldOut
+                ? h(React.Fragment, null,
+                    waitlistResult && waitlistResult.joined !== undefined
+                      ? h('div', { className: 'waitlist-success' },
+                          waitlistResult.joined
+                            ? 'On Waitlist \u2713 (Position #' + waitlistResult.position + ')'
+                            : waitlistResult.message || 'Already on waitlist'
+                        )
+                      : waitlistResult && waitlistResult.error
+                        ? h('div', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-error)', marginTop: 'var(--space-1)' } }, waitlistResult.error)
+                        : showWaitlistForm
+                          ? h('div', { className: 'waitlist-form' },
+                              h('input', {
+                                type: 'email',
+                                placeholder: 'Your email',
+                                value: waitlistEmail,
+                                onChange: function(e) { setWaitlistEmail(e.target.value); },
+                                onKeyDown: function(e) { if (e.key === 'Enter') handleJoinWaitlist(); }
+                              }),
+                              h('button', {
+                                className: 'btn btn-primary btn-sm',
+                                onClick: handleJoinWaitlist,
+                                disabled: waitlistLoading || !waitlistEmail
+                              }, waitlistLoading ? 'Joining...' : 'Join')
+                            )
+                          : h('button', {
+                              className: 'btn btn-secondary',
+                              onClick: function() { setShowWaitlistForm(true); }
+                            }, 'Join Waitlist')
+                  )
+                : h(React.Fragment, null,
+                    listing.type === 'sale' && h('button', {
+                      className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
+                      onClick: function() {
+                        if (onAddToCart) onAddToCart(listing);
+                      }
+                    },
+                      justAdded
+                        ? '\u2713 Added'
+                        : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
+                    ),
+                    listing.type === 'sale' && h('button', {
+                      className: 'btn mp-btn-buylocal',
+                      onClick: function() {
+                        if (onBuyLocal) {
+                          onBuyLocal({ id: listing.id, name: listing.cardName, set_name: listing.setName, prices: { usd: String(listing.price) } });
+                        }
+                      }
+                    }, 'Buy Local')
+                  ),
+              !isSoldOut && h('button', {
                 className: 'btn mp-btn-msg',
                 onClick: function() {
                   if (onContact) onContact(listing);

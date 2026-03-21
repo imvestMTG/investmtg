@@ -6,7 +6,7 @@ import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
-import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings, stripeGetSellerPayouts, stripeGetSellerBalance, stripeGetSellerSales, stripeV2CreateAccount, stripeV2GetAccountLink, stripeV2GetAccountStatus, stripeCreateProduct, stripeListProducts, stripeCreateCheckout } from '../utils/api.js';
+import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings, stripeGetSellerPayouts, stripeGetSellerBalance, stripeGetSellerSales, stripeV2CreateAccount, stripeV2GetAccountLink, stripeV2GetAccountStatus, stripeCreateProduct, stripeListProducts, stripeCreateCheckout, updateListingStock, getSellerWaitlist, restockListing } from '../utils/api.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 import { STORAGE_KEYS, SCRYFALL_API_BASE } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
@@ -1330,6 +1330,20 @@ export function SellerDashboard(props) {
   var refProductError = React.useState(null);
   var productError = refProductError[0], setProductError = refProductError[1];
 
+  // Waitlist state
+  var refWaitlistEntries = React.useState([]);
+  var waitlistEntries = refWaitlistEntries[0], setWaitlistEntries = refWaitlistEntries[1];
+
+  var refWaitlistLoading = React.useState(false);
+  var waitlistLoading = refWaitlistLoading[0], setWaitlistLoading = refWaitlistLoading[1];
+
+  // Stock editing state (tracks which listing is being edited)
+  var refEditingStock = React.useState(null);
+  var editingStockId = refEditingStock[0], setEditingStockId = refEditingStock[1];
+
+  var refEditingStockVal = React.useState('');
+  var editingStockVal = refEditingStockVal[0], setEditingStockVal = refEditingStockVal[1];
+
   // On mount: check if user is already registered via session cookie
   React.useEffect(function() {
     // Fetch store options async
@@ -1488,6 +1502,67 @@ export function SellerDashboard(props) {
     }).catch(function(err) {
       setProductsLoading(false);
       setProductError(err.message || 'Failed to create product.');
+    });
+  }
+
+  /* ── Waitlist: load entries ── */
+  function loadWaitlist() {
+    if (!seller || !seller.id) return;
+    setWaitlistLoading(true);
+    getSellerWaitlist(seller.id).then(function(data) {
+      setWaitlistLoading(false);
+      if (data && data.entries) {
+        setWaitlistEntries(data.entries);
+      }
+    }).catch(function() {
+      setWaitlistLoading(false);
+    });
+  }
+
+  /* ── Stock: update quantity inline ── */
+  function handleStockUpdate(listingId, qty) {
+    var parsed = parseInt(qty);
+    if (isNaN(parsed) || parsed < 0) return;
+    updateListingStock(listingId, parsed).then(function(data) {
+      if (data && !data.error) {
+        setSellerListings(function(prev) {
+          return prev.map(function(l) {
+            if (l.id === listingId) {
+              return Object.assign({}, l, {
+                stock_quantity: data.stock_quantity,
+                availability_status: data.availability_status
+              });
+            }
+            return l;
+          });
+        });
+        flash('Stock updated.');
+      }
+    }).catch(function() {
+      flash('Failed to update stock.');
+    });
+    setEditingStockId(null);
+  }
+
+  /* ── Restock: restock a sold-out listing ── */
+  function handleRestock(listingId) {
+    restockListing(listingId, 1).then(function(data) {
+      if (data && !data.error) {
+        setSellerListings(function(prev) {
+          return prev.map(function(l) {
+            if (l.id === listingId) {
+              return Object.assign({}, l, {
+                stock_quantity: data.stock_quantity,
+                availability_status: data.availability_status
+              });
+            }
+            return l;
+          });
+        });
+        flash('Restocked! ' + (data.notified_count || 0) + ' waitlist notification(s) sent.');
+      }
+    }).catch(function() {
+      flash('Failed to restock listing.');
     });
   }
 
@@ -1732,7 +1807,8 @@ export function SellerDashboard(props) {
         { key: 'listings', label: 'My Listings' },
         { key: 'add', label: 'Add Listing' },
         { key: 'bulk', label: 'Bulk Import' },
-        { key: 'history', label: 'Sales History' }
+        { key: 'history', label: 'Sales History' },
+        { key: 'waitlist', label: 'Waitlist', count: waitlistEntries.length || undefined }
       ].concat(seller.stripe_charges_enabled ? [
         { key: 'payouts', label: 'Sales & Payouts' },
         { key: 'products', label: 'Products' }
@@ -1745,6 +1821,7 @@ export function SellerDashboard(props) {
         if (key === 'listings' || key === 'add') { setEditingListing(null); }
         if (key === 'payouts') { loadStripeSalesData(); }
         if (key === 'products') { loadProducts(); }
+        if (key === 'waitlist') { loadWaitlist(); }
       }
     }),
 
@@ -1815,11 +1892,53 @@ export function SellerDashboard(props) {
                     }, listingLanguage),
                     h('span', { className: 'mp-badge-type type-' + listingType },
                       listingType === 'sale' ? 'Sale' : 'Trade'
-                    )
+                    ),
+                    h('span', {
+                      className: 'avail-badge avail-badge--' + (function() {
+                        var as = listing.availability_status || 'available';
+                        return as === 'low_stock' ? 'low-stock' : as === 'sold_out' ? 'sold-out' : 'available';
+                      })()
+                    }, (function() {
+                      var as = listing.availability_status || 'available';
+                      return as === 'low_stock' ? 'Low Stock' : as === 'sold_out' ? 'Sold Out' : 'In Stock';
+                    })())
                   )
                 ),
                 listingType === 'sale' && h('div', { className: 'seller-listing-price' },
                   formatUSD(listingPrice)
+                ),
+                // Stock quantity editor
+                h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', margin: 'var(--space-2) 0' } },
+                  h('span', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' } }, 'Stock:'),
+                  editingStockId === listingId
+                    ? h('div', { className: 'stock-editor' },
+                        h('input', {
+                          type: 'number',
+                          min: '0',
+                          value: editingStockVal,
+                          onChange: function(e) { setEditingStockVal(e.target.value); },
+                          onBlur: function() { handleStockUpdate(listingId, editingStockVal); },
+                          onKeyDown: function(e) {
+                            if (e.key === 'Enter') handleStockUpdate(listingId, editingStockVal);
+                            if (e.key === 'Escape') setEditingStockId(null);
+                          },
+                          autoFocus: true
+                        })
+                      )
+                    : h('span', {
+                        className: 'stock-badge',
+                        style: { cursor: 'pointer' },
+                        title: 'Click to edit stock',
+                        onClick: function() {
+                          setEditingStockId(listingId);
+                          setEditingStockVal(String(listing.stock_quantity != null ? listing.stock_quantity : 1));
+                        }
+                      }, listing.stock_quantity != null ? listing.stock_quantity : 1),
+                  (listing.availability_status === 'sold_out') && h('button', {
+                    className: 'btn btn-primary btn-sm',
+                    style: { marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)' },
+                    onClick: function() { handleRestock(listingId); }
+                  }, 'Restock')
                 ),
                 listingNotes && h('p', {
                   style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 'var(--space-2) 0' }
@@ -2015,6 +2134,53 @@ export function SellerDashboard(props) {
           onClick: handleStripeDashboard
         }, stripeConnectLoading ? 'Opening\u2026' : 'Open Stripe Dashboard')
       )
+    ),
+
+    // ===== WAITLIST TAB =====
+    activeTab === 'waitlist' && h('div', { className: 'seller-tab-content' },
+      h('h2', { className: 'seller-section-title' }, 'Waitlist'),
+      h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' } },
+        'Customers who signed up to be notified when sold-out items are restocked.'
+      ),
+      waitlistLoading
+        ? h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading waitlist...')
+        : waitlistEntries.length === 0
+          ? h('div', { className: 'empty-state' },
+              h('h3', null, 'No waitlist entries'),
+              h('p', null, 'When items are sold out, buyers can sign up to be notified when restocked.')
+            )
+          : h('div', { style: { overflowX: 'auto' } },
+              h('table', { className: 'waitlist-table' },
+                h('thead', null,
+                  h('tr', null,
+                    h('th', null, 'Item Name'),
+                    h('th', null, 'Type'),
+                    h('th', null, 'Email'),
+                    h('th', null, 'Joined'),
+                    h('th', null, 'Notified')
+                  )
+                ),
+                h('tbody', null,
+                  waitlistEntries.map(function(entry) {
+                    var itemName = entry.card_name || entry.product_id || 'Unknown';
+                    var joinDate = entry.created_at ? new Date(entry.created_at * 1000).toLocaleDateString() : '-';
+                    var notified = entry.notified_at ? new Date(entry.notified_at * 1000).toLocaleDateString() : '-';
+                    return h('tr', { key: entry.id },
+                      h('td', null, itemName),
+                      h('td', null, h('span', {
+                        className: 'avail-badge avail-badge--' + (entry.item_type === 'product' ? 'low-stock' : 'available')
+                      }, entry.item_type === 'product' ? 'Product' : 'Listing')),
+                      h('td', null, entry.user_email),
+                      h('td', null, joinDate),
+                      h('td', null, notified)
+                    );
+                  })
+                )
+              ),
+              h('p', { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-3)' } },
+                'Total: ', waitlistEntries.length, ' entries'
+              )
+            )
     ),
 
     // ===== PRODUCTS TAB =====

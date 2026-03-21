@@ -765,3 +765,70 @@ export function stripeCreateBillingPortal(accountId) {
     body: JSON.stringify({ account_id: accountId }),
   });
 }
+
+/* ══════════════════════════════════════════════════
+ * Availability, Waitlist & Restock
+ * ══════════════════════════════════════════════════ */
+
+/** Update stock quantity + auto-status for a listing (seller) */
+export function updateListingStock(listingId, stockQuantity, availabilityStatus) {
+  var body = { stock_quantity: stockQuantity };
+  if (availabilityStatus) body.availability_status = availabilityStatus;
+  return backendFetch('/api/listings/' + listingId + '/stock', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Get public availability for a listing */
+export function getListingAvailability(listingId) {
+  return backendFetch('/api/listings/' + listingId + '/availability');
+}
+
+/** Join a waitlist (listing or Stripe product) */
+export function joinWaitlist(sellerId, email, listingId, productId) {
+  var body = { seller_id: sellerId, email: email };
+  if (listingId) body.listing_id = listingId;
+  if (productId) body.product_id = productId;
+  return backendFetch('/api/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Leave a waitlist */
+export function leaveWaitlist(email, listingId, productId) {
+  var body = { email: email };
+  if (listingId) body.listing_id = listingId;
+  if (productId) body.product_id = productId;
+  return backendFetch('/api/waitlist', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Get seller's waitlist entries */
+export function getSellerWaitlist(sellerId) {
+  return backendFetch('/api/waitlist?seller_id=' + sellerId);
+}
+
+/** Restock a listing + notify waitlist */
+export function restockListing(listingId, stockQuantity) {
+  return backendFetch('/api/listings/' + listingId + '/restock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stock_quantity: stockQuantity }),
+  });
+}
+
+/** Restock a Stripe product + notify waitlist */
+export function restockStripeProduct(productId, sellerId) {
+  return backendFetch('/api/stripe/products/' + productId + '/restock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}

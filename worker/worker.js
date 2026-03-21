@@ -1577,7 +1577,7 @@ async function handleListingsBatch(request, env) {
           return null;
         }
         return env.DB.prepare(
-          'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at, stock_quantity, availability_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           auth.userId,
           item.seller_name,
@@ -1595,7 +1595,9 @@ async function handleListingsBatch(request, env) {
           'active',
           null,
           now,
-          now
+          now,
+          1,
+          'available'
         );
       }).filter(s => s !== null);
 
@@ -1697,6 +1699,8 @@ async function handleListings(request, env) {
       seller_name: r.seller_name,
       seller_contact: r.seller_contact,
       created_at: r.created_at,
+      stock_quantity: r.stock_quantity ?? 1,
+      availability_status: r.availability_status || 'available',
     }));
 
     return json({ listings: mapped, total: countRow?.total || 0, limit, offset }, 200, request);
@@ -1713,7 +1717,7 @@ async function handleListings(request, env) {
 
     const now = Math.floor(Date.now() / 1000);
     const result = await env.DB.prepare(
-      'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO listings (user_id, seller_name, seller_contact, seller_store, card_id, card_name, set_name, condition, language, finish, price, image_uri, notes, status, session_token, created_at, updated_at, stock_quantity, availability_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       auth.userId,
       body.seller_name,
@@ -1731,7 +1735,9 @@ async function handleListings(request, env) {
       'active',
       null,
       now,
-      now
+      now,
+      1,
+      'available'
     ).run();
 
     return json({ success: true, id: result.meta?.last_row_id }, 201, request);
@@ -4288,6 +4294,222 @@ async function handleStripeV2Webhook(request, env) {
   return json({ received: true }, 200, request);
 }
 
+/* ── Availability, Waitlist & Restock ── */
+
+async function handleListingStock(request, env, listingId) {
+  if (request.method !== 'PUT') return methodNotAllowed(request);
+
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const listing = await env.DB.prepare('SELECT id, user_id FROM listings WHERE id = ?').bind(listingId).first();
+  if (!listing) return json({ error: 'Listing not found' }, 404, request);
+  if (listing.user_id !== auth.userId) return json({ error: 'Not your listing' }, 403, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body || body.stock_quantity == null) return json({ error: 'stock_quantity required' }, 400, request);
+
+  const qty = parseInt(body.stock_quantity);
+  if (isNaN(qty) || qty < 0) return json({ error: 'stock_quantity must be a non-negative integer' }, 400, request);
+
+  let status;
+  if (body.availability_status === 'sold_out') {
+    status = 'sold_out';
+  } else if (qty === 0) {
+    status = 'sold_out';
+  } else if (qty <= 3) {
+    status = 'low_stock';
+  } else {
+    status = 'available';
+  }
+
+  await env.DB.prepare(
+    'UPDATE listings SET stock_quantity = ?, availability_status = ?, updated_at = ? WHERE id = ?'
+  ).bind(qty, status, Math.floor(Date.now() / 1000), listingId).run();
+
+  return json({ listing_id: parseInt(listingId), stock_quantity: qty, availability_status: status }, 200, request);
+}
+
+async function handleListingAvailability(request, env, listingId) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+
+  const listing = await env.DB.prepare(
+    'SELECT id, stock_quantity, availability_status FROM listings WHERE id = ?'
+  ).bind(listingId).first();
+  if (!listing) return json({ error: 'Listing not found' }, 404, request);
+
+  const wl = await env.DB.prepare(
+    'SELECT COUNT(*) as cnt FROM waitlist WHERE listing_id = ? AND notified_at IS NULL'
+  ).bind(listingId).first();
+
+  return json({
+    listing_id: listing.id,
+    availability_status: listing.availability_status || 'available',
+    stock_quantity: listing.stock_quantity ?? 1,
+    waitlist_count: wl?.cnt || 0,
+  }, 200, request);
+}
+
+async function handleWaitlist(request, env) {
+  const method = request.method;
+
+  if (method === 'GET') {
+    const auth = await getAuthUser(request, env);
+    if (!auth) return authRequired(request);
+
+    const url = new URL(request.url);
+    const sellerId = url.searchParams.get('seller_id');
+    if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+    if (parseInt(sellerId) !== auth.userId) return json({ error: 'Not your waitlist' }, 403, request);
+
+    const rows = await env.DB.prepare(
+      'SELECT w.id, w.listing_id, w.product_id, w.item_type, w.user_email, w.user_id, w.created_at, w.notified_at, l.card_name FROM waitlist w LEFT JOIN listings l ON w.listing_id = l.id WHERE w.seller_id = ? ORDER BY w.created_at DESC'
+    ).bind(parseInt(sellerId)).all();
+
+    return json({ entries: rows.results || [] }, 200, request);
+  }
+
+  if (method === 'POST') {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.email || !body.seller_id) return json({ error: 'email and seller_id required' }, 400, request);
+    if (!body.listing_id && !body.product_id) return json({ error: 'listing_id or product_id required' }, 400, request);
+    if (body.listing_id && body.product_id) return json({ error: 'Provide listing_id or product_id, not both' }, 400, request);
+
+    const auth = await getAuthUser(request, env);
+    const itemType = body.listing_id ? 'listing' : 'product';
+    const listingId = body.listing_id ? parseInt(body.listing_id) : null;
+    const productId = body.product_id || null;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Check if already on waitlist
+    let existing;
+    if (listingId) {
+      existing = await env.DB.prepare(
+        'SELECT id FROM waitlist WHERE listing_id = ? AND user_email = ?'
+      ).bind(listingId, body.email).first();
+    } else {
+      existing = await env.DB.prepare(
+        'SELECT id FROM waitlist WHERE product_id = ? AND user_email = ?'
+      ).bind(productId, body.email).first();
+    }
+
+    if (existing) {
+      const posRow = listingId
+        ? await env.DB.prepare('SELECT COUNT(*) as cnt FROM waitlist WHERE listing_id = ? AND notified_at IS NULL AND created_at <= (SELECT created_at FROM waitlist WHERE id = ?)').bind(listingId, existing.id).first()
+        : await env.DB.prepare('SELECT COUNT(*) as cnt FROM waitlist WHERE product_id = ? AND notified_at IS NULL AND created_at <= (SELECT created_at FROM waitlist WHERE id = ?)').bind(productId, existing.id).first();
+      return json({ joined: false, message: 'Already on waitlist', position: posRow?.cnt || 1 }, 200, request);
+    }
+
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO waitlist (listing_id, product_id, seller_id, item_type, user_email, user_id, notify_email, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(listingId, productId, parseInt(body.seller_id), itemType, body.email, auth?.userId || null, body.email, now).run();
+
+    // Get position
+    let posRow;
+    if (listingId) {
+      posRow = await env.DB.prepare('SELECT COUNT(*) as cnt FROM waitlist WHERE listing_id = ? AND notified_at IS NULL').bind(listingId).first();
+    } else {
+      posRow = await env.DB.prepare('SELECT COUNT(*) as cnt FROM waitlist WHERE product_id = ? AND notified_at IS NULL').bind(productId).first();
+    }
+
+    return json({ joined: true, position: posRow?.cnt || 1 }, 201, request);
+  }
+
+  if (method === 'DELETE') {
+    const url = new URL(request.url);
+    let body = await request.json().catch(() => null);
+    const email = body?.email || url.searchParams.get('email');
+    const listingId = body?.listing_id || url.searchParams.get('listing_id');
+    const productId = body?.product_id || url.searchParams.get('product_id');
+
+    if (!email) return json({ error: 'email required' }, 400, request);
+    if (!listingId && !productId) return json({ error: 'listing_id or product_id required' }, 400, request);
+
+    if (listingId) {
+      await env.DB.prepare('DELETE FROM waitlist WHERE listing_id = ? AND user_email = ?').bind(parseInt(listingId), email).run();
+    } else {
+      await env.DB.prepare('DELETE FROM waitlist WHERE product_id = ? AND user_email = ?').bind(productId, email).run();
+    }
+
+    return json({ removed: true }, 200, request);
+  }
+
+  return methodNotAllowed(request);
+}
+
+async function handleListingRestock(request, env, listingId) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const listing = await env.DB.prepare('SELECT id, user_id, card_name FROM listings WHERE id = ?').bind(listingId).first();
+  if (!listing) return json({ error: 'Listing not found' }, 404, request);
+  if (listing.user_id !== auth.userId) return json({ error: 'Not your listing' }, 403, request);
+
+  const body = await request.json().catch(() => null);
+  if (!body || body.stock_quantity == null) return json({ error: 'stock_quantity required' }, 400, request);
+
+  const qty = parseInt(body.stock_quantity);
+  if (isNaN(qty) || qty <= 0) return json({ error: 'stock_quantity must be a positive integer' }, 400, request);
+
+  const status = qty <= 3 ? 'low_stock' : 'available';
+  const now = Math.floor(Date.now() / 1000);
+
+  await env.DB.prepare(
+    'UPDATE listings SET stock_quantity = ?, availability_status = ?, updated_at = ? WHERE id = ?'
+  ).bind(qty, status, now, listingId).run();
+
+  // Get waitlist entries to notify
+  const waitlistRows = await env.DB.prepare(
+    'SELECT id, user_email FROM waitlist WHERE listing_id = ? AND notified_at IS NULL'
+  ).bind(listingId).all();
+
+  const notifiedCount = waitlistRows.results?.length || 0;
+
+  if (notifiedCount > 0) {
+    // Mark as notified
+    await env.DB.prepare(
+      'UPDATE waitlist SET notified_at = ? WHERE listing_id = ? AND notified_at IS NULL'
+    ).bind(now, listingId).run();
+
+    // Placeholder: log notifications (Resend integration later)
+    for (const entry of waitlistRows.results) {
+      console.log('[Restock Notify] Listing', listingId, '(' + listing.card_name + ') → ' + entry.user_email);
+    }
+  }
+
+  return json({ restocked: true, stock_quantity: qty, availability_status: status, notified_count: notifiedCount }, 200, request);
+}
+
+async function handleStripeProductRestock(request, env, productId) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const now = Math.floor(Date.now() / 1000);
+
+  // Get waitlist entries for this product that belong to this seller
+  const waitlistRows = await env.DB.prepare(
+    'SELECT id, user_email FROM waitlist WHERE product_id = ? AND seller_id = ? AND notified_at IS NULL'
+  ).bind(productId, auth.userId).all();
+
+  const notifiedCount = waitlistRows.results?.length || 0;
+
+  if (notifiedCount > 0) {
+    await env.DB.prepare(
+      'UPDATE waitlist SET notified_at = ? WHERE product_id = ? AND seller_id = ? AND notified_at IS NULL'
+    ).bind(now, productId, auth.userId).run();
+
+    for (const entry of waitlistRows.results) {
+      console.log('[Restock Notify] Product', productId, '→ ' + entry.user_email);
+    }
+  }
+
+  return json({ restocked: true, notified_count: notifiedCount }, 200, request);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return handleOptions(request);
@@ -4353,6 +4575,19 @@ export default {
       if (path.startsWith('/api/card/'))                    return handleCardDetail(request, env, path.replace('/api/card/', ''));
       if (path.startsWith('/api/movers'))                   return handleMovers(request, env, path.split('/').pop() || 'valuable');
       if (path === '/api/listings/batch' && request.method === 'POST') return handleListingsBatch(request, env);
+      // Listing stock, availability, restock (must be before generic /api/listings)
+      if (path.match(/^\/api\/listings\/\d+\/stock$/)) {
+        const stockListingId = path.split('/')[3];
+        return handleListingStock(request, env, stockListingId);
+      }
+      if (path.match(/^\/api\/listings\/\d+\/availability$/)) {
+        const availListingId = path.split('/')[3];
+        return handleListingAvailability(request, env, availListingId);
+      }
+      if (path.match(/^\/api\/listings\/\d+\/restock$/)) {
+        const restockListingId = path.split('/')[3];
+        return handleListingRestock(request, env, restockListingId);
+      }
       if (path === '/api/portfolio/batch' && request.method === 'POST') return handlePortfolioBatch(request, env);
       if (path === '/api/portfolio/enrich' && request.method === 'POST') return handlePortfolioEnrich(request, env);
       if (path.startsWith('/api/portfolio'))                return handlePortfolio(request, env);
@@ -4394,6 +4629,11 @@ export default {
       if (path === '/api/stripe/v2/account-status')          return handleStripeV2AccountStatus(request, env);
       // Stripe Products (on connected accounts)
       if (path === '/api/stripe/products')                   return handleStripeProducts(request, env);
+      // Stripe Product Restock + notify waitlist
+      if (path.match(/^\/api\/stripe\/products\/[^/]+\/restock$/)) {
+        const restockProductId = path.split('/')[4];
+        return handleStripeProductRestock(request, env, restockProductId);
+      }
       // Stripe Checkout (direct charge)
       if (path === '/api/stripe/checkout')                   return handleStripeCheckout(request, env);
       // Stripe Subscriptions (V2 customer_account pattern)
@@ -4401,6 +4641,8 @@ export default {
       if (path === '/api/stripe/billing-portal')             return handleStripeBillingPortal(request, env);
       // Stripe V2 thin events webhook
       if (path === '/api/stripe/v2/webhook')                 return handleStripeV2Webhook(request, env);
+      // Waitlist (availability notifications)
+      if (path === '/api/waitlist')                              return handleWaitlist(request, env);
       if (path === '/api/price-alerts')                         return handlePriceAlerts(request, env);
       if (path === '/api/scan/detect')                           return handleScanDetect(request, env);
 
