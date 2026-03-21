@@ -24,8 +24,10 @@ export function BuyLocalModal(props) {
   var selectedListing = ref3[0], setSelectedListing = ref3[1];
 
   function handleConfirm() {
-    if (!selectedStore) return;
-    if (!selectedListing) return;
+    console.log('[BuyLocal] handleConfirm called', { selectedStore: !!selectedStore, selectedListing: !!selectedListing });
+    if (!selectedStore) { console.warn('[BuyLocal] No store selected'); return; }
+    if (!selectedListing) { console.warn('[BuyLocal] No listing selected'); return; }
+    try {
     var newItem = {
       id: selectedListing.id,
       name: selectedListing.cardName || card.name,
@@ -51,8 +53,12 @@ export function BuyLocalModal(props) {
       newCart = currentCart.concat([newItem]);
     }
     updateCart(newCart);
+    console.log('[BuyLocal] Cart updated, newCart length:', newCart.length);
     setConfirmed(true);
     setTimeout(onClose, 1800);
+    } catch(err) {
+      console.error('[BuyLocal] Error in handleConfirm:', err);
+    }
   }
 
   return h('div', { className: 'modal-overlay', onClick: function(e) { if (e.target === e.currentTarget) onClose(); } },

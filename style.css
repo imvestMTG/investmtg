@@ -11331,3 +11331,23 @@ aa.market-cat-desc {
     grid-template-columns: 1fr;
   }
 }
+
+/* Modal — sticky footer for mobile */
+.modal-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: var(--space-2);
+}
+
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+  z-index: 2;
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+}
