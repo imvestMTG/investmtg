@@ -3317,43 +3317,30 @@ async function handleScanDetect(request, env) {
   }
 
   // Strategy 3: If OCR text provided, do Scryfall fuzzy match
-  if (body.ocr_text) {
-    const lines = body.ocr_text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-    const cardNameGuess = lines[0] || body.ocr_text.trim();
-    if (cardNameGuess.length >= 2) {
-      try {
-        const fuzzyUrl = SCRYFALL_API + '/cards/named?fuzzy=' + encodeURIComponent(cardNameGuess);
-        console.log('[Scan] Fuzzy lookup:', fuzzyUrl);
-        const fuzzyRes = await fetch(fuzzyUrl, { headers: { 'User-Agent': USER_AGENT } });
-        console.log('[Scan] Fuzzy status:', fuzzyRes.status);
-        if (fuzzyRes.ok) {
-          const card = await fuzzyRes.json();
-          results.push({
-            source: 'scryfall_fuzzy',
-            card: {
-              id: card.id, name: card.name, set: card.set, set_name: card.set_name,
-              prices: card.prices, image_uris: card.image_uris, rarity: card.rarity,
-              mana_cost: card.mana_cost, type_line: card.type_line,
-            },
-          });
-        } else {
-          console.warn('[Scan] Fuzzy non-ok:', fuzzyRes.status, await fuzzyRes.text().catch(() => ''));
-        }
-      } catch (e) {
-        console.error('[Scan] Fuzzy match error:', e.message);
+  if (body.ocr_text && body.ocr_text.trim().length >= 2) {
+    try {
+      const cardName = body.ocr_text.trim().split('\n')[0].trim();
+      const card = await scryfallFetch('/cards/named?fuzzy=' + encodeURIComponent(cardName));
+      if (card && card.name) {
+        results.push({
+          source: 'scryfall_fuzzy',
+          card: {
+            id: card.id, name: card.name, set: card.set, set_name: card.set_name,
+            prices: card.prices, image_uris: card.image_uris, rarity: card.rarity,
+            mana_cost: card.mana_cost, type_line: card.type_line,
+          },
+        });
       }
+    } catch (e) {
+      results.push({ source: 'scryfall_fuzzy_error', error: e.message });
     }
   }
 
   // Strategy 4: If collector number + set code provided, do exact lookup
   if (body.collector_number && body.set_code) {
     try {
-      const exactRes = await fetch(
-        SCRYFALL_API + '/cards/' + encodeURIComponent(body.set_code.toLowerCase()) + '/' + encodeURIComponent(body.collector_number),
-        { headers: { 'User-Agent': USER_AGENT } }
-      );
-      if (exactRes.ok) {
-        const card = await exactRes.json();
+      const card = await scryfallFetch('/cards/' + encodeURIComponent(body.set_code.toLowerCase()) + '/' + encodeURIComponent(body.collector_number));
+      if (card && card.name) {
         results.push({
           source: 'scryfall_exact',
           card: {
@@ -3362,7 +3349,9 @@ async function handleScanDetect(request, env) {
           },
         });
       }
-    } catch (e) { console.warn('[Scan] Scryfall exact lookup failed:', e.message, e.stack); }
+    } catch (e) {
+      results.push({ source: 'scryfall_exact_error', error: e.message });
+    }
   }
 
   return json({
@@ -3372,6 +3361,7 @@ async function handleScanDetect(request, env) {
       roboflow: !!env.ROBOFLOW_API_KEY,
       ximilar: !!env.XIMILAR_API_KEY,
     },
+
   }, 200, request);
 }
 
