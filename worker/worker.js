@@ -99,6 +99,7 @@ const AUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 /* ── External API bases (centralized) ── */
 const SCRYFALL_API = 'https://api.scryfall.com';
 const MTGIO_API = 'https://api.magicthegathering.io/v1'; // Fallback card data source (no pricing)
+const ROBOFLOW_DETECT_URL = 'https://detect.roboflow.com/mtg-cards-label/5'; // MTG card detection model
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
@@ -3253,6 +3254,123 @@ async function handleSitemap(request, env) {
 
 /* ── Price Alerts CRUD ── */
 async function handlePriceAlerts(request, env) {
+
+/* ── POST /api/scan/detect — Server-side card detection + Scryfall lookup ── */
+async function handleScanDetect(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+  const results = [];
+
+  // Strategy 1: If Roboflow API key available, use AI object detection
+  if (env.ROBOFLOW_API_KEY && body.image_base64) {
+    try {
+      const rfRes = await fetch(ROBOFLOW_DETECT_URL + '?api_key=' + env.ROBOFLOW_API_KEY + '&confidence=40', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.image_base64,
+      });
+      if (rfRes.ok) {
+        const rfData = await rfRes.json();
+        if (rfData.predictions && rfData.predictions.length > 0) {
+          results.push({ source: 'roboflow', predictions: rfData.predictions });
+        }
+      }
+    } catch (e) { console.warn('[Scan] Roboflow detection failed:', e.message); }
+  }
+
+  // Strategy 2: If Ximilar API key available, use TCG identification
+  if (env.XIMILAR_API_KEY && (body.image_url || body.image_base64)) {
+    try {
+      const xRecords = body.image_url
+        ? [{ _url: body.image_url, Subcategory: 'MTG' }]
+        : [{ _base64: body.image_base64, Subcategory: 'MTG' }];
+      const xRes = await fetch('https://api.ximilar.com/collectibles/v2/tcg_id', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Token ' + env.XIMILAR_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ records: xRecords }),
+      });
+      if (xRes.ok) {
+        const xData = await xRes.json();
+        const objects = (xData.records || [])[0]?._objects || [];
+        for (const obj of objects) {
+          const match = obj._identification?.best_match;
+          if (match && match.name) {
+            results.push({
+              source: 'ximilar',
+              name: match.name,
+              set: match.set,
+              set_code: match.set_code,
+              card_no: match.card_no,
+              rarity: match.rarity,
+              year: match.year,
+              links: match.links || {},
+            });
+          }
+        }
+      }
+    } catch (e) { console.warn('[Scan] Ximilar identification failed:', e.message); }
+  }
+
+  // Strategy 3: If OCR text provided (from client-side Tesseract), do Scryfall fuzzy match
+  if (body.ocr_text) {
+    try {
+      // Clean the OCR text — extract likely card name
+      const lines = body.ocr_text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+      const cardNameGuess = lines[0] || '';
+      if (cardNameGuess.length >= 3) {
+        const fuzzyRes = await fetch(SCRYFALL_API + '/cards/named?fuzzy=' + encodeURIComponent(cardNameGuess), {
+          headers: { 'User-Agent': USER_AGENT },
+        });
+        if (fuzzyRes.ok) {
+          const card = await fuzzyRes.json();
+          results.push({
+            source: 'scryfall_fuzzy',
+            card: {
+              id: card.id, name: card.name, set: card.set, set_name: card.set_name,
+              prices: card.prices, image_uris: card.image_uris, rarity: card.rarity,
+              mana_cost: card.mana_cost, type_line: card.type_line,
+            },
+          });
+        }
+      }
+    } catch (e) { console.warn('[Scan] Scryfall fuzzy match failed:', e.message); }
+  }
+
+  // Strategy 4: If collector number + set code provided, do exact lookup
+  if (body.collector_number && body.set_code) {
+    try {
+      const exactRes = await fetch(
+        SCRYFALL_API + '/cards/' + encodeURIComponent(body.set_code.toLowerCase()) + '/' + encodeURIComponent(body.collector_number),
+        { headers: { 'User-Agent': USER_AGENT } }
+      );
+      if (exactRes.ok) {
+        const card = await exactRes.json();
+        results.push({
+          source: 'scryfall_exact',
+          card: {
+            id: card.id, name: card.name, set: card.set, set_name: card.set_name,
+            prices: card.prices, image_uris: card.image_uris, rarity: card.rarity,
+          },
+        });
+      }
+    } catch (e) { console.warn('[Scan] Scryfall exact lookup failed:', e.message); }
+  }
+
+  return json({
+    results,
+    strategies_tried: results.map(r => r.source),
+    ai_available: {
+      roboflow: !!env.ROBOFLOW_API_KEY,
+      ximilar: !!env.XIMILAR_API_KEY,
+    },
+  }, 200, request);
+}
   const auth = await getAuthUser(request, env);
   if (!auth) return authRequired(request);
 
@@ -3829,6 +3947,7 @@ export default {
       if (path === '/api/stripe/seller/sales')               return handleStripeSellerSales(request, env);
       if (path === '/api/stripe/refund')                     return handleStripeRefund(request, env);
       if (path === '/api/price-alerts')                         return handlePriceAlerts(request, env);
+      if (path === '/api/scan/detect')                           return handleScanDetect(request, env);
 
       // Admin-only: manual carousel refresh trigger
       if (path === '/api/admin/refresh-carousels' && request.method === 'POST') {
