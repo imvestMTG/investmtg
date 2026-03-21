@@ -141,6 +141,7 @@ export function BuyLocalModal(props) {
                   type: 'button',
                   className: 'btn btn-primary',
                   onClick: handleConfirm,
+                  onTouchEnd: function(e) { e.preventDefault(); handleConfirm(); },
                   disabled: !selectedStore || !selectedListing
                 }, 'Confirm Pickup')
               )
