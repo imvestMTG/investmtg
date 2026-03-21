@@ -3252,9 +3252,6 @@ async function handleSitemap(request, env) {
    MAIN ROUTER
    ══════════════════════════════════════ */
 
-/* ── Price Alerts CRUD ── */
-async function handlePriceAlerts(request, env) {
-
 /* ── POST /api/scan/detect — Server-side card detection + Scryfall lookup ── */
 async function handleScanDetect(request, env) {
   if (request.method !== 'POST') return methodNotAllowed(request);
@@ -3373,6 +3370,9 @@ async function handleScanDetect(request, env) {
     },
   }, 200, request);
 }
+
+/* ── Price Alerts CRUD ── */
+async function handlePriceAlerts(request, env) {
   const auth = await getAuthUser(request, env);
   if (!auth) return authRequired(request);
 
