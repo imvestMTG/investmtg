@@ -3297,9 +3297,11 @@ async function handleScanDetect(request, env) {
       });
       if (xRes.ok) {
         const xData = await xRes.json();
-        const objects = (xData.records || [])[0]?._objects || [];
+        const firstRecord = (xData.records || [])[0] || {};
+        const objects = firstRecord._objects || [];
         for (const obj of objects) {
-          const match = obj._identification?.best_match;
+          const ident = obj._identification || {};
+          const match = ident.best_match;
           if (match && match.name) {
             results.push({
               source: 'ximilar',
