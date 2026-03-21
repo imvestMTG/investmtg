@@ -1,6 +1,6 @@
 /* SearchView.js */
 import React from 'react';
-import { backendSearch, autocomplete, fetchListings } from '../utils/api.js';
+import { backendSearch, autocomplete } from '../utils/api.js';
 import { formatUSD, getCardPrice, debounce } from '../utils/helpers.js';
 import { CardGrid } from './shared/CardGrid.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
@@ -81,27 +81,11 @@ export function SearchView(props) {
 
   var inputRef = React.useRef(null);
 
-  // Marketplace listings (in-stock items)
-  var refListings = React.useState([]);
-  var inStockListings = refListings[0], setInStockListings = refListings[1];
-  var refListingsLoading = React.useState(false);
-  var listingsLoading = refListingsLoading[0], setListingsLoading = refListingsLoading[1];
-
-  // On mount: always load in-stock marketplace listings
-  React.useEffect(function() {
-    setListingsLoading(true);
-    fetchListings().then(function(data) {
-      var listings = Array.isArray(data) ? data : (data && data.listings ? data.listings : []);
-      // Filter to available items only
-      var available = listings.filter(function(l) {
-        return l.availability_status !== 'sold_out';
-      });
-      setInStockListings(available);
-      setListingsLoading(false);
-    }).catch(function() {
-      setListingsLoading(false);
-    });
-  }, []);
+  // Get marketplace listings from app state (already loaded at startup)
+  var allListings = state && state.listings ? state.listings : [];
+  var inStockListings = allListings.filter(function(l) {
+    return l.availability_status !== 'sold_out' && l.type === 'sale';
+  });
 
   // Listen for hero search events
   React.useEffect(function() {
@@ -293,11 +277,10 @@ export function SearchView(props) {
           h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' } },
             'Cards available from local Guam sellers.'
           ),
-          listingsLoading && h('div', { className: 'card-grid' }, [1,2,3,4].map(function(i) { return h(SkeletonCard, { key: i }); })),
-          !listingsLoading && inStockListings.length === 0 && h('div', { className: 'empty-state' },
+          inStockListings.length === 0 && h('div', { className: 'empty-state' },
             h('p', null, 'No listings available right now. Check back soon or search the full card database above.')
           ),
-          !listingsLoading && inStockListings.length > 0 && h('div', { className: 'search-listings-grid' },
+          inStockListings.length > 0 && h('div', { className: 'search-listings-grid' },
             inStockListings.map(function(listing) {
               var cardName = listing.card_name || listing.cardName || '';
               var setName = listing.set_name || listing.setName || '';
