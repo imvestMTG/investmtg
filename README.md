@@ -35,7 +35,7 @@ Coding rules enforced across all root-level JS files:
 
 Key characteristics:
 - Cloudflare Worker API gateway and proxy
-- Cloudflare D1 database for server-side data (users, auth sessions, portfolios, listings, sellers, stores, events, cart, orders, order counters)
+- Cloudflare D1 database for server-side data (18 tables: users, auth sessions, portfolios, listings, sellers, stores, events, cart, orders, order counters, binders, lists, list items, price alerts, stripe payments/payouts/disputes)
 - Cloudflare KV cache for market and discovery responses (ticker, featured, trending, budget, movers)
 - Google OAuth 2.0 authentication with HMAC-signed session tokens stored in D1; OAuth redirect uses `api.investmtg.com` custom domain so Google consent screen shows `investmtg.com`
 - Encrypted secrets for protected third-party APIs and auth credentials
@@ -44,6 +44,8 @@ Key characteristics:
 - Generic CORS proxy (`/?target=`) for Moxfield, Scryfall, and EDH Top 16 APIs with User-Agent forwarding
 - Auto-promotes user role to 'seller' on seller registration
 - SumUp payment integration: `POST /api/sumup/checkout` creates a SumUp checkout, frontend mounts SumUp Card Widget for PCI-compliant card entry
+- Stripe Connect V2 integration: Express account creation/onboarding, product management, checkout sessions with 5% platform fee, subscriptions, billing portal, V2 thin event webhooks for account status sync
+- PayPal payment integration: `POST /api/paypal/create-order` and `POST /api/paypal/capture-order`
 - Admin bypass: `ADMIN_TOKEN` secret allows testing worker endpoints without Google OAuth
 
 ### frontend-v2/ (removed)
@@ -73,6 +75,8 @@ Key characteristics:
 - printings grid/list view toggle with card images, set codes, rarity, and market prices
 - guided Guam listing workflow with Scryfall-powered autocomplete and printings search
 - CSV/Text/MTGA bulk import for listing multiple cards at once via `/api/listings/batch` (max 500)
+- Stripe Connect: sellers connect Express accounts for card payment processing (V2 API), manage products, view sales analytics and payout history
+- Buyer storefront (`#shop/:sellerId`): browse seller products, buy with Stripe Checkout (5% platform fee)
 - meetup zone and island delivery framing
 - full CRUD via `/api/sellers` and `/api/listings`
 

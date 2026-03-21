@@ -302,6 +302,10 @@ function ListingForm(props) {
   var ref7 = React.useState('grid');
   var viewMode = ref7[0], setViewMode = ref7[1];
 
+  // Available finishes for the selected printing
+  var ref7b = React.useState(FINISHES);
+  var availableFinishes = ref7b[0], setAvailableFinishes = ref7b[1];
+
   var ac = useScryfallAutocomplete(autocompleteQuery);
   var printingsData = useScryfallPrintings(confirmedCardName);
 
@@ -387,22 +391,25 @@ function ListingForm(props) {
     update('scryfallId', printing.scryfallId || '');
     // Store available finishes from Scryfall for this printing
     var avail = printing.finishes || ['nonfoil'];
+    setAvailableFinishes(avail);
     // Default finish to first available (nonfoil if available, else foil, etc.)
-    if (avail.indexOf(form.finish) === -1) {
-      update('finish', avail[0] || 'nonfoil');
+    var currentFinish = form.finish;
+    if (avail.indexOf(currentFinish) === -1) {
+      currentFinish = avail[0] || 'nonfoil';
+      update('finish', currentFinish);
     }
-    if (!form.price) {
-      var suggestedPrice = (form.finish === 'foil' || form.finish === 'etched')
-        ? (printing.priceUsdFoil || printing.priceUsd)
-        : (printing.priceUsd || printing.priceUsdFoil);
-      if (suggestedPrice) update('price', suggestedPrice);
-    }
+    // Always update price when selecting a new printing
+    var suggestedPrice = (currentFinish === 'foil' || currentFinish === 'etched')
+      ? (printing.priceUsdFoil || printing.priceUsd)
+      : (printing.priceUsd || printing.priceUsdFoil);
+    if (suggestedPrice) update('price', suggestedPrice);
   }
 
   function handleClearCard() {
     setForm(function(p) { return Object.assign({}, p, defaultForm); });
     setConfirmedCardName('');
     setAutocompleteQuery('');
+    setAvailableFinishes(FINISHES);
   }
 
   function validate() {
@@ -674,12 +681,10 @@ function ListingForm(props) {
           h('label', { className: 'form-label' }, 'Finish'),
           h('div', { className: 'finish-selector' },
             FINISHES.map(function(f) {
-              // Get available finishes from selected printing
+              var isAvailable = availableFinishes.indexOf(f) !== -1;
               var selectedPrinting = printingsData.printings.find(function(p) {
                 return p.setCode === form.setCode && p.collectorNumber === form.collectorNumber;
               });
-              var availFinishes = selectedPrinting ? (selectedPrinting.finishes || ['nonfoil']) : FINISHES;
-              var isAvailable = availFinishes.indexOf(f) !== -1;
               return h('button', {
                 key: f,
                 type: 'button',

@@ -52,7 +52,7 @@ To prevent blank screens on slow connections or mobile browsers:
 5. `app.js` has a 6-second safety timeout on `Promise.all` — if backend calls do not resolve, the loading gate is cleared via localStorage fallbacks rather than hanging indefinitely
 
 ### Service worker strategy
-`sw.js` is on cache version `investmtg-v105`. The caching strategy is:
+`sw.js` is on cache version `investmtg-v106`. The caching strategy is:
 - **HTML navigation requests**: never cached — always fetches a fresh `index.html` from the network
 - **JS/MJS files**: never cached — always fetches fresh on deploy to avoid stale module problems
 - **CSS and other static assets**: cache-first with network fallback
@@ -96,10 +96,11 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/CardDetailView.js` | `#card/:id` | Card detail via `/api/card/:id`. "Find Sellers" links to marketplace (no direct cart add — items must come from seller listings). "Track" syncs to D1 via `addToPortfolioAPI()` with inline condition selector (NM/LP/MP/HP/DMG) and "Add to List" dropdown for quick list assignment. v59: JustTCG condition breakdown (NM/LP/MP/HP/DMG price grid with 7d % change), price trend row (24h/7d/30d/90d), 30-day sparkline chart, all-time high/low + 52-week range. v94: Reserved List badge, price alert set/update/delete UI wired to `/api/price-alerts`. |
 | `components/PortfolioView.js` | `#portfolio` | v58 rewrite (~840 lines). Tabbed interface: Collection tab with binder sidebar (colored chip filters, All Cards/Unassigned built-ins), condition selector per card (NM/LP/MP/HP/DMG with color-coded badges), condition-adjusted pricing (NM 100%, LP 85%, MP 70%, HP 50%, DMG 30%), group-by controls (set/color/type/rarity/condition/binder). Lists tab with full CRUD for Wishlist/Buylist/Trade lists. CreateBinderModal and CreateListModal. Import button + modal still present. v59: all table columns sortable asc/desc (Card, Set, Cond, Qty, Buy Price, Current, Gain/Loss). |
 | `components/StoreView.js` | `#store` | Store list via `/api/stores`, marketplace listings |
-| `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint. Profile tab: inline-editable fields (click-to-edit per field with Save/Cancel), section-based layout (Personal Info, Contact & Store, Account Details, Session), collapsible Danger Zone with type-to-confirm DELETE gate. PUT/DELETE /api/sellers for profile update/account deletion. |
+| `components/SellerDashboard.js` | `#seller` | Seller registration (with required ToS checkbox), listing management, step-based listing wizard (search → pick printing → details), auto-confirm on blur/Enter, printings grid/list views, set autocomplete via Scryfall printings, CSV/Text/MTGA bulk import via import-parser.js with batch endpoint. Stripe Connect V2 integration: Express account creation via `stripeV2CreateAccount`, onboarding via `stripeV2GetAccountLink`, auto-status-sync on return. Products tab: create/list Stripe products on connected account, grid display with active/inactive badges. Sales & Payouts tab: balance breakdown, payout history, sales analytics. Profile tab: inline-editable fields (click-to-edit per field with Save/Cancel), section-based layout (Personal Info, Contact & Store, Account Details, Session), collapsible Danger Zone with type-to-confirm DELETE gate. PUT/DELETE /api/sellers for profile update/account deletion. |
 | `components/MarketMoversView.js` | `#movers` | v59 rewrite: sortable data table with columns (Rank, Card, Price, 7D/30D/90D change, 30D sparkline). JustTCG condition data loaded progressively per card. Click column headers to sort asc/desc. Categories: Most Valuable, Modern Staples, Commander Staples, Budget Finds. v94: Reserved List badge in table rows, RL-only filter toggle. |
 | `components/CartView.js` | `#cart` | Cart with JustTCG condition selector (card-style layout: colored dot + abbreviation + full name + price per condition), all conditions displayed, checkout gated until all conditions chosen |
-| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. |
+| `components/CheckoutView.js` | `#checkout` | 4-step checkout wizard (Review → Fulfillment → Contact → Payment) with confirmation modal and required ToS checkbox at Contact step. Pay Online (SumUp Card Widget) + Reserve & Pay at Pickup. POSTs to `/api/orders` and `/api/sumup/checkout`. Stripe Checkout available for seller products via `/api/stripe/checkout` (direct charge with 5% platform fee). |
+| `components/ShopView.js` | `#shop/:sellerId` | Buyer storefront for Stripe products. Loads seller's active products via `stripeListProducts`, displays product grid with name/description/price, "Buy Now" triggers Stripe Checkout via `stripeCreateCheckout`. Shareable shop URL with copy-to-clipboard. |
 | `components/OrderConfirmation.js` | `#order/:id` | Order confirmation/detail page. Server-first loading via `/api/orders/:id`, localStorage fallback. Real-time payment status polling for SumUp orders (5s intervals, 5min max). Status-aware banner and badge (reserved/pending/paid/failed/expired). |
 | `components/OrdersView.js` | `#orders` | My Orders page — lists all orders from localStorage, newest first. Links to `#order/<id>`. |
 | `components/DecklistView.js` | `#decklist` | Decklist import |
@@ -126,12 +127,18 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `components/shared/SkeletonCard.js` | Loading skeleton for cards |
 | `components/shared/Toast.js` | Notification toasts |
 | `components/shared/BackToTop.js` | Scroll-to-top button |
+| `components/shared/StatCard.js` | Stat display card (`StatCard`) + grid container (`StatGrid`). Props: label, value, sub, icon, variant (primary/success/warning/error), className. Used in HomeView hero stats, SellerDashboard payouts analytics. |
+| `components/shared/TabBar.js` | Tab navigation component. Props: tabs array `[{key, label, count?, icon?}]`, activeKey, onChange, variant (default/compact/pill). Used in SellerDashboard, PortfolioView, MetaView, DecklistView. |
+| `components/shared/StatusBadge.js` | Status label badge. Props: label, variant, icon, size, title. |
+| `components/shared/LoadingSpinner.js` | Block/inline loading spinner. Props: size, text, inline, light, className. Used in MetaView. |
+| `components/shared/EmptyState.js` | Empty/no-data card. Props: icon, title, message, onAction, actionLabel, className. Used in OrdersView, CartView, MetaView. |
+| `components/shared/ShareButton.js` | Share button with native Web Share API fallback to clipboard |
 
 ## Utils
 
 | File | Purpose |
 |------|---------|
-| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), `createListingsBatch()`, `addToPortfolioBatch()`, and 30+ backend proxy functions. v58 additions: `updatePortfolioItem`, `fetchBinders`, `createBinder`, `updateBinder`, `deleteBinder`, `fetchLists`, `createList`, `updateList`, `deleteList`, `fetchListItems`, `addListItem`, `removeListItem`. |
+| `utils/api.js` | `backendFetch()`, `normalizeCard()`, Bearer token auth, `fetchConditionPrices({ tcgplayerId, scryfallId })` for JustTCG condition pricing (prefers tcgplayerId), `createListingsBatch()`, `addToPortfolioBatch()`, and 30+ backend proxy functions. v58 additions: `updatePortfolioItem`, `fetchBinders`, `createBinder`, `updateBinder`, `deleteBinder`, `fetchLists`, `createList`, `updateList`, `deleteList`, `fetchListItems`, `addListItem`, `removeListItem`. Stripe Connect V2: `stripeV2CreateAccount`, `stripeV2GetAccountLink`, `stripeV2GetAccountStatus`. Stripe Products/Checkout: `stripeCreateProduct`, `stripeListProducts`, `stripeCreateCheckout`. Stripe Subscriptions: `stripeCreateSubscription`, `stripeCreateBillingPortal`. Legacy V1: `stripeCreateConnectAccount`, `stripeGetAccountLink`, `stripeGetAccountStatus`, `stripeGetDashboardLink`, `stripeCreatePaymentIntent`, `stripeRefundPayment`. Seller data: `stripeGetSellerPayouts`, `stripeGetSellerBalance`, `stripeGetSellerSales`. |
 | `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()`, Bearer token via storage.js. `captureTokenFromURL()` handles OAuth redirect landing — saves token from `?auth_token=` param and triggers `location.replace()` to clean the URL; returns `'redirecting'` to stop `checkAuth()` from running during page transition. |
 | `utils/storage.js` | Centralized safe localStorage wrapper: `storageGet()`, `storageSet()`, `storageGetRaw()`, `storageSetRaw()`, `storageRemove()`. All files must use this instead of raw `localStorage`. |
 | `utils/config.js` | Centralized constants (shipping, cart limits, API intervals, `PROXY_BASE`, `SUMUP_PUBLIC_KEY`, `SUMUP_SDK_URL`) |
@@ -147,6 +154,9 @@ These rules apply to all root-level `.js` files and must not be violated:
 | `utils/moxfield-api.js` | Moxfield decklist integration via Worker CORS proxy |
 | `utils/echomtg-api.js` | EchoMTG integration: graded slab prices, set movers, via Worker proxy |
 | `utils/import-parser.js` | Shared bulk import parser: `parseManaboxCSV()` (CSV with Manabox/DragonShield/Deckbox/TCGplayer aliases), `parseTextList()` (MTGA format, simple names, qty-prefixed), `parseCSVLine()`, `findCol()`. Returns `{ cards, errors }`. |
+| `utils/mtgstocks-api.js` | MTGStocks integration via Worker `/mtgstocks` proxy |
+| `utils/price-resolver.js` | Multi-source price resolution (Scryfall + JustTCG + MTGStocks) |
+| `utils/auth.js` | Auth state manager: `checkAuth()`, `signIn()`, `signOut()`, `onAuthChange()`, `useAuth()` |
 
 ## Worker architecture
 
@@ -159,10 +169,12 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 ### Backend services
 | Service | Resource | Purpose |
 |---------|----------|---------|
-| D1 Database | `investmtg-db` | 15-table SQLite database (users, auth_sessions, prices, portfolios, listings, sellers, events, stores, cart_items, orders, order_counters, binders, lists, list_items, price_alerts) |
+| D1 Database | `investmtg-db` | 18-table SQLite database (users, auth_sessions, prices, portfolios, listings, sellers, events, stores, cart_items, orders, order_counters, binders, lists, list_items, price_alerts, stripe_payments, stripe_payouts, stripe_disputes) |
 | KV Namespace | `INVESTMTG_CACHE` | Edge cache for market and discovery responses |
 | Worker | `investmtg-proxy` | Unified backend + proxy |
 | SumUp | Checkouts API | Online card payment processing via Card Widget |
+| Stripe Connect | Express accounts | Seller payment processing: V2 account creation/onboarding, products, checkout sessions with 5% platform fee, subscriptions, billing portal, webhook sync |
+| PayPal | Orders API | Alternative payment processing via PayPal checkout |
 
 ### Worker routes
 | Route | Method | Purpose |
@@ -197,6 +209,26 @@ The Worker remains separate from the front-end deployment and handles API gatewa
 | `/chatbot` | proxy | Chat relay |
 | `/?target=` | proxy | Allowlisted generic proxy |
 | `/api/price-alerts` | GET/POST/DELETE | Price alerts CRUD. Auth required. GET `?card_id=X` returns single alert; GET without card_id returns all user alerts. POST creates/updates alert (upsert on user+card+direction). DELETE `?card_id=X&direction=Y` removes alert. |
+| `/api/stripe/v2/create-account` | POST | Create Stripe Connect V2 Express account. Auth required. Uses `/v2/core/accounts` with JSON body, full dashboard, card_payments capability. |
+| `/api/stripe/v2/account-link` | POST | Generate V2 onboarding link. Uses `/v2/core/account_links` with `account_onboarding` use_case. |
+| `/api/stripe/v2/account-status` | GET | Retrieve V2 account status with merchant capabilities and requirements. Syncs charges_enabled/payouts_enabled to D1. |
+| `/api/stripe/v2/webhook` | POST | V2 thin event webhook. Handles `v2.core.account.requirements.updated` and `capability_status_updated` thin events (fetches full event via events API), plus V1 subscription events (`customer.subscription.updated/deleted`, `invoice.paid/payment_failed`). |
+| `/api/stripe/products` | GET/POST | Product CRUD on connected accounts. POST creates product with `default_price_data`. GET lists active products. Uses V1 API with `Stripe-Account` header. |
+| `/api/stripe/checkout` | POST | Create Checkout Session with direct charge + 5% application fee on connected account. |
+| `/api/stripe/subscribe` | POST | Create subscription checkout using `customer_account` (V2 pattern — connected account is the customer). |
+| `/api/stripe/billing-portal` | POST | Create Stripe Billing Portal session using `customer_account`. |
+| `/api/stripe/webhook` | POST | Standard V1 webhook. Handles `payment_intent.succeeded/failed`, `charge.refunded`, `charge.dispute.created`, `account.updated`, `payout.paid/failed`. |
+| `/api/stripe/create-payment-intent` | POST | Create PaymentIntent with destination charge + platform fee. Records in `stripe_payments` table. |
+| `/api/stripe/seller/payouts` | GET | Seller payout history from connected account (last 25). |
+| `/api/stripe/seller/balance` | GET | Seller available/pending balance from connected account. |
+| `/api/stripe/seller/sales` | GET | Seller sales analytics: payments, disputes, totals from D1. |
+| `/api/stripe/refund` | POST | Refund a payment (reverse transfer + refund application fee). |
+| `/api/stripe/connect/create-account` | POST | Legacy V1 Connect: create Express account. |
+| `/api/stripe/connect/account-link` | POST | Legacy V1 Connect: generate onboarding link. |
+| `/api/stripe/connect/account-status` | GET | Legacy V1 Connect: account status. |
+| `/api/stripe/connect/dashboard-link` | POST | Legacy V1 Connect: Express dashboard login link. |
+| `/api/paypal/create-order` | POST | Create PayPal order for checkout. |
+| `/api/paypal/capture-order` | POST | Capture PayPal order after buyer approval. |
 | `/api/admin/refresh-carousels` | POST | Admin-only: manually trigger carousel name refresh from Scryfall + clear card data cache. Requires `Authorization: Bearer <ADMIN_TOKEN>`. |
 
 ### Worker files
@@ -221,17 +253,25 @@ investmtg/                          # root = production frontend deployment arti
 │   ├── DecklistView.js
 │   ├── Footer.js
 │   ├── Header.js
+│   ├── FAQView.js
+│   ├── Footer.js
+│   ├── GuidelinesView.js
+│   ├── Header.js
 │   ├── HomeView.js
 │   ├── ListingModal.js
+│   ├── BuyLocalModal.js
 │   ├── MarketMoversView.js
 │   ├── MetaView.js
 │   ├── OrderConfirmation.js
+│   ├── OrdersView.js
 │   ├── PortfolioView.js
+│   ├── PricingView.js
 # PriceHistoryChart.js removed in v20 (dead code — never imported)
 │   ├── PrivacyPolicyView.js
 │   ├── ScannerView.js
 │   ├── SearchView.js
 │   ├── SellerDashboard.js
+│   ├── ShopView.js
 │   ├── StoreView.js
 │   ├── Ticker.js
 │   ├── TermsView.js
@@ -242,21 +282,31 @@ investmtg/                          # root = production frontend deployment arti
 │       ├── CardCarousel.js
 │       ├── CardGrid.js
 │       ├── ConfirmModal.js
+│       ├── EmptyState.js
 │       ├── ErrorBoundary.js
 │       ├── Icons.js
+│       ├── LoadingSpinner.js
+│       ├── ShareButton.js
 │       ├── SkeletonCard.js
+│       ├── StatCard.js
+│       ├── StatusBadge.js
+│       ├── TabBar.js
 │       └── Toast.js
 ├── utils/
 │   ├── api.js
+│   ├── auth.js
 │   ├── config.js
 │   ├── echomtg-api.js
 │   ├── edhtop16-api.js
 │   ├── events-config.js
 │   ├── group-by-seller.js
 │   ├── helpers.js
+│   ├── import-parser.js
 │   ├── justtcg-api.js
 │   ├── marketplace-data.js
 │   ├── moxfield-api.js
+│   ├── mtgstocks-api.js
+│   ├── price-resolver.js
 │   ├── sanitize.js
 │   ├── storage.js                 # centralized safe localStorage wrapper
 │   ├── stores.js
@@ -276,9 +326,9 @@ investmtg/                          # root = production frontend deployment arti
 ├── images/
 ├── app.js                          # root application entry point
 ├── index.html                      # import map + app bootstrap
-├── style.css                       # all component styles (formatted, ~7500 lines)
+├── style.css                       # all component styles (formatted, ~11100 lines)
 ├── base.css                        # reset, body defaults, confirm modal
-├── sw.js                           # service worker v51
+├── sw.js                           # service worker v106
 ├── manifest.json
 ├── 404.html
 ├── CNAME
@@ -306,7 +356,7 @@ No install step. No build step. The root SPA uses native ES modules and import m
 - service worker (`sw.js`) provides PWA offline support + auto-reload on version change
 
 ### Worker
-The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact.
+The Worker is deployed independently with Wrangler and must keep its D1, KV, and secret bindings intact. Worker secrets include `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` for Stripe Connect integration.
 
 ## Tests
 

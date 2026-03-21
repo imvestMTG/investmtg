@@ -22,6 +22,8 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
                                     │                    ──→  Pollinations AI
                                     │                    ──→  Google OAuth
                                     │                    ──→  SumUp Checkouts API
+                                    │                    ──→  Stripe Connect API (V1 + V2)
+                                    │                    ──→  PayPal Orders API
                                     ├── D1 Database (investmtg-db)
                                     └── KV Cache (INVESTMTG_CACHE)
 ```
@@ -30,7 +32,7 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 | Binding | Type | Resource |
 |---------|------|----------|
-| `DB` | D1 Database | `investmtg-db` — SQLite database with 11 tables |
+| `DB` | D1 Database | `investmtg-db` — SQLite database with 18 tables |
 | `CACHE` | KV Namespace | `INVESTMTG_CACHE` — edge cache |
 | `JUSTTCG_API_KEY` | Secret | JustTCG API key (encrypted) |
 | `TOPDECK_API_KEY` | Secret | TopDeck.gg API key (encrypted) |
@@ -42,6 +44,11 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `ADMIN_TOKEN` | Secret | Admin bypass token — when `Authorization: Bearer <ADMIN_TOKEN>` is sent, `getAuthUser()` returns a synthetic admin user, bypassing Google OAuth. For testing only. |
 | `RESEND_API_KEY` | Secret | Resend.com API key for transactional order confirmation emails |
 | `ECHOMTG_API_KEY` | Secret | EchoMTG API key for graded pricing + set data |
+| `STRIPE_SECRET_KEY` | Secret | Stripe live secret key for Connect V1/V2 API calls |
+| `STRIPE_PUBLISHABLE_KEY` | Secret | Stripe live publishable key (returned to frontend for client-side use) |
+| `STRIPE_WEBHOOK_SECRET` | Secret | Stripe webhook signing secret for signature verification |
+| `PAYPAL_CLIENT_ID` | Secret | PayPal client ID for Orders API |
+| `PAYPAL_CLIENT_SECRET` | Secret | PayPal client secret for Orders API |
 
 ## Routes
 
@@ -74,6 +81,28 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 | `/api/sumup/checkout` | POST | Create a SumUp checkout (auth required). Accepts `{ amount, description, order_id }`. Calls SumUp Checkouts API with merchant code, returns `{ checkout_id, hosted_checkout_url }`. Sets `return_url` for webhook and `redirect_url` for post-payment redirect. Frontend mounts SumUp Card Widget with the returned checkout ID. |
 | `/api/sumup-webhook` | POST | SumUp payment webhook. Receives `CHECKOUT_STATUS_CHANGED` events from SumUp. Validates by polling SumUp API with `SUMUP_SECRET_KEY`, then updates D1 order status to `confirmed` / `paid`. No auth required (validated server-side). |
 | `/api/orders/:id/payment-status` | GET | Payment status polling (auth required, owner-only). If order has a `checkout_id`, polls SumUp API for real-time status (PENDING/PAID/FAILED/EXPIRED), maps to internal statuses, updates D1 on change. Used by OrderConfirmation.js for live payment tracking. |
+| `/api/price-alerts` | GET/POST/DELETE | Price alerts CRUD. Auth required. GET `?card_id=X` returns single alert; GET without card_id returns all user alerts. POST creates/updates (upsert). DELETE `?card_id=X&direction=Y` removes alert. |
+| `/api/paypal/create-order` | POST | Create PayPal order for checkout. |
+| `/api/paypal/capture-order` | POST | Capture PayPal order after buyer approval. |
+| `/api/stripe/v2/create-account` | POST | Create Stripe Connect V2 Express account (auth required). Uses `/v2/core/accounts` with JSON body, full dashboard, card_payments capability. Saves account ID to sellers table. |
+| `/api/stripe/v2/account-link` | POST | Generate V2 onboarding link (auth required). Uses `/v2/core/account_links` with `account_onboarding` use_case. Returns URL + expires_at. |
+| `/api/stripe/v2/account-status` | GET | Retrieve V2 account status with merchant capabilities and requirements (auth required). Syncs charges_enabled/payouts_enabled/onboarding_complete to D1 sellers table. |
+| `/api/stripe/v2/webhook` | POST | V2 thin event webhook. Handles account requirement/capability events by fetching full event from `/v2/core/events/{id}` and syncing to D1. Also handles V1 subscription lifecycle events. |
+| `/api/stripe/products` | GET/POST | Product CRUD on connected accounts (auth required). POST creates product with default_price_data. GET lists active products. Uses V1 API with `Stripe-Account` header. |
+| `/api/stripe/checkout` | POST | Create Checkout Session with direct charge + 5% application fee on connected account. Returns checkout URL. |
+| `/api/stripe/subscribe` | POST | Create subscription checkout using `customer_account` V2 pattern (auth required). |
+| `/api/stripe/billing-portal` | POST | Create Billing Portal session using `customer_account` (auth required). Returns portal URL. |
+| `/api/stripe/webhook` | POST | Standard V1 webhook. Handles payment_intent, charge, account.updated, and payout events. Updates stripe_payments, stripe_disputes, stripe_payouts, and sellers tables in D1. |
+| `/api/stripe/create-payment-intent` | POST | Create PaymentIntent with destination charge + 5% platform fee. Records payment in stripe_payments table. |
+| `/api/stripe/seller/payouts` | GET | Seller payout history from connected account (auth required, last 25 payouts). |
+| `/api/stripe/seller/balance` | GET | Seller available/pending balance from connected account (auth required). |
+| `/api/stripe/seller/sales` | GET | Seller sales analytics from D1: payments, disputes, totals (auth required). |
+| `/api/stripe/refund` | POST | Refund a payment with reverse transfer + refund application fee (auth required). |
+| `/api/stripe/connect/create-account` | POST | Legacy V1 Connect: create Express account. |
+| `/api/stripe/connect/account-link` | POST | Legacy V1 Connect: generate onboarding link. |
+| `/api/stripe/connect/account-status` | GET | Legacy V1 Connect: retrieve account status. |
+| `/api/stripe/connect/dashboard-link` | POST | Legacy V1 Connect: Express dashboard login link. |
+| `/api/scan/detect` | POST | Card scanner OCR detection endpoint. |
 
 ### Auth routes
 | Route | Method | Purpose |
@@ -95,18 +124,25 @@ Root-level SPA (GitHub Pages)  ──→  Worker (investmtg-proxy)  ──→  S
 
 ## Database schema
 
-11 tables in the D1 database:
+18 tables in the D1 database:
 - `users` — Google-authenticated user accounts (google_id, email, name, picture, role)
 - `auth_sessions` — HMAC-signed session tokens with 30-day expiry
 - `prices`
 - `portfolios` — has `user_id` FK to users
 - `listings` — has `user_id` FK to users
-- `sellers` — has `user_id` FK to users. Note: `session_token` column has NOT NULL + UNIQUE constraint; auth-based registrations use `'auth_<userId>'` as placeholder. On seller registration, user role is auto-promoted from 'buyer' to 'seller'.
+- `sellers` — has `user_id` FK to users. Columns include `stripe_account_id`, `stripe_onboarding_complete`, `stripe_charges_enabled`, `stripe_payouts_enabled`. Note: `session_token` column has NOT NULL + UNIQUE constraint; auth-based registrations use `'auth_<userId>'` as placeholder. On seller registration, user role is auto-promoted from 'buyer' to 'seller'.
 - `events`
 - `stores`
 - `cart_items` — has `user_id` FK to users
-- `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Uses `user_email` column (not user_id). Guest orders store `contact_email` as `user_email`. Auto-created by worker if missing. v33 adds ALTER TABLE migration for new payment columns on existing tables.
+- `orders` — order records with items (JSON), totals, contact info, fulfillment, status, payment_status, checkout_id, sumup_txn_id. Uses `user_email` column (not user_id). Guest orders store `contact_email` as `user_email`. Auto-created by worker if missing.
 - `order_counters` — monthly sequential counter for `GUM-YYYYMM-XXXXX` order IDs. Atomic upsert via `ON CONFLICT DO UPDATE`.
+- `binders` — user-created card organizers (name, color, icon, sort_order)
+- `lists` — virtual lists (Wishlist, Buylist, Trade) with types
+- `list_items` — cards within lists (card_id, card_name, quantity, target_price, condition, notes)
+- `price_alerts` — user price alert subscriptions (card_id, direction, threshold)
+- `stripe_payments` — Stripe payment records (order_id, payment_intent_id, seller_stripe_account, amount, application_fee, status, charge_id, error_message)
+- `stripe_payouts` — Stripe payout records (seller_id, stripe_payout_id, amount, currency, status, arrival_date, failure_message)
+- `stripe_disputes` — Stripe dispute records (stripe_payment_id, stripe_dispute_id, payment_intent_id, amount, reason, status, evidence_due)
 
 ## Scheduled tasks (Cron Triggers)
 
@@ -166,6 +202,9 @@ echo "your-key-here" | npx wrangler secret put SUMUP_SECRET_KEY
 echo "your-token-here" | npx wrangler secret put ADMIN_TOKEN
 echo "re_xxxxx" | npx wrangler secret put RESEND_API_KEY
 echo "your-echomtg-key" | npx wrangler secret put ECHOMTG_API_KEY
+echo "sk_live_xxx" | npx wrangler secret put STRIPE_SECRET_KEY
+echo "pk_live_xxx" | npx wrangler secret put STRIPE_PUBLISHABLE_KEY
+echo "whsec_xxx" | npx wrangler secret put STRIPE_WEBHOOK_SECRET
 ```
 
 List configured secrets:

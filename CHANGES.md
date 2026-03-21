@@ -1,5 +1,60 @@
 # investMTG — Changelog
 
+## 2026-03-21: v106 — Stripe Connect V2 Integration
+
+**Stripe Connect V2 (Worker)**
+- New `stripeV2Request()` helper: sends JSON body with Bearer auth to Stripe V2 API endpoints (vs form-encoded V1)
+- `POST /api/stripe/v2/create-account`: Creates Connect V2 Express account with full dashboard, `card_payments` capability, JSON via `/v2/core/accounts`
+- `POST /api/stripe/v2/account-link`: Generates V2 onboarding link via `/v2/core/account_links` with `account_onboarding` use_case
+- `GET /api/stripe/v2/account-status`: Retrieves V2 account with merchant capabilities and requirements; syncs `charges_enabled`/`payouts_enabled` to D1
+- `POST /api/stripe/v2/webhook`: V2 thin event handler — fetches full event via `/v2/core/events/{id}`, syncs account status on `requirements.updated` and `capability_status_updated`; also handles V1 subscription events (`customer.subscription.updated/deleted`, `invoice.paid/payment_failed`)
+- `POST /api/stripe/products`: Create product with `default_price_data` on connected account (V1 + `Stripe-Account` header)
+- `GET /api/stripe/products`: List active products on connected account
+- `POST /api/stripe/checkout`: Checkout Session with direct charge + 5% application fee on connected account
+- `POST /api/stripe/subscribe`: Subscription checkout using `customer_account` (V2 pattern — connected account IS the customer)
+- `POST /api/stripe/billing-portal`: Billing Portal session using `customer_account`
+- Legacy V1 Connect endpoints (`/api/stripe/connect/*`) retained for backward compatibility
+- 19 total Stripe API endpoints in the worker (8 new V2 handlers)
+
+**SellerDashboard — V2 Connect + Products Tab**
+- Replaced all V1 Connect calls with V2 equivalents: `stripeV2CreateAccount`, `stripeV2GetAccountLink`, `stripeV2GetAccountStatus`
+- Removed V1 imports: `stripeCreateConnectAccount`, `stripeGetAccountLink`, `stripeGetAccountStatus`, `stripeGetDashboardLink`
+- `handleStripeDashboard` now uses `stripeV2GetAccountLink` (V2 has no separate dashboard link endpoint)
+- Auto-syncs Stripe account status on return from onboarding (`stripe_return=true`)
+- New Products tab (conditional on `stripe_charges_enabled`): create Stripe products with name/description/price, grid display with active/inactive badges, `loadProducts()` on tab switch
+- Added 4 state variables: `products`, `productsLoading`, `newProduct`, `productError`
+- New functions: `loadProducts()`, `handleCreateProduct()` using `stripeCreateProduct`/`stripeListProducts`
+- TabBar updated: Products tab appears alongside Sales & Payouts when Stripe is active
+
+**ShopView.js — Buyer Storefront**
+- New component at `#shop/:sellerId` — buyer-facing storefront for Stripe products
+- Loads seller's active products via `stripeListProducts(sellerId)`
+- Product grid with name, description, price; "Buy Now" triggers `stripeCreateCheckout`
+- Shareable shop URL with copy-to-clipboard (`shop-link-box` CSS)
+- Added to app.js lazy loading and route map
+
+**Homepage (HomeView.js)**
+- Hero search: autocomplete dropdown with debounced Scryfall suggestions, `aria-autocomplete`/`aria-expanded` attributes
+- Hero search wrapper div for proper autocomplete positioning
+- Stitch design: search button inside input, vertical CTA cards with ghost icons + badges, left-aligned "The Process" section with background step numbers + icon boxes
+- Stat cards: inset border effect (`box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03)`)
+
+**Shared Components**
+- `StatCard.js` / `StatGrid.js`: stat display + grid container used in HomeView hero, SellerDashboard payouts
+- `TabBar.js`: tab navigation (default/compact/pill variants) used in SellerDashboard, PortfolioView, MetaView, DecklistView
+- `StatusBadge.js`: status label badge with variant/icon/size props
+- `LoadingSpinner.js`: block/inline spinner used in MetaView
+- `EmptyState.js`: empty/no-data card used in OrdersView, CartView, MetaView
+
+**Accessibility**
+- Semantic HTML: 8 view root wrappers changed from `div` to `main`/`article` with `role="main"`
+- ARIA: `aria-label` on 6 icon-only buttons, 4 unlabeled inputs, 1 image alt text improvement
+- 10 total ARIA edits across 7 component files
+
+**QA**
+- ShopView.js added to JS modules availability check
+- SW cache version bumped to v106
+
 ## 2026-03-16: v89 — PayPal Handshake Fix, Portfolio Persistence, Email & Image Updates
 
 **PayPal Capture Fix (Worker + Frontend)**
