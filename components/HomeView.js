@@ -161,7 +161,7 @@ export function HomeView(props) {
             h('p', null, 'Pay online with Stripe (cards, Apple Pay, Google Pay) or reserve for local pickup. Your choice.')
           ),
           h('div', { className: 'hiw-step hiw-step--seller' },
-            h('div', { className: 'hiw-number' }, '\uD83D\uDCB0'),
+            h('div', { className: 'hiw-number' }, '4'),
             h('h3', null, 'Sell Your Cards'),
             h('p', null, 'Register as a seller, connect Stripe, and list cards in minutes. Get paid automatically when orders come in.'),
             h('a', { href: '#seller', className: 'hiw-seller-link' }, 'Start selling \u2192')
@@ -246,7 +246,7 @@ export function HomeView(props) {
       ),
       h('section', { className: 'card-section scroll-reveal' },
         h('div', { className: 'card-section-header' },
-          h('h2', null, h(StarIcon, null), ' Budget Staples'),
+          h('h2', null, '\uD83C\uDFF7\uFE0F', ' Budget Staples'),
           h('p', { className: 'card-section-sub' }, 'Powerful cards that won\u2019t break the bank')
         ),
         loading
