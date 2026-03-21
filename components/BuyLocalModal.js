@@ -26,28 +26,31 @@ export function BuyLocalModal(props) {
   function handleConfirm() {
     if (!selectedStore) return;
     if (!selectedListing) return;
-    updateCart(function(prev) {
-      var cartId = selectedListing.id;
-      var existing = prev.find(function(i) { return i.id === cartId; });
-      if (existing) {
-        return prev.map(function(i) {
-          return i.id === cartId ? Object.assign({}, i, { qty: (i.qty || 1) + 1 }) : i;
-        });
-      }
-      return prev.concat([{
-        id: cartId,
-        name: selectedListing.cardName || card.name,
-        set: selectedListing.setName || card.set_name || '',
-        condition: selectedListing.condition,
-        finish: selectedListing.finish || 'nonfoil',
-        language: selectedListing.language || 'English',
-        price: selectedListing.price,
-        seller: selectedListing.seller,
-        image: selectedListing.image || '',
-        qty: 1,
-        store: selectedStore.name
-      }]);
-    });
+    var newItem = {
+      id: selectedListing.id,
+      name: selectedListing.cardName || card.name,
+      set: selectedListing.setName || card.set_name || '',
+      condition: selectedListing.condition,
+      finish: selectedListing.finish || 'nonfoil',
+      language: selectedListing.language || 'English',
+      price: selectedListing.price,
+      seller: selectedListing.seller,
+      image: selectedListing.image || '',
+      qty: 1,
+      store: selectedStore.name
+    };
+    // Pass plain array (not updater function) for compatibility
+    var currentCart = props.state && props.state.cart ? props.state.cart : [];
+    var existing = currentCart.find(function(i) { return i.id === newItem.id; });
+    var newCart;
+    if (existing) {
+      newCart = currentCart.map(function(i) {
+        return i.id === newItem.id ? Object.assign({}, i, { qty: (i.qty || 1) + 1 }) : i;
+      });
+    } else {
+      newCart = currentCart.concat([newItem]);
+    }
+    updateCart(newCart);
     setConfirmed(true);
     setTimeout(onClose, 1800);
   }

@@ -488,6 +488,7 @@ function App() {
     buyLocalCard && h(BuyLocalModal, {
       card: buyLocalCard,
       listings: gs.state.listings,
+      state: gs.state,
       updateCart: gs.updateCart,
       onClose: function() { setBuyLocalCard(null); }
     })
