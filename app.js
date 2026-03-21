@@ -522,11 +522,18 @@ if ('serviceWorker' in navigator) {
     // Service worker registration failed — non-critical
   });
 
-  // Listen for SW update messages — auto-reload when new version activates
+  // Listen for SW update messages — reload once per version to pick up new files
   navigator.serviceWorker.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'SW_UPDATED') {
-      console.log('[investMTG] Service worker updated to ' + event.data.version + ', will reload...');
-      setTimeout(function() { window.location.reload(); }, 500);
+      var newVersion = event.data.version || '';
+      var lastReload = sessionStorage.getItem('investmtg-sw-reload') || '';
+      if (lastReload === newVersion) {
+        // Already reloaded for this version — don't loop
+        return;
+      }
+      sessionStorage.setItem('investmtg-sw-reload', newVersion);
+      console.log('[investMTG] Service worker updated to ' + newVersion + ', reloading once...');
+      setTimeout(function() { window.location.reload(); }, 800);
     }
   });
 }
