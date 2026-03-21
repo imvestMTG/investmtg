@@ -616,3 +616,84 @@ export function fetchMTGStocksHistory(printId) {
       return null;
     });
 }
+
+/* ══════════════════════════════════════════════════
+ * Stripe Connect + Payment API functions
+ * ══════════════════════════════════════════════════ */
+
+/** Create a Stripe Express connected account for a seller */
+export function stripeCreateConnectAccount(sellerId) {
+  return backendFetch('/api/stripe/connect/create-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}
+
+/** Generate Stripe onboarding link for seller */
+export function stripeGetAccountLink(sellerId) {
+  return backendFetch('/api/stripe/connect/account-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}
+
+/** Check seller's Stripe account status */
+export function stripeGetAccountStatus(sellerId) {
+  return backendFetch('/api/stripe/connect/account-status?seller_id=' + sellerId);
+}
+
+/** Generate Express Dashboard login link for seller */
+export function stripeGetDashboardLink(sellerId) {
+  return backendFetch('/api/stripe/connect/dashboard-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seller_id: sellerId }),
+  });
+}
+
+/** Create a Stripe PaymentIntent (destination charge if seller has Stripe account) */
+export function stripeCreatePaymentIntent(orderId, amount, sellerStripeAccount, sellerId, description, customerEmail) {
+  var body = {
+    order_id: orderId,
+    amount: amount,
+  };
+  if (sellerStripeAccount) body.seller_stripe_account = sellerStripeAccount;
+  if (sellerId) body.seller_id = sellerId;
+  if (description) body.description = description;
+  if (customerEmail) body.customer_email = customerEmail;
+  return backendFetch('/api/stripe/create-payment-intent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Get seller's payouts from Stripe */
+export function stripeGetSellerPayouts(sellerId) {
+  return backendFetch('/api/stripe/seller/payouts?seller_id=' + sellerId);
+}
+
+/** Get seller's Stripe balance */
+export function stripeGetSellerBalance(sellerId) {
+  return backendFetch('/api/stripe/seller/balance?seller_id=' + sellerId);
+}
+
+/** Get seller's sales history + analytics */
+export function stripeGetSellerSales(sellerId) {
+  return backendFetch('/api/stripe/seller/sales?seller_id=' + sellerId);
+}
+
+/** Refund a Stripe payment */
+export function stripeRefundPayment(paymentIntentId, amount, reason) {
+  return backendFetch('/api/stripe/refund', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      payment_intent_id: paymentIntentId,
+      amount: amount || undefined,
+      reason: reason || 'requested_by_customer',
+    }),
+  });
+}

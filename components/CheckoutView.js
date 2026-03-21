@@ -1,50 +1,32 @@
-/* CheckoutView.js — Checkout with SumUp Card Payment + PayPal + Reserve & Pay at Pickup */
+/* CheckoutView.js — Checkout with Stripe Payment Element + Reserve & Pay at Pickup */
 import React from 'react';
 import { formatUSD } from '../utils/helpers.js';
 import { PICKUP_STORES } from '../utils/stores.js';
 import { TruckIcon, StorePickupIcon, MapPinIcon, UserIcon } from './shared/Icons.js';
-import { SHIPPING_FLAT_RATE, PROXY_BASE, SUMUP_PUBLIC_KEY, BACKEND_FETCH_TIMEOUT, STORAGE_KEYS } from '../utils/config.js';
+import { SHIPPING_FLAT_RATE, PROXY_BASE, BACKEND_FETCH_TIMEOUT, STORAGE_KEYS } from '../utils/config.js';
 import { sanitizeInput, isValidEmail } from '../utils/sanitize.js';
 import { groupBySeller } from '../utils/group-by-seller.js';
 import { storageGet, storageSet, storageGetRaw } from '../utils/storage.js';
+import { stripeCreatePaymentIntent } from '../utils/api.js';
 import { TermsCheckbox } from './TermsGate.js';
 var h = React.createElement;
 
-/* Lazy-load SumUp Card SDK v2 */
-var sumupSDKPromise = null;
-function loadSumUpSDK() {
-  if (sumupSDKPromise) return sumupSDKPromise;
-  if (window.SumUpCard) return Promise.resolve(window.SumUpCard);
-  sumupSDKPromise = new Promise(function(resolve, reject) {
+/* Lazy-load Stripe.js v3 */
+var stripePromise = null;
+function loadStripe() {
+  if (stripePromise) return stripePromise;
+  if (window.Stripe) return Promise.resolve(window.Stripe);
+  stripePromise = new Promise(function(resolve, reject) {
     var script = document.createElement('script');
-    script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+    script.src = 'https://js.stripe.com/v3/';
     script.onload = function() {
-      if (window.SumUpCard) { resolve(window.SumUpCard); }
-      else { reject(new Error('SumUp SDK loaded but SumUpCard not found')); }
+      if (window.Stripe) { resolve(window.Stripe); }
+      else { reject(new Error('Stripe.js loaded but Stripe not found')); }
     };
-    script.onerror = function() { reject(new Error('Failed to load SumUp SDK')); };
+    script.onerror = function() { reject(new Error('Failed to load Stripe.js')); };
     document.head.appendChild(script);
   });
-  return sumupSDKPromise;
-}
-
-/* Lazy-load PayPal Web SDK v6 */
-var paypalSDKPromise = null;
-var PAYPAL_CLIENT_ID = 'AWpSVtkSK0TvIhBTYe5mbXIKQC4bHSGiWI4EXnXipAGsH7NfDTnSHulEhLTKobewumlF2UPKcTZd8qxA';
-function loadPayPalSDK() {
-  if (paypalSDKPromise) return paypalSDKPromise;
-  if (window.paypal && typeof window.paypal.createInstance === 'function') return Promise.resolve(window.paypal);
-  paypalSDKPromise = new Promise(function(resolve, reject) {
-    var script = document.createElement('script');
-    script.src = 'https://www.paypal.com/web-sdk/v6/core';
-    script.onload = function() {
-      if (window.paypal) { resolve(window.paypal); }
-      else { reject(new Error('PayPal SDK loaded but window.paypal not found')); }
-    };
-    script.onerror = function() { reject(new Error('Failed to load PayPal SDK')); };
-    document.head.appendChild(script);
-  });
-  return paypalSDKPromise;
+  return stripePromise;
 }
 
 export function CheckoutView(props) {
@@ -78,47 +60,29 @@ export function CheckoutView(props) {
   var ref8 = React.useState(false);
   var showConfirm = ref8[0], setShowConfirm = ref8[1];
 
-  // Payment method: 'sumup', 'paypal', or 'reserve'
-  var ref9 = React.useState('sumup');
+  // Payment method: 'stripe' or 'reserve'
+  var ref9 = React.useState('stripe');
   var paymentMethod = ref9[0], setPaymentMethod = ref9[1];
 
-  // SumUp state
+  // Stripe state
   var ref10 = React.useState(null);
-  var sumupError = ref10[0], setSumupError = ref10[1];
+  var stripeError = ref10[0], setStripeError = ref10[1];
 
   var ref11 = React.useState(false);
-  var sumupLoading = ref11[0], setSumupLoading = ref11[1];
+  var stripeLoading = ref11[0], setStripeLoading = ref11[1];
 
-  var ref12 = React.useState(null);
-  var sumupCheckoutId = ref12[0], setSumupCheckoutId = ref12[1];
-
-  var ref13 = React.useState(false);
-  var sumupMounted = ref13[0], setSumupMounted = ref13[1];
-
-  // PayPal state
-  var refPP1 = React.useState(false);
-  var paypalLoading = refPP1[0], setPaypalLoading = refPP1[1];
-
-  var refPP2 = React.useState(null);
-  var paypalError = refPP2[0], setPaypalError = refPP2[1];
-
-  var refPP3 = React.useState(false);
-  var paypalReady = refPP3[0], setPaypalReady = refPP3[1];
-
-  // Refs for PayPal session + instance
-  var paypalSessionRef = React.useRef(null);
-  var paypalSdkRef = React.useRef(null);
-  var investOrderIdRef = React.useRef(null); // Track investMTG order ID across PayPal flow
+  var ref12 = React.useState(false);
+  var stripeMounted = ref12[0], setStripeMounted = ref12[1];
 
   var refTos = React.useState(false);
   var tosAccepted = refTos[0], setTosAccepted = refTos[1];
   var refTosErr = React.useState('');
   var tosError = refTosErr[0], setTosError = refTosErr[1];
 
-  // Ref for SumUp card widget container
-  var sumupContainerRef = React.useRef(null);
-  // Ref for SumUp card instance (to destroy on unmount)
-  var sumupInstanceRef = React.useRef(null);
+  // Refs for Stripe instances
+  var stripeRef = React.useRef(null);       // Stripe instance
+  var elementsRef = React.useRef(null);     // Stripe Elements instance
+  var orderIdRef = React.useRef(null);      // Server order ID for payment completion
 
   var subtotal = cart.reduce(function(sum, item) {
     return sum + (item.price || 0) * (item.qty || 1);
@@ -145,7 +109,7 @@ export function CheckoutView(props) {
   /* ── Create order on server, get order ID ── */
   function createServerOrder(method) {
     var store = PICKUP_STORES.find(function(s) { return s.id === pickupStore; });
-    var authToken = storageGetRaw('investmtg_auth_token', null);
+    var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
     var headers = { 'Content-Type': 'application/json' };
     if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
 
@@ -162,17 +126,22 @@ export function CheckoutView(props) {
       payment_method: method
     };
 
+    var ac = new AbortController();
+    var tid = setTimeout(function() { ac.abort(); }, BACKEND_FETCH_TIMEOUT);
     return fetch(PROXY_BASE + '/api/orders', {
       method: 'POST',
       credentials: 'include',
       headers: headers,
+      signal: ac.signal,
       body: JSON.stringify(apiBody)
     }).then(function(res) {
+      clearTimeout(tid);
       return res.json();
     }).then(function(data) {
       var serverId = (data && data.order && data.order.id) ? data.order.id : null;
       return serverId || ('GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase());
     }).catch(function() {
+      clearTimeout(tid);
       return 'GUM-LOCAL-' + Math.random().toString(36).slice(2, 10).toUpperCase();
     });
   }
@@ -195,7 +164,7 @@ export function CheckoutView(props) {
       },
       date: new Date().toISOString(),
       paymentMethod: method,
-      status: (method === 'sumup' || method === 'paypal') ? 'paid' : 'reserved'
+      status: method === 'stripe' ? 'paid' : 'reserved'
     };
 
     var orders = storageGet(STORAGE_KEYS.ORDERS, []);
@@ -221,201 +190,115 @@ export function CheckoutView(props) {
     });
   }
 
-  /* ── Initialize SumUp checkout when user selects Pay Online ── */
-  function initSumUpCheckout() {
-    if (sumupCheckoutId) return; // Already initialized
-    setSumupLoading(true);
-    setSumupError(null);
+  /* ── Initialize Stripe Payment Element ── */
+  function initStripeCheckout() {
+    if (stripeMounted) return;
+    setStripeLoading(true);
+    setStripeError(null);
 
-    // 1. Create order on server first to get the order ID
-    createServerOrder('sumup').then(function(orderId) {
-      // 2. Create SumUp checkout via worker
-      var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
-      var headers = { 'Content-Type': 'application/json' };
-      if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
+    // 1. Create order on server first
+    createServerOrder('stripe').then(function(orderId) {
+      orderIdRef.current = orderId;
 
-      var ac = new AbortController();
-      var tid = setTimeout(function() { ac.abort(); }, BACKEND_FETCH_TIMEOUT);
-      return fetch(PROXY_BASE + '/api/sumup/checkout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers,
-        signal: ac.signal,
-        body: JSON.stringify({ amount: total, order_id: orderId })
-      }).then(function(res) { clearTimeout(tid); return res.json(); })
-        .then(function(data) {
-          if (!data.ok || !data.checkout_id) {
-            throw new Error(data.detail || data.error || 'Failed to create checkout');
+      // 2. Get the first seller's Stripe account info from cart items (if available)
+      var firstItem = cart[0];
+      var sellerStripeAccount = (firstItem && firstItem.stripe_account_id) || null;
+      var sellerId = (firstItem && firstItem.seller_id) || null;
+      var amountCents = Math.round(total * 100);
+
+      // 3. Create PaymentIntent via backend
+      return stripeCreatePaymentIntent(
+        orderId,
+        amountCents,
+        sellerStripeAccount,
+        sellerId,
+        'investMTG Order ' + orderId,
+        contact.email
+      );
+    }).then(function(result) {
+      if (!result || !result.client_secret) {
+        throw new Error(result.error || result.detail || 'Failed to create payment');
+      }
+
+      // 4. Load Stripe.js and mount Payment Element
+      return loadStripe().then(function(StripeFn) {
+        var stripe = StripeFn(result.publishable_key);
+        stripeRef.current = stripe;
+
+        var elements = stripe.elements({
+          clientSecret: result.client_secret,
+          appearance: {
+            theme: 'night',
+            variables: {
+              colorPrimary: '#d4a843',
+              colorBackground: '#1a1a2e',
+              colorText: '#e0e0e0',
+              colorDanger: '#ff6b6b',
+              fontFamily: '"Satoshi", system-ui, sans-serif',
+              borderRadius: '8px'
+            }
           }
-          setSumupCheckoutId(data.checkout_id);
-          setSumupLoading(false);
-          return { checkoutId: data.checkout_id, orderId: orderId };
         });
-    }).then(function(result) {
-      // 3. Load SDK and mount widget
-      return loadSumUpSDK().then(function(SumUpCard) {
-        return { SumUpCard: SumUpCard, checkoutId: result.checkoutId, orderId: result.orderId };
-      });
-    }).then(function(result) {
-      if (!sumupContainerRef.current) return;
-      var card = result.SumUpCard.mount({
-        id: 'sumup-card-container',
-        checkoutId: result.checkoutId,
-        donateSubmitButton: false,
-        showFooter: false,
-        showZipCode: true,
-        showEmail: true,
-        email: contact.email || '',
-        locale: 'en-US',
-        currency: 'USD',
-        amount: total.toFixed(2),
-        onResponse: function(type, body) {
-          if (type === 'success' || (body && body.status === 'PAID')) {
-            finishOrder(result.orderId, 'sumup');
-          } else if (type === 'error' || type === 'sent' || (body && body.status === 'FAILED')) {
-            setSumupError('Payment was not completed. ' + (body && body.message ? body.message : 'Please try again.'));
-            setPaymentProcessing(false);
-          }
+        elementsRef.current = elements;
+
+        var paymentElement = elements.create('payment', {
+          layout: 'tabs'
+        });
+
+        var container = document.getElementById('stripe-payment-element');
+        if (container) {
+          paymentElement.mount('#stripe-payment-element');
+          setStripeMounted(true);
+          setStripeLoading(false);
+        } else {
+          throw new Error('Payment container not found');
         }
       });
-      sumupInstanceRef.current = card;
-      setSumupMounted(true);
     }).catch(function(err) {
-      setSumupError(err.message || 'Could not initialize payment. Please try Reserve & Pay at Pickup.');
-      setSumupLoading(false);
+      setStripeError(err.message || 'Could not initialize payment. Please try Reserve & Pay at Pickup.');
+      setStripeLoading(false);
     });
   }
 
-  /* ── Initialize PayPal checkout ── */
-  function initPayPalCheckout() {
-    if (paypalReady) return;
-    setPaypalLoading(true);
-    setPaypalError(null);
-
-    loadPayPalSDK().then(function(paypalSdk) {
-      paypalSdkRef.current = paypalSdk;
-      return paypalSdk.createInstance({
-        clientId: PAYPAL_CLIENT_ID,
-        components: ['paypal-payments'],
-        pageType: 'checkout'
-      });
-    }).then(function(sdkInstance) {
-      return sdkInstance.findEligibleMethods({ currencyCode: 'USD' }).then(function(methods) {
-        if (!methods || !methods.paypal || !methods.paypal.eligible) {
-          throw new Error('PayPal is not available for this transaction. Please use another payment method.');
-        }
-
-        var paymentSession = sdkInstance.createPayPalOneTimePaymentSession({
-          onApprove: function(data) {
-            setPaymentProcessing(true);
-            // data.orderID contains the PayPal order ID — capture it
-            var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
-            var headers = { 'Content-Type': 'application/json' };
-            if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
-
-            var ac2 = new AbortController();
-            var tid2 = setTimeout(function() { ac2.abort(); }, BACKEND_FETCH_TIMEOUT);
-            fetch(PROXY_BASE + '/api/paypal/capture-order', {
-              method: 'POST',
-              credentials: 'include',
-              headers: headers,
-              signal: ac2.signal,
-              body: JSON.stringify({ paypal_order_id: data.orderID })
-            }).then(function(res) { clearTimeout(tid2); return res.json(); })
-              .then(function(result) {
-                if (result.ok) {
-                  var orderId = result.order_id || investOrderIdRef.current || data.orderID;
-                  finishOrder(orderId, 'paypal');
-                } else {
-                  setPaypalError(result.detail || result.error || 'Payment capture failed. Please try again.');
-                  setPaymentProcessing(false);
-                }
-              }).catch(function(err) {
-                setPaypalError('Network error during payment capture: ' + err.message);
-                setPaymentProcessing(false);
-              });
-          },
-          onCancel: function() {
-            setPaypalError('Payment was cancelled. You can try again or choose another method.');
-          },
-          onError: function(err) {
-            setPaypalError('PayPal error: ' + (err.message || 'Something went wrong. Please try again.'));
-          }
-        });
-
-        paypalSessionRef.current = paymentSession;
-        setPaypalReady(true);
-        setPaypalLoading(false);
-      });
-    }).catch(function(err) {
-      setPaypalError(err.message || 'Could not initialize PayPal. Please try another payment method.');
-      setPaypalLoading(false);
-    });
-  }
-
-  /* ── PayPal: start the payment flow on button click ── */
-  function startPayPalPayment() {
-    if (!paypalSessionRef.current) {
-      setPaypalError('PayPal not ready. Please wait or try another method.');
+  /* ── Confirm Stripe payment ── */
+  function handleStripeSubmit() {
+    if (!stripeRef.current || !elementsRef.current) {
+      setStripeError('Payment not ready. Please wait or try another method.');
       return;
     }
     setPaymentProcessing(true);
-    setPaypalError(null);
+    setStripeError(null);
 
-    // 1. Create investMTG order on server
-    createServerOrder('paypal').then(function(orderId) {
-      // Store investMTG order ID so onApprove can access it
-      investOrderIdRef.current = orderId;
-      // 2. Create PayPal order on server
-      var authToken = storageGetRaw(STORAGE_KEYS.AUTH_TOKEN, null);
-      var headers = { 'Content-Type': 'application/json' };
-      if (authToken) { headers['Authorization'] = 'Bearer ' + authToken; }
-
-      var ac3 = new AbortController();
-      var tid3 = setTimeout(function() { ac3.abort(); }, BACKEND_FETCH_TIMEOUT);
-      return fetch(PROXY_BASE + '/api/paypal/create-order', {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers,
-        signal: ac3.signal,
-        body: JSON.stringify({ order_id: orderId, amount: total })
-      }).then(function(res) { clearTimeout(tid3); return res.json(); })
-        .then(function(data) {
-          if (!data.ok || !data.paypal_order_id) {
-            throw new Error(data.detail || data.error || 'Failed to create PayPal order');
-          }
-          // 3. Start PayPal popup/redirect with the order
-          return paypalSessionRef.current.start(
-            { presentationMode: 'auto' },
-            function createOrder() { return { orderId: data.paypal_order_id }; }
-          );
-        });
+    var orderId = orderIdRef.current;
+    stripeRef.current.confirmPayment({
+      elements: elementsRef.current,
+      confirmParams: {
+        return_url: 'https://www.investmtg.com/#order/' + orderId,
+        receipt_email: contact.email
+      },
+      redirect: 'if_required'
+    }).then(function(result) {
+      if (result.error) {
+        setStripeError(result.error.message || 'Payment failed. Please try again.');
+        setPaymentProcessing(false);
+      } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+        // Payment succeeded without redirect
+        finishOrder(orderId, 'stripe');
+      } else {
+        // Payment may still be processing (3D Secure redirect, etc.)
+        // The return_url will handle completion
+        setPaymentProcessing(false);
+      }
     }).catch(function(err) {
-      setPaypalError(err.message || 'Could not start PayPal payment.');
+      setStripeError(err.message || 'An unexpected error occurred.');
       setPaymentProcessing(false);
     });
   }
 
-  // Cleanup SumUp widget on unmount
+  // When step changes to 4 and paymentMethod is 'stripe', init checkout
   React.useEffect(function() {
-    return function() {
-      if (sumupInstanceRef.current && typeof sumupInstanceRef.current.unmount === 'function') {
-        try { sumupInstanceRef.current.unmount(); } catch (e) { /* ignore */ }
-      }
-    };
-  }, []);
-
-  // When step changes to 4 and paymentMethod is 'sumup', init checkout
-  React.useEffect(function() {
-    if (step === 4 && paymentMethod === 'sumup' && !sumupCheckoutId && !sumupLoading) {
-      initSumUpCheckout();
-    }
-  }, [step, paymentMethod]);
-
-  // When step changes to 4 and paymentMethod is 'paypal', init PayPal
-  React.useEffect(function() {
-    if (step === 4 && paymentMethod === 'paypal' && !paypalReady && !paypalLoading) {
-      initPayPalCheckout();
+    if (step === 4 && paymentMethod === 'stripe' && !stripeMounted && !stripeLoading) {
+      initStripeCheckout();
     }
   }, [step, paymentMethod]);
 
@@ -738,54 +621,26 @@ export function CheckoutView(props) {
           h('h3', { className: 'checkout-payment-methods-title' }, 'Choose Payment Method'),
 
           h('label', {
-            className: 'fulfillment-option' + (paymentMethod === 'sumup' ? ' selected' : ''),
-            onClick: function() { setPaymentMethod('sumup'); }
+            className: 'fulfillment-option' + (paymentMethod === 'stripe' ? ' selected' : ''),
+            onClick: function() { setPaymentMethod('stripe'); }
           },
             h('input', {
               type: 'radio',
               name: 'payment-method',
-              value: 'sumup',
-              checked: paymentMethod === 'sumup',
-              onChange: function() { setPaymentMethod('sumup'); }
+              value: 'stripe',
+              checked: paymentMethod === 'stripe',
+              onChange: function() { setPaymentMethod('stripe'); }
             }),
             h('div', { className: 'fulfillment-option-content' },
               h('div', { className: 'fulfillment-option-header' },
                 h('span', { style: { fontSize: '1.4em' } }, '\uD83D\uDCB3'),
                 h('div', null,
                   h('div', { className: 'fulfillment-option-title' }, 'Pay Online'),
-                  h('div', { className: 'fulfillment-option-price' }, 'Credit / Debit Card')
+                  h('div', { className: 'fulfillment-option-price' }, 'Card, Apple Pay, Google Pay')
                 )
               ),
               h('p', { className: 'fulfillment-option-desc' },
-                'Pay securely now with your credit or debit card via SumUp. Your card details are handled entirely by SumUp \u2014 we never see them.'
-              )
-            )
-          ),
-
-          h('label', {
-            className: 'fulfillment-option' + (paymentMethod === 'paypal' ? ' selected' : ''),
-            onClick: function() { setPaymentMethod('paypal'); }
-          },
-            h('input', {
-              type: 'radio',
-              name: 'payment-method',
-              value: 'paypal',
-              checked: paymentMethod === 'paypal',
-              onChange: function() { setPaymentMethod('paypal'); }
-            }),
-            h('div', { className: 'fulfillment-option-content' },
-              h('div', { className: 'fulfillment-option-header' },
-                h('span', { className: 'paypal-logo-icon', style: { fontSize: '1.4em', fontWeight: '700', letterSpacing: '-0.02em' } },
-                  h('span', { style: { color: '#003087' } }, 'Pay'),
-                  h('span', { style: { color: '#009cde' } }, 'Pal')
-                ),
-                h('div', null,
-                  h('div', { className: 'fulfillment-option-title' }, 'PayPal'),
-                  h('div', { className: 'fulfillment-option-price' }, 'PayPal, Venmo, or Pay Later')
-                )
-              ),
-              h('p', { className: 'fulfillment-option-desc' },
-                'Pay securely with your PayPal account, Venmo, or eligible Pay Later options. Your payment details are handled entirely by PayPal.'
+                'Pay securely now with your credit card, debit card, Apple Pay, or Google Pay. Your payment details are handled entirely by Stripe \u2014 we never see them.'
               )
             )
           ),
@@ -816,97 +671,53 @@ export function CheckoutView(props) {
           )
         ),
 
-        // ── SumUp Card Widget (shown when paymentMethod === 'sumup') ──
-        paymentMethod === 'sumup' && h('div', { className: 'checkout-sumup-section' },
-          sumupLoading && h('div', { className: 'checkout-sumup-loading' },
+        // ── Stripe Payment Element (shown when paymentMethod === 'stripe') ──
+        paymentMethod === 'stripe' && h('div', { className: 'checkout-stripe-section' },
+          stripeLoading && h('div', { className: 'checkout-stripe-loading' },
             h('span', { className: 'spinner' }),
             h('span', null, ' Preparing secure payment\u2026')
           ),
 
-          sumupError && h('div', { className: 'checkout-sumup-error' },
-            h('p', null, sumupError),
+          stripeError && h('div', { className: 'checkout-stripe-error' },
+            h('p', null, stripeError),
             h('button', {
               className: 'btn btn-secondary btn-sm',
               onClick: function() {
-                setSumupError(null);
-                setSumupCheckoutId(null);
-                setSumupLoading(false);
-                setSumupMounted(false);
-                sumupSDKPromise = null;
-                initSumUpCheckout();
+                setStripeError(null);
+                setStripeMounted(false);
+                setStripeLoading(false);
+                stripeRef.current = null;
+                elementsRef.current = null;
+                orderIdRef.current = null;
+                stripePromise = null;
+                initStripeCheckout();
               }
             }, 'Retry Payment')
           ),
 
-          // The SumUp Card Widget will mount here
+          // The Stripe Payment Element mounts here
           h('div', {
-            id: 'sumup-card-container',
-            ref: sumupContainerRef,
+            id: 'stripe-payment-element',
             style: {
-              minHeight: sumupMounted ? '280px' : '0',
+              minHeight: stripeMounted ? '280px' : '0',
               transition: 'min-height 0.3s ease'
             }
           }),
 
-          sumupMounted && h('div', { className: 'payment-security-badges' },
+          stripeMounted && h('button', {
+            className: 'btn btn-primary btn-lg checkout-stripe-submit' + (paymentProcessing ? ' loading' : ''),
+            onClick: handleStripeSubmit,
+            disabled: paymentProcessing
+          },
+            paymentProcessing
+              ? h('span', null, h('span', { className: 'spinner spinner-light' }), ' Processing\u2026')
+              : h('span', null, '\uD83D\uDCB3 Pay ', formatUSD(total))
+          ),
+
+          stripeMounted && h('div', { className: 'payment-security-badges' },
             h('span', { className: 'security-badge' }, '\uD83D\uDD12 PCI Compliant'),
             h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F 3D Secure'),
-            h('span', { className: 'security-badge' }, '\u2705 Powered by SumUp')
-          )
-        ),
-
-        // ── PayPal section (shown when paymentMethod === 'paypal') ──
-        paymentMethod === 'paypal' && h('div', { className: 'checkout-paypal-section' },
-          paypalLoading && h('div', { className: 'checkout-paypal-loading' },
-            h('span', { className: 'spinner' }),
-            h('span', null, ' Connecting to PayPal\u2026')
-          ),
-
-          paypalError && h('div', { className: 'checkout-paypal-error' },
-            h('p', null, paypalError),
-            h('button', {
-              className: 'btn btn-secondary btn-sm',
-              onClick: function() {
-                setPaypalError(null);
-                setPaypalReady(false);
-                setPaypalLoading(false);
-                paypalSessionRef.current = null;
-                paypalSdkRef.current = null;
-                paypalSDKPromise = null;
-                initPayPalCheckout();
-              }
-            }, 'Retry PayPal')
-          ),
-
-          paypalReady && !paypalError && h('div', { className: 'checkout-paypal-ready' },
-            h('div', { className: 'checkout-paypal-info' },
-              h('span', { className: 'paypal-logo-text' },
-                h('span', { style: { color: '#003087', fontWeight: '700' } }, 'Pay'),
-                h('span', { style: { color: '#009cde', fontWeight: '700' } }, 'Pal')
-              ),
-              h('p', null, 'Click the button below to complete your payment securely through PayPal.')
-            ),
-            h('button', {
-              className: 'btn btn-paypal btn-lg',
-              onClick: startPayPalPayment,
-              disabled: paymentProcessing
-            },
-              paymentProcessing
-                ? h('span', null, h('span', { className: 'spinner spinner-light' }), ' Processing\u2026')
-                : h('span', null, 'Pay with ',
-                    h('span', { className: 'u-bold' },
-                      h('span', { style: { color: '#fff' } }, 'Pay'),
-                      h('span', { style: { color: '#A6D8F0' } }, 'Pal')
-                    ),
-                    ' \u2014 ', formatUSD(total)
-                  )
-            )
-          ),
-
-          (paypalReady || paypalLoading) && h('div', { className: 'payment-security-badges' },
-            h('span', { className: 'security-badge' }, '\uD83D\uDD12 Buyer Protection'),
-            h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Payments'),
-            h('span', { className: 'security-badge' }, '\u2705 Powered by PayPal')
+            h('span', { className: 'security-badge' }, '\u2705 Powered by Stripe')
           )
         ),
 
@@ -944,8 +755,7 @@ export function CheckoutView(props) {
           }, '\u2190 Back'),
 
           // For reserve: show reserve button
-          // For SumUp: the widget handles the submit, but show a fallback button if widget not mounted
-          // For PayPal: the PayPal section above has its own button
+          // For Stripe: the submit button is above the Payment Element
           paymentMethod === 'reserve'
             ? h('button', {
                 className: 'btn btn-primary btn-lg' + (paymentProcessing ? ' loading' : ''),
@@ -956,22 +766,14 @@ export function CheckoutView(props) {
                   ? h('span', null, h('span', { className: 'spinner' }), ' Reserving\u2026')
                   : h('span', null, '\uD83D\uDD12 Reserve Order \u2014 ', formatUSD(total))
               )
-            : paymentMethod === 'sumup' && (!sumupMounted && !sumupLoading)
-              ? h('button', {
-                  className: 'btn btn-primary btn-lg',
-                  onClick: function() { initSumUpCheckout(); },
-                  disabled: sumupLoading
-                }, '\uD83D\uDCB3 Initialize Payment')
-              : null
+            : null
         ),
 
         h('div', { className: 'checkout-dispute-notice' },
           h('p', null,
             'By completing this order, you agree to our ',
             h('a', { href: '#terms' }, 'Terms of Service'),
-            '. For payment disputes, contact your card issuer (for card payments) or ',
-            h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'),
-            ' (for PayPal). investMTG facilitates connections between buyers and sellers and is not a party to transactions. See our ',
+            '. For payment disputes, contact your card issuer or Stripe. investMTG facilitates connections between buyers and sellers and is not a party to transactions. See our ',
             h('a', { href: '#terms', onClick: function(e) { e.preventDefault(); window.open('#terms', '_blank'); } }, 'Refund Policy'),
             ' for details.'
           )
@@ -982,13 +784,9 @@ export function CheckoutView(props) {
             ? h('p', { className: 'checkout-payment-note' },
                 '\uD83D\uDD12 Your order will be reserved. The seller will be notified and you\'ll coordinate payment at pickup. No charge until you receive your cards.'
               )
-            : paymentMethod === 'paypal'
-              ? h('p', { className: 'checkout-payment-note' },
-                  'Your payment is processed securely by PayPal. investMTG never sees your payment details.'
-                )
-              : h('p', { className: 'checkout-payment-note' },
-                  '\uD83D\uDCB3 Your payment is processed securely by SumUp. investMTG never sees your card details.'
-                ),
+            : h('p', { className: 'checkout-payment-note' },
+                '\uD83D\uDCB3 Your payment is processed securely by Stripe. investMTG never sees your card details.'
+              ),
           h('div', { className: 'payment-security-badges' },
             h('span', { className: 'security-badge' }, '\uD83D\uDD12 SSL Encrypted'),
             h('span', { className: 'security-badge' }, '\uD83D\uDEE1\uFE0F Secure Checkout'),

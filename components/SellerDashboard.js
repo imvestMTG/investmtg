@@ -6,7 +6,7 @@ import { getStoreOptionsAsync } from '../utils/stores.js';
 import { PlusIcon, EditIcon, TrashIcon, UserIcon, TagIcon, OrderIcon, ShieldIcon, CheckCircleIcon, UploadIcon, FileTextIcon, AlertCircleIcon, LayersIcon, GridIcon, ListIcon } from './shared/Icons.js';
 import { sanitizeInput } from '../utils/sanitize.js';
 import { ConfirmModal } from './shared/ConfirmModal.js';
-import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings } from '../utils/api.js';
+import { fetchSeller, registerSeller, updateSeller, deleteSeller, createListing, createListingsBatch, deleteListing, fetchListings, stripeCreateConnectAccount, stripeGetAccountLink, stripeGetAccountStatus, stripeGetDashboardLink, stripeGetSellerPayouts, stripeGetSellerBalance, stripeGetSellerSales } from '../utils/api.js';
 import { parseManaboxCSV, parseTextList } from '../utils/import-parser.js';
 import { STORAGE_KEYS, SCRYFALL_API_BASE } from '../utils/config.js';
 import { storageGet } from '../utils/storage.js';
@@ -1296,6 +1296,19 @@ export function SellerDashboard(props) {
   var ref7 = React.useState(STORE_OPTIONS);
   var storeOptions = ref7[0], setStoreOptions = ref7[1];
 
+  // Stripe Connect state
+  var refStripeLoading = React.useState(false);
+  var stripeConnectLoading = refStripeLoading[0], setStripeConnectLoading = refStripeLoading[1];
+
+  var refStripeError = React.useState(null);
+  var stripeConnectError = refStripeError[0], setStripeConnectError = refStripeError[1];
+
+  var refStripeSales = React.useState(null);
+  var stripeSalesData = refStripeSales[0], setStripeSalesData = refStripeSales[1];
+
+  var refStripeBalance = React.useState(null);
+  var stripeBalance = refStripeBalance[0], setStripeBalance = refStripeBalance[1];
+
   // On mount: check if user is already registered via session cookie
   React.useEffect(function() {
     // Fetch store options async
@@ -1314,6 +1327,87 @@ export function SellerDashboard(props) {
       setSellerLoading(false);
     });
   }, []);
+
+  // Detect return from Stripe onboarding and refresh account status
+  React.useEffect(function() {
+    var hash = window.location.hash || '';
+    if (hash.indexOf('stripe_return=true') !== -1 && seller && seller.id) {
+      stripeGetAccountStatus(seller.id).then(function(data) {
+        if (data && !data.error) {
+          setSeller(function(prev) {
+            return Object.assign({}, prev, {
+              stripe_account_id: data.stripe_account_id,
+              stripe_charges_enabled: data.charges_enabled ? 1 : 0,
+              stripe_payouts_enabled: data.payouts_enabled ? 1 : 0,
+              stripe_onboarding_complete: data.details_submitted ? 1 : 0
+            });
+          });
+          flash('Stripe account status updated.');
+        }
+      }).catch(function() { /* ignore */ });
+      // Clean URL
+      window.location.hash = window.location.hash.replace(/[?&]stripe_return=true/, '').replace(/[?&]stripe_refresh=true/, '');
+    }
+  }, [seller && seller.id]);
+
+  /* ── Stripe Connect: create account ── */
+  function handleStripeConnect() {
+    if (!seller || !seller.id) return;
+    setStripeConnectLoading(true);
+    setStripeConnectError(null);
+
+    var promise;
+    if (seller.stripe_account_id) {
+      // Already has account, just get onboarding link
+      promise = stripeGetAccountLink(seller.id);
+    } else {
+      // Create account first, then get link
+      promise = stripeCreateConnectAccount(seller.id).then(function(result) {
+        if (result.error) throw new Error(result.error);
+        setSeller(function(prev) { return Object.assign({}, prev, { stripe_account_id: result.stripe_account_id }); });
+        return stripeGetAccountLink(seller.id);
+      });
+    }
+
+    promise.then(function(linkData) {
+      if (linkData.error) throw new Error(linkData.error || linkData.detail);
+      if (linkData.url) {
+        window.location.href = linkData.url;
+      }
+    }).catch(function(err) {
+      setStripeConnectError(err.message || 'Failed to connect Stripe.');
+      setStripeConnectLoading(false);
+    });
+  }
+
+  /* ── Stripe Connect: open dashboard ── */
+  function handleStripeDashboard() {
+    if (!seller || !seller.id) return;
+    setStripeConnectLoading(true);
+    stripeGetDashboardLink(seller.id).then(function(data) {
+      setStripeConnectLoading(false);
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    }).catch(function() {
+      setStripeConnectLoading(false);
+    });
+  }
+
+  /* ── Stripe: load sales + balance data ── */
+  function loadStripeSalesData() {
+    if (!seller || !seller.id) return;
+    stripeGetSellerSales(seller.id).then(function(data) {
+      if (data && !data.error) {
+        setStripeSalesData(data);
+      }
+    }).catch(function() { /* ignore */ });
+    stripeGetSellerBalance(seller.id).then(function(data) {
+      if (data && !data.error) {
+        setStripeBalance(data);
+      }
+    }).catch(function() { /* ignore */ });
+  }
 
   function flash(msg) {
     setFlashMsg(msg);
@@ -1517,7 +1611,52 @@ export function SellerDashboard(props) {
       )
     ),
 
-    // Tab nav — now includes Bulk Import tab
+    // ── Stripe Connect status card ──
+    h('div', { className: 'seller-stripe-card' },
+      h('div', { className: 'seller-stripe-header' },
+        h('h3', { className: 'seller-stripe-title' }, 'Stripe Payments'),
+        !seller.stripe_account_id
+          ? h('span', { className: 'badge badge-warning' }, 'Not Connected')
+          : !seller.stripe_charges_enabled
+            ? h('span', { className: 'badge badge-warning' }, 'Onboarding Incomplete')
+            : h('span', { className: 'badge badge-success' }, '\u2713 Connected')
+      ),
+      stripeConnectError && h('p', { className: 'form-error', style: { marginBottom: 'var(--space-2)' } }, stripeConnectError),
+      !seller.stripe_account_id
+        ? h('div', null,
+            h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' } },
+              'Connect your Stripe account to accept card payments, Apple Pay, and Google Pay directly from buyers.'
+            ),
+            h('button', {
+              className: 'btn btn-primary',
+              onClick: handleStripeConnect,
+              disabled: stripeConnectLoading
+            }, stripeConnectLoading ? 'Connecting\u2026' : 'Connect Stripe')
+          )
+        : !seller.stripe_charges_enabled
+          ? h('div', null,
+              h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' } },
+                'Your Stripe account needs additional information before you can accept payments.'
+              ),
+              h('button', {
+                className: 'btn btn-primary',
+                onClick: handleStripeConnect,
+                disabled: stripeConnectLoading
+              }, stripeConnectLoading ? 'Loading\u2026' : 'Complete Onboarding')
+            )
+          : h('div', { className: 'seller-stripe-connected' },
+              h('p', { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' } },
+                'Your Stripe account is active. You can accept card payments from buyers.'
+              ),
+              h('button', {
+                className: 'btn btn-secondary btn-sm',
+                onClick: handleStripeDashboard,
+                disabled: stripeConnectLoading
+              }, 'View Stripe Dashboard')
+            )
+    ),
+
+    // Tab nav — now includes Bulk Import tab and Sales & Payouts
     h('div', { className: 'seller-tabs' },
       h('button', {
         className: 'seller-tab' + (activeTab === 'listings' ? ' active' : ''),
@@ -1535,6 +1674,10 @@ export function SellerDashboard(props) {
         className: 'seller-tab' + (activeTab === 'history' ? ' active' : ''),
         onClick: function() { setActiveTab('history'); }
       }, h(OrderIcon, null), ' Sales History'),
+      seller.stripe_charges_enabled && h('button', {
+        className: 'seller-tab' + (activeTab === 'payouts' ? ' active' : ''),
+        onClick: function() { setActiveTab('payouts'); loadStripeSalesData(); }
+      }, '\uD83D\uDCB3 Sales & Payouts'),
       h('button', {
         className: 'seller-tab' + (activeTab === 'profile' ? ' active' : ''),
         onClick: function() { setActiveTab('profile'); }
@@ -1688,6 +1831,141 @@ export function SellerDashboard(props) {
               h('span', null)
             )
           )
+    ),
+
+    // ===== PAYOUTS TAB =====
+    activeTab === 'payouts' && h('div', { className: 'seller-tab-content' },
+
+      stripeConnectError && h('div', { className: 'flash-message flash-error' }, stripeConnectError),
+
+      // ---- Balance Card ----
+      h('div', { className: 'pf-section' },
+        h('h3', { className: 'pf-section-title' }, 'Balance'),
+        stripeBalance ? h('div', { className: 'stats-row' },
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' },
+              formatUSD(((stripeBalance.available && stripeBalance.available[0] && stripeBalance.available[0].amount) || 0) / 100)
+            ),
+            h('div', { className: 'stat-label' }, 'Available')
+          ),
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' },
+              formatUSD(((stripeBalance.pending && stripeBalance.pending[0] && stripeBalance.pending[0].amount) || 0) / 100)
+            ),
+            h('div', { className: 'stat-label' }, 'Pending')
+          )
+        ) : h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading balance\u2026')
+      ),
+
+      // ---- Analytics Summary ----
+      h('div', { className: 'pf-section' },
+        h('h3', { className: 'pf-section-title' }, 'Sales Analytics'),
+        stripeSalesData && stripeSalesData.analytics ? h('div', { className: 'stats-row' },
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' }, String(stripeSalesData.analytics.total_sales || 0)),
+            h('div', { className: 'stat-label' }, 'Total Sales')
+          ),
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.total_revenue_cents || 0) / 100)),
+            h('div', { className: 'stat-label' }, 'Total Revenue')
+          ),
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.total_platform_fees_cents || 0) / 100)),
+            h('div', { className: 'stat-label' }, 'Platform Fees')
+          ),
+          h('div', { className: 'stat-card' },
+            h('div', { className: 'stat-value' }, formatUSD((stripeSalesData.analytics.net_revenue_cents || 0) / 100)),
+            h('div', { className: 'stat-label' }, 'Net Earnings')
+          )
+        ) : h('p', { style: { color: 'var(--color-text-muted)' } }, 'Loading analytics\u2026')
+      ),
+
+      // ---- Recent Payments Table ----
+      h('div', { className: 'pf-section' },
+        h('h3', { className: 'pf-section-title' }, 'Recent Payments'),
+        stripeSalesData && stripeSalesData.payments && stripeSalesData.payments.length > 0
+          ? h('div', { className: 'table-wrap' },
+              h('table', { className: 'legal-table' },
+                h('thead', null,
+                  h('tr', null,
+                    h('th', null, 'Date'),
+                    h('th', null, 'Order'),
+                    h('th', null, 'Amount'),
+                    h('th', null, 'Fee'),
+                    h('th', null, 'Status')
+                  )
+                ),
+                h('tbody', null,
+                  stripeSalesData.payments.map(function(pmt, idx) {
+                    var pmtDate = pmt.created_at
+                      ? new Date(pmt.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : '\u2014';
+                    var statusClass = pmt.status === 'succeeded' ? 'badge-success'
+                      : pmt.status === 'refunded' ? 'badge-error'
+                      : pmt.status === 'partially_refunded' ? 'badge-warning'
+                      : 'badge-neutral';
+                    return h('tr', { key: pmt.payment_intent_id || idx },
+                      h('td', null, pmtDate),
+                      h('td', null, pmt.order_ref ? '#' + pmt.order_ref : '\u2014'),
+                      h('td', null, formatUSD((pmt.amount || 0) / 100)),
+                      h('td', null, formatUSD((pmt.application_fee || 0) / 100)),
+                      h('td', null, h('span', { className: 'seller-badge ' + statusClass }, pmt.status || 'unknown'))
+                    );
+                  })
+                )
+              )
+            )
+          : h('p', { style: { color: 'var(--color-text-muted)' } },
+              stripeSalesData ? 'No payments yet.' : 'Loading payments\u2026'
+            )
+      ),
+
+      // ---- Disputes Section ----
+      h('div', { className: 'pf-section' },
+        h('h3', { className: 'pf-section-title' }, 'Disputes'),
+        stripeSalesData && stripeSalesData.disputes && stripeSalesData.disputes.length > 0
+          ? h('div', { className: 'table-wrap' },
+              h('table', { className: 'legal-table' },
+                h('thead', null,
+                  h('tr', null,
+                    h('th', null, 'Date'),
+                    h('th', null, 'Reason'),
+                    h('th', null, 'Amount'),
+                    h('th', null, 'Status')
+                  )
+                ),
+                h('tbody', null,
+                  stripeSalesData.disputes.map(function(d, idx) {
+                    var dDate = d.created_at
+                      ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : '\u2014';
+                    var dStatusClass = d.status === 'won' ? 'badge-success'
+                      : d.status === 'lost' ? 'badge-error'
+                      : d.status === 'needs_response' ? 'badge-warning'
+                      : 'badge-neutral';
+                    return h('tr', { key: d.id || idx },
+                      h('td', null, dDate),
+                      h('td', null, (d.reason || 'unknown').replace(/_/g, ' ')),
+                      h('td', null, formatUSD((d.amount || 0) / 100)),
+                      h('td', null, h('span', { className: 'seller-badge ' + dStatusClass }, (d.status || 'unknown').replace(/_/g, ' ')))
+                    );
+                  })
+                )
+              )
+            )
+          : h('p', { style: { color: 'var(--color-text-muted)' } },
+              stripeSalesData ? 'No disputes \u2014 great job!' : 'Loading disputes\u2026'
+            )
+      ),
+
+      // ---- Stripe Dashboard Link ----
+      h('div', { className: 'pf-section', style: { textAlign: 'center', paddingTop: '1rem' } },
+        h('button', {
+          className: 'btn btn-secondary',
+          disabled: stripeConnectLoading,
+          onClick: handleStripeDashboard
+        }, stripeConnectLoading ? 'Opening\u2026' : 'Open Stripe Dashboard')
+      )
     ),
 
     // ===== CONFIRM MODAL =====

@@ -41,6 +41,16 @@
  *   /api/sumup/checkout   — Create SumUp checkout (guests allowed)
  *   /api/paypal/create-order  — Create PayPal order (guests allowed)
  *   /api/paypal/capture-order — Capture PayPal payment (guests allowed)
+ *   /api/stripe/connect/create-account   — Create Express connected account for seller
+ *   /api/stripe/connect/account-link     — Generate Stripe onboarding link
+ *   /api/stripe/connect/account-status   — Check seller's Stripe onboarding status
+ *   /api/stripe/connect/dashboard-link   — Generate Express Dashboard login link
+ *   /api/stripe/create-payment-intent    — Create PaymentIntent with destination charge
+ *   /api/stripe/webhook                  — Stripe webhook handler (payment + Connect events)
+ *   /api/stripe/seller/payouts           — List seller payouts
+ *   /api/stripe/seller/balance           — Seller's Stripe balance
+ *   /api/stripe/seller/sales             — Seller's sales history + analytics
+ *   /api/stripe/refund                   — Refund a payment
  *   /auth/google          — Start Google OAuth flow
  *   /auth/callback        — Google OAuth callback
  *   /auth/me              — Current authenticated user
@@ -98,6 +108,8 @@ const SUMUP_MERCHANT_CODE = 'M55T011N';
 const ORDER_EMAIL_FROM = 'orders@investmtg.com';
 const SITE_URL = 'https://www.investmtg.com';
 const USER_AGENT = 'investMTG/3.0 (https://www.investmtg.com)';
+const STRIPE_API_BASE = 'https://api.stripe.com/v1';
+const PLATFORM_FEE_PERCENT = 5; // 5% platform fee on each transaction
 
 // Ticker cards to track
 const TICKER_CARDS = [
@@ -198,6 +210,28 @@ function methodNotAllowed(request) {
 /** Standard 401 response for unauthenticated requests */
 function authRequired(request, msg) {
   return json({ error: msg || 'Authentication required' }, 401, request);
+}
+
+/** Stripe REST API helper — replaces SDK usage for CF Worker compat */
+async function stripeRequest(method, path, env, body, connectAccountId) {
+  const headers = {
+    'Authorization': 'Basic ' + btoa(env.STRIPE_SECRET_KEY + ':'),
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': USER_AGENT,
+  };
+  if (connectAccountId) {
+    headers['Stripe-Account'] = connectAccountId;
+  }
+  const opts = { method, headers };
+  if (body && (method === 'POST' || method === 'DELETE')) {
+    opts.body = typeof body === 'string' ? body : new URLSearchParams(body).toString();
+  }
+  const res = await fetch(STRIPE_API_BASE + path, opts);
+  const data = await res.json();
+  if (!res.ok) {
+    console.error('[Stripe]', method, path, data.error?.message || JSON.stringify(data));
+  }
+  return { ok: res.ok, status: res.status, data };
 }
 
 /* ── Session + auth helpers ── */
@@ -3168,6 +3202,413 @@ async function handlePriceAlerts(request, env) {
   return methodNotAllowed(request);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Stripe Connect + Payments
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Stripe Connect: Create Express Account ── */
+async function handleStripeConnectCreateAccount(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const sellerId = body?.seller_id;
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  // Check seller exists and doesn't already have a Stripe account
+  const seller = await env.DB.prepare('SELECT * FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller) return json({ error: 'Seller not found' }, 404, request);
+  if (seller.stripe_account_id) return json({ error: 'Seller already has a Stripe account', stripe_account_id: seller.stripe_account_id }, 409, request);
+
+  // Create Express account
+  const { ok, data } = await stripeRequest('POST', '/accounts', env, {
+    type: 'express',
+    country: 'US',
+    email: auth.user.email,
+    'capabilities[card_payments][requested]': 'true',
+    'capabilities[transfers][requested]': 'true',
+    'business_profile[url]': SITE_URL,
+    'business_profile[product_description]': 'Magic: The Gathering card marketplace seller',
+    'metadata[seller_id]': String(sellerId),
+    'metadata[platform]': 'investmtg',
+  });
+  if (!ok) return json({ error: 'Failed to create Stripe account', detail: data.error?.message }, 502, request);
+
+  // Save to DB
+  await env.DB.prepare(
+    'UPDATE sellers SET stripe_account_id = ?, stripe_onboarding_complete = 0, stripe_charges_enabled = 0, stripe_payouts_enabled = 0 WHERE id = ?'
+  ).bind(data.id, sellerId).run();
+
+  return json({ stripe_account_id: data.id }, 201, request);
+}
+
+/* ── Stripe Connect: Generate Onboarding Link ── */
+async function handleStripeConnectAccountLink(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const sellerId = body?.seller_id;
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account found — create one first' }, 404, request);
+
+  const { ok, data } = await stripeRequest('POST', '/account_links', env, {
+    account: seller.stripe_account_id,
+    refresh_url: SITE_URL + '/#seller?stripe_refresh=true',
+    return_url: SITE_URL + '/#seller?stripe_return=true',
+    type: 'account_onboarding',
+  });
+  if (!ok) return json({ error: 'Failed to create account link', detail: data.error?.message }, 502, request);
+
+  return json({ url: data.url, expires_at: data.expires_at }, 200, request);
+}
+
+/* ── Stripe Connect: Account Status ── */
+async function handleStripeConnectAccountStatus(request, env) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const url = new URL(request.url);
+  const sellerId = url.searchParams.get('seller_id');
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+  const { ok, data } = await stripeRequest('GET', '/accounts/' + seller.stripe_account_id, env);
+  if (!ok) return json({ error: 'Failed to retrieve account', detail: data.error?.message }, 502, request);
+
+  // Update DB with latest status
+  const chargesEnabled = data.charges_enabled ? 1 : 0;
+  const payoutsEnabled = data.payouts_enabled ? 1 : 0;
+  const onboardingComplete = data.details_submitted ? 1 : 0;
+  await env.DB.prepare(
+    'UPDATE sellers SET stripe_onboarding_complete = ?, stripe_charges_enabled = ?, stripe_payouts_enabled = ? WHERE id = ?'
+  ).bind(onboardingComplete, chargesEnabled, payoutsEnabled, sellerId).run();
+
+  return json({
+    stripe_account_id: data.id,
+    charges_enabled: data.charges_enabled,
+    payouts_enabled: data.payouts_enabled,
+    details_submitted: data.details_submitted,
+    requirements: data.requirements?.currently_due || [],
+    disabled_reason: data.requirements?.disabled_reason || null,
+  }, 200, request);
+}
+
+/* ── Stripe Connect: Express Dashboard Login Link ── */
+async function handleStripeConnectDashboardLink(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const sellerId = body?.seller_id;
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+  const { ok, data } = await stripeRequest('POST', '/accounts/' + seller.stripe_account_id + '/login_links', env, {});
+  if (!ok) return json({ error: 'Failed to create dashboard link', detail: data.error?.message }, 502, request);
+
+  return json({ url: data.url }, 200, request);
+}
+
+/* ── Stripe: Create Payment Intent (destination charge) ── */
+async function handleStripeCreatePaymentIntent(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid request body' }, 400, request);
+
+  const { order_id, amount, seller_stripe_account, seller_id, description, customer_email } = body;
+  if (!order_id || !amount || amount < 50) return json({ error: 'order_id and amount (min 50 cents) required' }, 400, request);
+
+  // Build PaymentIntent params
+  const params = {
+    amount: String(Math.round(amount)),
+    currency: 'usd',
+    'automatic_payment_methods[enabled]': 'true',
+    description: description || 'investMTG Order ' + order_id,
+    'metadata[order_id]': order_id,
+    'metadata[platform]': 'investmtg',
+  };
+  if (customer_email) params.receipt_email = customer_email;
+
+  // If seller has Stripe account, use destination charge with platform fee
+  if (seller_stripe_account) {
+    const fee = Math.round(amount * PLATFORM_FEE_PERCENT / 100);
+    params.application_fee_amount = String(fee);
+    params['transfer_data[destination]'] = seller_stripe_account;
+    params['metadata[seller_id]'] = String(seller_id || '');
+  }
+
+  const { ok, data } = await stripeRequest('POST', '/payment_intents', env, params);
+  if (!ok) return json({ error: 'Failed to create payment intent', detail: data.error?.message }, 502, request);
+
+  // Record in D1
+  await env.DB.prepare(
+    'INSERT INTO stripe_payments (order_id, payment_intent_id, seller_stripe_account, seller_id, amount, application_fee, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(order_id, data.id, seller_stripe_account || null, seller_id || null, amount, Math.round(amount * PLATFORM_FEE_PERCENT / 100), 'pending').run().catch(e => console.error('[Stripe] DB insert error:', e));
+
+  return json({
+    client_secret: data.client_secret,
+    payment_intent_id: data.id,
+    publishable_key: env.STRIPE_PUBLISHABLE_KEY,
+  }, 200, request);
+}
+
+/* ── Stripe: Webhook Handler ── */
+async function handleStripeWebhook(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+
+  const body = await request.text();
+  let event;
+
+  // If webhook secret is set, verify signature; otherwise parse directly (for testing)
+  if (env.STRIPE_WEBHOOK_SECRET) {
+    const sig = request.headers.get('stripe-signature');
+    if (!sig) return json({ error: 'Missing stripe-signature header' }, 400, request);
+    // Manual signature verification for CF Worker (no SDK)
+    const verified = await verifyStripeSignature(body, sig, env.STRIPE_WEBHOOK_SECRET);
+    if (!verified) return json({ error: 'Invalid signature' }, 400, request);
+    event = JSON.parse(body);
+  } else {
+    event = JSON.parse(body);
+  }
+
+  const type = event.type;
+  const obj = event.data?.object;
+  console.log('[Stripe Webhook]', type, obj?.id);
+
+  switch (type) {
+    case 'payment_intent.succeeded': {
+      const piId = obj.id;
+      const chargeId = obj.latest_charge || null;
+      await env.DB.prepare(
+        'UPDATE stripe_payments SET status = ?, charge_id = ?, updated_at = datetime(\'now\') WHERE payment_intent_id = ?'
+      ).bind('succeeded', chargeId, piId).run().catch(() => {});
+      // Update associated order status
+      const payment = await env.DB.prepare('SELECT order_id FROM stripe_payments WHERE payment_intent_id = ?').bind(piId).first();
+      if (payment?.order_id) {
+        await env.DB.prepare('UPDATE orders SET status = ?, payment_status = ? WHERE id = ?').bind('confirmed', 'paid', payment.order_id).run().catch(() => {});
+      }
+      break;
+    }
+    case 'payment_intent.payment_failed': {
+      const piId = obj.id;
+      const errMsg = obj.last_payment_error?.message || 'Payment failed';
+      await env.DB.prepare(
+        'UPDATE stripe_payments SET status = ?, error_message = ?, updated_at = datetime(\'now\') WHERE payment_intent_id = ?'
+      ).bind('failed', errMsg, piId).run().catch(() => {});
+      break;
+    }
+    case 'charge.refunded': {
+      const piId = obj.payment_intent;
+      if (piId) {
+        await env.DB.prepare(
+          'UPDATE stripe_payments SET status = ?, updated_at = datetime(\'now\') WHERE payment_intent_id = ?'
+        ).bind('refunded', piId).run().catch(() => {});
+      }
+      break;
+    }
+    case 'charge.dispute.created': {
+      const piId = obj.payment_intent;
+      const disputeId = obj.id;
+      const amount = obj.amount;
+      const reason = obj.reason;
+      const evidenceDue = obj.evidence_details?.due_by ? new Date(obj.evidence_details.due_by * 1000).toISOString() : null;
+      // Find our payment record
+      const pmtRow = await env.DB.prepare('SELECT id FROM stripe_payments WHERE payment_intent_id = ?').bind(piId).first();
+      if (pmtRow) {
+        await env.DB.prepare(
+          'INSERT INTO stripe_disputes (stripe_payment_id, stripe_dispute_id, payment_intent_id, amount, reason, status, evidence_due) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(pmtRow.id, disputeId, piId, amount, reason, 'needs_response', evidenceDue).run().catch(() => {});
+      }
+      break;
+    }
+    case 'account.updated': {
+      // Connect account update — sync onboarding status
+      const acctId = obj.id;
+      const chargesEnabled = obj.charges_enabled ? 1 : 0;
+      const payoutsEnabled = obj.payouts_enabled ? 1 : 0;
+      const onboardingComplete = obj.details_submitted ? 1 : 0;
+      await env.DB.prepare(
+        'UPDATE sellers SET stripe_onboarding_complete = ?, stripe_charges_enabled = ?, stripe_payouts_enabled = ? WHERE stripe_account_id = ?'
+      ).bind(onboardingComplete, chargesEnabled, payoutsEnabled, acctId).run().catch(() => {});
+      break;
+    }
+    case 'payout.paid':
+    case 'payout.failed': {
+      const payoutId = obj.id;
+      const status = type === 'payout.paid' ? 'paid' : 'failed';
+      const acctId = event.account; // Connect account that received the payout
+      const arrivalDate = obj.arrival_date ? new Date(obj.arrival_date * 1000).toISOString() : null;
+      const failMsg = obj.failure_message || null;
+      // Find seller by stripe account
+      const sellerRow = await env.DB.prepare('SELECT id FROM sellers WHERE stripe_account_id = ?').bind(acctId).first();
+      if (sellerRow) {
+        await env.DB.prepare(
+          'INSERT OR REPLACE INTO stripe_payouts (seller_id, stripe_payout_id, stripe_account_id, amount, currency, status, arrival_date, failure_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(sellerRow.id, payoutId, acctId, obj.amount, obj.currency, status, arrivalDate, failMsg).run().catch(() => {});
+      }
+      break;
+    }
+    default:
+      console.log('[Stripe Webhook] Unhandled event type:', type);
+  }
+
+  return json({ received: true }, 200, request);
+}
+
+/** Verify Stripe webhook signature (HMAC SHA-256) without SDK */
+async function verifyStripeSignature(payload, sigHeader, secret) {
+  try {
+    const pairs = sigHeader.split(',').reduce((acc, item) => {
+      const [key, val] = item.split('=');
+      acc[key.trim()] = val;
+      return acc;
+    }, {});
+    const timestamp = pairs.t;
+    const sig = pairs.v1;
+    if (!timestamp || !sig) return false;
+    // Check timestamp is within 5 minutes
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - parseInt(timestamp)) > 300) return false;
+    // Compute expected signature
+    const signedPayload = timestamp + '.' + payload;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload));
+    const expected = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return expected === sig;
+  } catch (e) {
+    console.error('[Stripe] Signature verification failed:', e);
+    return false;
+  }
+}
+
+/* ── Stripe: List Seller Payouts ── */
+async function handleStripeSellerPayouts(request, env) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const url = new URL(request.url);
+  const sellerId = url.searchParams.get('seller_id');
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+  // Fetch from Stripe API (most recent payouts)
+  const { ok, data } = await stripeRequest('GET', '/payouts?limit=25', env, null, seller.stripe_account_id);
+  if (!ok) return json({ error: 'Failed to fetch payouts' }, 502, request);
+
+  return json({ payouts: data.data || [] }, 200, request);
+}
+
+/* ── Stripe: Seller Balance ── */
+async function handleStripeSellerBalance(request, env) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const url = new URL(request.url);
+  const sellerId = url.searchParams.get('seller_id');
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller?.stripe_account_id) return json({ error: 'No Stripe account' }, 404, request);
+
+  const { ok, data } = await stripeRequest('GET', '/balance', env, null, seller.stripe_account_id);
+  if (!ok) return json({ error: 'Failed to fetch balance' }, 502, request);
+
+  return json({
+    available: data.available || [],
+    pending: data.pending || [],
+  }, 200, request);
+}
+
+/* ── Stripe: Refund a Payment ── */
+async function handleStripeRefund(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const body = await request.json().catch(() => null);
+  const { payment_intent_id, amount, reason } = body || {};
+  if (!payment_intent_id) return json({ error: 'payment_intent_id required' }, 400, request);
+
+  // Verify the payment exists and belongs to this user's seller account
+  const payment = await env.DB.prepare('SELECT * FROM stripe_payments WHERE payment_intent_id = ?').bind(payment_intent_id).first();
+  if (!payment) return json({ error: 'Payment not found' }, 404, request);
+
+  const params = {
+    payment_intent: payment_intent_id,
+    reverse_transfer: 'true',
+    refund_application_fee: 'true',
+  };
+  if (amount) params.amount = String(amount);
+  if (reason) params.reason = reason; // duplicate, fraudulent, requested_by_customer
+
+  const { ok, data } = await stripeRequest('POST', '/refunds', env, params);
+  if (!ok) return json({ error: 'Refund failed', detail: data.error?.message }, 502, request);
+
+  // Update DB
+  await env.DB.prepare(
+    'UPDATE stripe_payments SET status = ?, updated_at = datetime(\'now\') WHERE payment_intent_id = ?'
+  ).bind(amount ? 'partially_refunded' : 'refunded', payment_intent_id).run().catch(() => {});
+
+  return json({ refund_id: data.id, status: data.status, amount: data.amount }, 200, request);
+}
+
+/* ── Stripe: List Seller Sales (payments to their account) ── */
+async function handleStripeSellerSales(request, env) {
+  if (request.method !== 'GET') return methodNotAllowed(request);
+  const auth = await getAuthUser(request, env);
+  if (!auth) return authRequired(request);
+
+  const url = new URL(request.url);
+  const sellerId = url.searchParams.get('seller_id');
+  if (!sellerId) return json({ error: 'seller_id required' }, 400, request);
+
+  const seller = await env.DB.prepare('SELECT id, stripe_account_id FROM sellers WHERE id = ? AND user_id = ?').bind(sellerId, auth.user.id).first();
+  if (!seller) return json({ error: 'Seller not found' }, 404, request);
+
+  // Get payments from D1
+  const results = await env.DB.prepare(
+    'SELECT sp.*, o.id as order_ref, o.contact_email FROM stripe_payments sp LEFT JOIN orders o ON sp.order_id = o.id WHERE sp.seller_id = ? ORDER BY sp.created_at DESC LIMIT 50'
+  ).bind(sellerId).all();
+
+  // Get disputes
+  const disputes = await env.DB.prepare(
+    'SELECT sd.* FROM stripe_disputes sd INNER JOIN stripe_payments sp ON sd.stripe_payment_id = sp.id WHERE sp.seller_id = ? ORDER BY sd.created_at DESC LIMIT 20'
+  ).bind(sellerId).all();
+
+  // Calculate analytics
+  const payments = results.results || [];
+  const successPayments = payments.filter(p => p.status === 'succeeded');
+  const totalRevenue = successPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalFees = successPayments.reduce((sum, p) => sum + (p.application_fee || 0), 0);
+
+  return json({
+    payments,
+    disputes: disputes.results || [],
+    analytics: {
+      total_sales: successPayments.length,
+      total_revenue_cents: totalRevenue,
+      total_platform_fees_cents: totalFees,
+      net_revenue_cents: totalRevenue - totalFees,
+    }
+  }, 200, request);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return handleOptions(request);
@@ -3255,6 +3696,19 @@ export default {
       if (path === '/api/sumup-webhook')                      return handleSumUpWebhook(request, env);
       if (path === '/api/paypal/create-order')                return handlePayPalCreateOrder(request, env);
       if (path === '/api/paypal/capture-order')               return handlePayPalCaptureOrder(request, env);
+      // Stripe Connect
+      if (path === '/api/stripe/connect/create-account')     return handleStripeConnectCreateAccount(request, env);
+      if (path === '/api/stripe/connect/account-link')       return handleStripeConnectAccountLink(request, env);
+      if (path === '/api/stripe/connect/account-status')     return handleStripeConnectAccountStatus(request, env);
+      if (path === '/api/stripe/connect/dashboard-link')     return handleStripeConnectDashboardLink(request, env);
+      // Stripe Payments
+      if (path === '/api/stripe/create-payment-intent')      return handleStripeCreatePaymentIntent(request, env);
+      if (path === '/api/stripe/webhook')                    return handleStripeWebhook(request, env);
+      // Stripe Seller
+      if (path === '/api/stripe/seller/payouts')             return handleStripeSellerPayouts(request, env);
+      if (path === '/api/stripe/seller/balance')             return handleStripeSellerBalance(request, env);
+      if (path === '/api/stripe/seller/sales')               return handleStripeSellerSales(request, env);
+      if (path === '/api/stripe/refund')                     return handleStripeRefund(request, env);
       if (path === '/api/price-alerts')                         return handlePriceAlerts(request, env);
 
       // Admin-only: manual carousel refresh trigger
