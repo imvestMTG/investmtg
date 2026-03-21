@@ -106,7 +106,8 @@ export function BuyLocalModal(props) {
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     },
-                    onClick: function() { setSelectedListing(l); }
+                    onClick: function() { setSelectedListing(l); },
+                    onTouchEnd: function(e) { e.preventDefault(); setSelectedListing(l); }
                   },
                     h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' } },
                       l.seller, ' \u2014 ', l.condition,
@@ -125,7 +126,8 @@ export function BuyLocalModal(props) {
                     key: store.id,
                     className: 'btn ' + (isSelected ? 'btn-primary' : 'btn-secondary'),
                     style: { justifyContent: 'flex-start', gap: 'var(--space-3)' },
-                    onClick: function() { setSelectedStore(store); }
+                    onClick: function() { setSelectedStore(store); },
+                    onTouchEnd: function(e) { e.preventDefault(); setSelectedStore(store); }
                   },
                     h(MapPinIcon, null),
                     h('div', { style: { textAlign: 'left' } },
