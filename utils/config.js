@@ -46,9 +46,11 @@ export var CACHE_TTL_PRICE = 10 * 60 * 1000; // 10 min — justtcg, topdeck, pri
 export var CACHE_TTL_MEDIUM = 15 * 60 * 1000; // 15 min — edhtop16, moxfield, echomtg
 export var CACHE_TTL_LONG = 60 * 60 * 1000; // 1 hr — carousels, events, mtgstocks
 
-/* ── SumUp — public key stays client-side (designed for browser use) ── */
-export var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
+/* ── Stripe ── */
 export var PLATFORM_FEE_PERCENT = 5; // 5% platform fee on Stripe Connect transactions
+
+/* ── Legacy: SumUp (deprecated — replaced by Stripe in v97, kept for historical order reference) ── */
+export var SUMUP_PUBLIC_KEY = 'sup_pk_qRhf6eGzMipB9IwxFFKpsqe0w15FXo4Jk';
 
 /* ── localStorage Key Registry ──
  * Single source of truth for all storage keys.

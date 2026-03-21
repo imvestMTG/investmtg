@@ -33,7 +33,7 @@ var FAQ_SECTIONS = [
       },
       {
         q: 'What payment methods are accepted?',
-        a: 'Checkout supports SumUp (credit/debit card) and PayPal. Payment is processed when you confirm your order.'
+        a: 'Checkout supports Stripe (credit/debit card, Apple Pay, Google Pay) for online payments, or Reserve & Pay at Pickup for in-person transactions. Sellers with Stripe accounts receive payouts automatically.'
       },
       {
         q: 'What if a card I want has no seller listings?',

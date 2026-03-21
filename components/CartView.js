@@ -407,7 +407,7 @@ export function CartView(props) {
         h('div', { className: 'cart-trust-badges' },
           h('div', { className: 'cart-trust-row' },
             h(LockIcon, null),
-            h('span', null, 'Secure checkout via SumUp')
+            h('span', null, 'Secure checkout via Stripe')
           ),
           h('div', { className: 'cart-trust-row' },
             h(ShieldIcon, null),

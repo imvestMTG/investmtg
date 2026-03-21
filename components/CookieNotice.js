@@ -20,7 +20,7 @@ export function CookieNotice() {
 
   return h('div', { className: 'cookie-notice', role: 'alert', 'aria-live': 'polite' },
     h('p', null,
-      'This site uses essential cookies from Cloudflare (security), SumUp (payment processing), and PayPal (payment processing). No tracking or advertising cookies are used. ',
+      'This site uses essential cookies from Cloudflare (security) and Stripe (payment processing). No tracking or advertising cookies are used. ',
       h('a', { href: '#privacy' }, 'Learn more')
     ),
     h('button', { onClick: handleDismiss, 'aria-label': 'Dismiss cookie notice' }, 'Got it')

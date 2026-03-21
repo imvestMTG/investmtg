@@ -85,11 +85,11 @@ export function OrderConfirmation(props) {
     }
   }, [orderId]);
 
-  /* ── Payment status polling for SumUp orders ── */
+  /* ── Payment status polling for Stripe orders ── */
   React.useEffect(function() {
     if (!order || !orderId) return;
-    // Only poll if this is a SumUp payment and status isn't finalized
-    var shouldPoll = order.paymentMethod === 'sumup' &&
+    // Poll if this is a Stripe payment and status isn't finalized
+    var shouldPoll = (order.paymentMethod === 'stripe' || order.paymentMethod === 'sumup') &&
       order.status !== 'confirmed' &&
       order.status !== 'payment_failed' &&
       order.status !== 'expired' &&

@@ -56,7 +56,7 @@ export function TermsView() {
 
     h('section', { className: 'legal-section' },
       h('h2', null, '6. Payments'),
-      h('p', null, 'Online payments are processed by SumUp and PayPal, both PCI-compliant payment processors. investMTG never sees, stores, or processes your payment card information. By using the payment features, you also agree to ', h('a', { href: 'https://www.sumup.com/en-us/terms/', target: '_blank', rel: 'noopener' }, 'SumUp\u2019s Terms of Service'), ' and/or ', h('a', { href: 'https://www.paypal.com/us/legalhub/useragreement-full', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s User Agreement'), ' as applicable.'),
+      h('p', null, 'Online payments are processed by Stripe, a PCI-compliant payment processor. investMTG never sees, stores, or processes your payment card information. By using the payment features, you also agree to ', h('a', { href: 'https://stripe.com/legal/ssa', target: '_blank', rel: 'noopener' }, 'Stripe\u2019s Services Agreement'), '.'),
       h('p', null, 'For in-person transactions (Reserve & Pay at Pickup), payment terms are between the buyer and seller.')
     ),
 
@@ -71,7 +71,7 @@ export function TermsView() {
         h('li', null, 'Not list counterfeit, proxy, or stolen cards')
       ),
       h('p', null, 'investMTG is free to use. investMTG does not charge seller fees or take a commission on transactions.'),
-      h('p', null, 'For online payment transactions, the payment processor (SumUp or PayPal) may charge the seller standard processing fees. investMTG is not responsible for these fees.'),
+      h('p', null, 'For online payment transactions, the payment processor (Stripe) may charge the seller standard processing fees (2.9% + $0.30 per transaction). investMTG collects a 5% platform fee on each transaction. investMTG is not responsible for Stripe\u2019s processing fees.'),
       h('p', null, 'Sellers accept responsibility for any chargebacks or payment disputes arising from their listings. investMTG has no ability to reverse payments on sellers\u2019 behalf.')
     ),
 
@@ -113,7 +113,7 @@ export function TermsView() {
       h('h2', null, '12. Dispute Resolution'),
       h('p', null, 'Disputes between buyers and sellers should be resolved directly between the parties. investMTG may, but is not obligated to, assist in dispute resolution.'),
       h('h3', null, 'Buyer Protection for Online Payments'),
-      h('p', null, 'If you paid for an order via SumUp or PayPal and have a dispute regarding the transaction, you may file a dispute or chargeback directly with your card issuer (for SumUp) or through ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Resolution Center'), ' (for PayPal orders). investMTG has no ability to issue refunds on behalf of sellers \u2014 refunds are the responsibility of the individual seller. Contact the seller first; if unresolved, use your payment processor\u2019s dispute mechanism.'),
+      h('p', null, 'If you paid for an order via Stripe and have a dispute regarding the transaction, you may file a dispute or chargeback directly with your card issuer. Stripe\u2019s dispute process will handle mediation. For refunds, contact the seller first; if unresolved, file a dispute through your card issuer. investMTG may facilitate refunds through the platform when both parties agree.'),
       h('h3', null, 'Reserve & Pay at Pickup'),
       h('p', null, 'For reserved orders (no advance payment), if a seller fails to honor a reservation, contact the seller and, if unresolved, notify investMTG at ', h('a', { href: 'mailto:support@investmtg.com' }, 'support@investmtg.com'), '. Repeated violations may result in seller suspension.'),
       h('p', null, 'Any disputes with investMTG itself shall be governed by the laws of the Territory of Guam, United States.')
@@ -124,11 +124,11 @@ export function TermsView() {
       h('p', null, h('strong', null, 'investMTG is a platform, not a seller.'), ' All sales are directly between buyers and sellers.'),
       h('h3', null, 'Reserve & Pay at Pickup'),
       h('p', null, 'No payment is taken by investMTG. Refund terms are between the buyer and seller directly. Either party may cancel before pickup.'),
-      h('h3', null, 'Online Payments (SumUp / PayPal)'),
+      h('h3', null, 'Online Payments (Stripe)'),
       h('p', null, 'investMTG does not hold or control payment funds. Online payments go directly to the seller via the respective payment processor.'),
       h('ul', null,
-        h('li', null, h('strong', null, 'SumUp transactions: '), 'Contact your card issuer or SumUp to dispute a charge if the item was not as described or not received.'),
-        h('li', null, h('strong', null, 'PayPal transactions: '), 'Use PayPal\u2019s ', h('a', { href: 'https://www.paypal.com/us/smarthelp/article/how-do-i-open-a-dispute-in-the-resolution-center-faq1249', target: '_blank', rel: 'noopener' }, 'Resolution Center'), ' to open a dispute. PayPal Buyer Protection may apply.')
+        h('li', null, h('strong', null, 'Card payments via Stripe: '), 'Contact your card issuer to dispute a charge if the item was not as described or not received. Stripe\u2019s dispute process includes evidence submission from both parties.'),
+        h('li', null, h('strong', null, 'Refunds: '), 'Sellers can issue refunds through their Stripe Express Dashboard. Platform fees are automatically reversed on full refunds.')
       ),
       h('h3', null, 'Seller Obligations'),
       h('p', null, 'Sellers are required to accurately describe card conditions. A buyer who receives a card materially different from the listed condition may request a refund from the seller. Sellers who repeatedly misrepresent cards may be suspended.'),

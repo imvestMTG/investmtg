@@ -37,7 +37,7 @@ export function PrivacyPolicyView() {
       h('ul', null,
         h('li', null, 'We do not use analytics or tracking scripts'),
         h('li', null, 'We do not set advertising or marketing cookies'),
-        h('li', null, 'We do not collect payment card numbers \u2014 all payment processing is handled by SumUp (see below)'),
+        h('li', null, 'We do not collect payment card numbers \u2014 all payment processing is handled by Stripe (see below)'),
         h('li', null, 'We do not track browsing behavior or create behavioral profiles')
       )
     ),
@@ -84,13 +84,13 @@ export function PrivacyPolicyView() {
       h('p', null, 'investMTG uses the following third-party services that may process data:'),
       h('ul', null,
         h('li', null, h('strong', null, 'Google OAuth'), ' \u2014 Authenticates your identity when you sign in. We receive your name, email, and profile picture. See ', h('a', { href: 'https://policies.google.com/privacy', target: '_blank', rel: 'noopener' }, 'Google\u2019s Privacy Policy'), '.'),
-        h('li', null, h('strong', null, 'SumUp'), ' \u2014 Processes card payments. When you pay by card, your payment details are sent directly to SumUp\u2019s secure, PCI-compliant servers. We never see or store your card number. See ', h('a', { href: 'https://www.sumup.com/en-us/privacy/', target: '_blank', rel: 'noopener' }, 'SumUp\u2019s Privacy Policy'), '.'),
+        h('li', null, h('strong', null, 'Stripe'), ' \u2014 Processes card payments, Apple Pay, and Google Pay. When you pay online, your payment details are sent directly to Stripe\u2019s secure, PCI-compliant servers. We never see or store your card number. See ', h('a', { href: 'https://stripe.com/privacy', target: '_blank', rel: 'noopener' }, 'Stripe\u2019s Privacy Policy'), '.'),
         h('li', null, h('strong', null, 'Scryfall'), ' \u2014 Provides card data and images. API requests include card search queries but no personal information. See ', h('a', { href: 'https://scryfall.com/docs/privacy', target: '_blank', rel: 'noopener' }, 'Scryfall\u2019s Privacy Policy'), '.'),
         h('li', null, h('strong', null, 'JustTCG'), ' \u2014 Provides condition-specific pricing for NM, LP, MP, HP, and DMG conditions. API requests contain card identifiers but no personal data.'),
         h('li', null, h('strong', null, 'Cloudflare'), ' \u2014 Hosts our backend worker, database, and edge cache. Cloudflare may set security cookies to protect against malicious traffic. See ', h('a', { href: 'https://www.cloudflare.com/privacypolicy/', target: '_blank', rel: 'noopener' }, 'Cloudflare\u2019s Privacy Policy'), '.'),
         h('li', null, h('strong', null, 'FontShare'), ' \u2014 Provides web fonts. Font loading requests include standard HTTP headers.'),
         h('li', null, h('strong', null, 'GitHub Pages'), ' \u2014 Hosts the website. See ', h('a', { href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', target: '_blank', rel: 'noopener' }, 'GitHub\u2019s Privacy Statement'), '.'),
-        h('li', null, h('strong', null, 'PayPal'), ' \u2014 Processes payments via PayPal, Venmo, and Pay Later. When you choose PayPal at checkout, your name, email, and payment details are sent to PayPal\u2019s secure servers. We never see your PayPal password or full payment details. See ', h('a', { href: 'https://www.paypal.com/us/legalhub/privacy-full', target: '_blank', rel: 'noopener' }, 'PayPal\u2019s Privacy Policy'), '.'),
+        
         h('li', null, h('strong', null, 'Resend'), ' \u2014 Sends order confirmation, payment confirmation, and seller reservation notification emails on our behalf. Your name and email address are transmitted to Resend to deliver transactional messages. When you place an order, the seller is notified with your contact details so they can coordinate pickup. Resend does not use this information for marketing. See ', h('a', { href: 'https://resend.com/legal/privacy-policy', target: '_blank', rel: 'noopener' }, 'Resend\u2019s Privacy Policy'), '.'),
         h('li', null, h('strong', null, 'EchoMTG'), ' \u2014 Provides graded card pricing and set price movement data. API requests are routed through our backend and do not include personal information.'),
         h('li', null, h('strong', null, 'Sentry'), ' \u2014 Monitors frontend errors and performance to help us fix bugs quickly. Sentry may collect your IP address, browser type, and error stack traces. No personal account data is sent. See ', h('a', { href: 'https://sentry.io/privacy/', target: '_blank', rel: 'noopener' }, 'Sentry\u2019s Privacy Policy'), '.')
@@ -117,17 +117,12 @@ export function PrivacyPolicyView() {
             h('td', null, 'Session')
           ),
           h('tr', null,
-            h('td', null, 'SumUp'),
+            h('td', null, 'Stripe'),
             h('td', null, 'Secure payment session'),
             h('td', null, 'Essential / Payment'),
             h('td', null, 'Session')
           ),
-          h('tr', null,
-            h('td', null, 'PayPal'),
-            h('td', null, 'Payment session, fraud prevention'),
-            h('td', null, 'Essential / Payment'),
-            h('td', null, 'Session')
-          )
+
         )
       ),
       h('p', null, 'investMTG stores authentication tokens, cart data, and preferences in your browser\u2019s localStorage (not cookies). This data is controlled entirely by your browser and can be cleared at any time.')
