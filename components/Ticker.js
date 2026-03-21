@@ -64,7 +64,7 @@ export function Ticker() {
       setItems(cached);
     }
 
-    /* Defer network fetch 2s to let critical render path complete first */
+    /* Defer network fetch 2s so critical render path completes first */
     var timeout = setTimeout(function() {
       if (cancelled) return;
 
