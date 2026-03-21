@@ -142,15 +142,20 @@ export function HomeView(props) {
         h('form', { className: 'hero-search', onSubmit: handleHeroSearch },
           h('div', { className: 'search-icon' }, h(SearchIcon, null)),
           h('input', {
-            type: 'search',
+            type: 'text',
+            role: 'combobox',
             placeholder: 'Search for Sheoldred, Black Lotus...',
             value: heroSearch,
             onChange: handleHeroInput,
             onFocus: function() { if (suggestions.length > 0) setShowSuggestions(true); },
-            onBlur: function() { setTimeout(function() { setShowSuggestions(false); }, 200); },
+            onBlur: function() { setTimeout(function() { setShowSuggestions(false); }, 300); },
             autoComplete: 'off',
+            autoCorrect: 'off',
+            autoCapitalize: 'off',
+            spellCheck: 'false',
             'aria-label': 'Search cards',
-            'aria-autocomplete': 'list'
+            'aria-autocomplete': 'list',
+            'aria-expanded': showSuggestions && suggestions.length > 0 ? 'true' : 'false'
           }),
           h('button', { type: 'submit', className: 'hero-search-btn' }, 'Search')
         ),
