@@ -1,8 +1,8 @@
 /* HomeView.js — Homepage with live backend prices */
 import React from 'react';
-import { fetchFeatured, fetchTrending, fetchBudget } from '../utils/api.js';
+import { fetchFeatured, fetchTrending, fetchBudget, autocomplete } from '../utils/api.js';
 import { getEventsAsync } from '../utils/events-config.js';
-import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl } from '../utils/helpers.js';
+import { getCardPrice, formatUSD, getCardImageSmall, getScryfallImageUrl, debounce } from '../utils/helpers.js';
 import { CardCarousel } from './shared/CardCarousel.js';
 import { SkeletonCard } from './shared/SkeletonCard.js';
 import { SearchIcon, TrendingIcon, StarIcon, SparkleIcon, MapPinIcon, ClockIcon } from './shared/Icons.js';
@@ -28,6 +28,19 @@ export function HomeView(props) {
   var heroSearch = ref5[0], setHeroSearch = ref5[1];
   var ref6 = React.useState([]);
   var events = ref6[0], setEvents = ref6[1];
+  var ref7 = React.useState([]);
+  var suggestions = ref7[0], setSuggestions = ref7[1];
+  var ref8 = React.useState(false);
+  var showSuggestions = ref8[0], setShowSuggestions = ref8[1];
+
+  var debouncedAutocomplete = React.useMemo(function() {
+    return debounce(function(q) {
+      if (q.length < 2) { setSuggestions([]); return; }
+      autocomplete(q).then(function(data) {
+        setSuggestions((data && data.data) ? data.data.slice(0, 6) : []);
+      }).catch(function() { setSuggestions([]); });
+    }, 250);
+  }, []);
 
   React.useEffect(function() {
     var cancelled = false;
@@ -54,6 +67,8 @@ export function HomeView(props) {
 
   function handleHeroSearch(e) {
     e.preventDefault();
+    setSuggestions([]);
+    setShowSuggestions(false);
     if (heroSearch.trim()) {
       window.location.hash = 'search';
       setTimeout(function() {
@@ -61,6 +76,25 @@ export function HomeView(props) {
         window.dispatchEvent(ev);
       }, 50);
     }
+  }
+
+  function handleHeroInput(e) {
+    var val = e.target.value;
+    setHeroSearch(val);
+    debouncedAutocomplete(val);
+    if (val.length >= 2) setShowSuggestions(true);
+    else setShowSuggestions(false);
+  }
+
+  function selectSuggestion(name) {
+    setHeroSearch(name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    window.location.hash = 'search';
+    setTimeout(function() {
+      var ev = new CustomEvent('investmtg-search', { detail: name });
+      window.dispatchEvent(ev);
+    }, 50);
   }
 
   var stats = [
@@ -104,16 +138,33 @@ export function HomeView(props) {
     h('section', { className: 'hero' },
       h('h1', { className: 'hero-tagline' }, 'Know What Your Cards Are Worth'),
       h('p', { className: 'hero-sub' }, 'Real-time prices on every Magic card. Buy from local sellers, track your collection, or start selling \u2014 all on Guam\u2019s first MTG marketplace.'),
-      h('form', { className: 'hero-search', onSubmit: handleHeroSearch },
-        h('div', { className: 'search-icon' }, h(SearchIcon, null)),
-        h('input', {
-          type: 'search',
-          placeholder: 'Search for Sheoldred, Black Lotus...',
-          value: heroSearch,
-          onChange: function(e) { setHeroSearch(e.target.value); },
-          'aria-label': 'Search cards'
-        }),
-        h('button', { type: 'submit', className: 'hero-search-btn' }, 'Search')
+      h('div', { className: 'hero-search-wrapper' },
+        h('form', { className: 'hero-search', onSubmit: handleHeroSearch },
+          h('div', { className: 'search-icon' }, h(SearchIcon, null)),
+          h('input', {
+            type: 'search',
+            placeholder: 'Search for Sheoldred, Black Lotus...',
+            value: heroSearch,
+            onChange: handleHeroInput,
+            onFocus: function() { if (suggestions.length > 0) setShowSuggestions(true); },
+            onBlur: function() { setTimeout(function() { setShowSuggestions(false); }, 200); },
+            autoComplete: 'off',
+            'aria-label': 'Search cards',
+            'aria-autocomplete': 'list'
+          }),
+          h('button', { type: 'submit', className: 'hero-search-btn' }, 'Search')
+        ),
+        showSuggestions && suggestions.length > 0 && h('div', { className: 'hero-autocomplete-dropdown' },
+          suggestions.map(function(name) {
+            return h('button', {
+              key: name,
+              type: 'button',
+              className: 'hero-autocomplete-item',
+              onMouseDown: function(e) { e.preventDefault(); },
+              onClick: function() { selectSuggestion(name); }
+            }, name);
+          })
+        )
       ),
       h(StatGrid, { className: 'hero-stats' },
         stats.map(function(s) {
