@@ -87,22 +87,20 @@ export function SearchView(props) {
   var refListingsLoading = React.useState(false);
   var listingsLoading = refListingsLoading[0], setListingsLoading = refListingsLoading[1];
 
-  // On mount: load in-stock marketplace listings if no cached search
+  // On mount: always load in-stock marketplace listings
   React.useEffect(function() {
-    if (!cached || cached.results.length === 0) {
-      setListingsLoading(true);
-      fetchListings().then(function(data) {
-        var listings = Array.isArray(data) ? data : (data && data.listings ? data.listings : []);
-        // Filter to available items only
-        var available = listings.filter(function(l) {
-          return l.availability_status !== 'sold_out';
-        });
-        setInStockListings(available);
-        setListingsLoading(false);
-      }).catch(function() {
-        setListingsLoading(false);
+    setListingsLoading(true);
+    fetchListings().then(function(data) {
+      var listings = Array.isArray(data) ? data : (data && data.listings ? data.listings : []);
+      // Filter to available items only
+      var available = listings.filter(function(l) {
+        return l.availability_status !== 'sold_out';
       });
-    }
+      setInStockListings(available);
+      setListingsLoading(false);
+    }).catch(function() {
+      setListingsLoading(false);
+    });
   }, []);
 
   // Listen for hero search events
@@ -287,8 +285,8 @@ export function SearchView(props) {
         !loading && !error && results.length === 0 && query && h('div', { className: 'empty-state' },
           h('p', null, 'No results found. Try a different search.')
         ),
-        // Show in-stock marketplace listings when no search query
-        !query && !loading && filteredResults.length === 0 && h('div', { className: 'search-instock' },
+        // Show in-stock marketplace listings when no search query active
+        !query && !loading && results.length === 0 && h('div', { className: 'search-instock' },
           h('h2', {
             style: { fontSize: 'var(--text-lg)', fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }
           }, 'In Stock Now'),
