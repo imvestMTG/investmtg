@@ -517,23 +517,13 @@ function ListingCard(props) {
                   )
                 : h(React.Fragment, null,
                     listing.type === 'sale' && h('button', {
-                      className: 'btn mp-btn-cart' + (justAdded ? ' added' : ''),
-                      onClick: function() {
-                        if (onAddToCart) onAddToCart(listing);
-                      }
-                    },
-                      justAdded
-                        ? '\u2713 Added'
-                        : h('span', null, h(ShoppingCartIcon, null), ' Add to Cart')
-                    ),
-                    listing.type === 'sale' && h('button', {
                       className: 'btn mp-btn-buylocal',
                       onClick: function() {
                         if (onBuyLocal) {
                           onBuyLocal({ id: listing.id, name: listing.cardName, set_name: listing.setName, prices: { usd: String(listing.price) } });
                         }
                       }
-                    }, 'Buy Local')
+                    }, h(ShoppingCartIcon, null), ' Buy')
                   ),
               !isSoldOut && h('button', {
                 className: 'btn mp-btn-msg',

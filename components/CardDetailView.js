@@ -527,7 +527,7 @@ export function CardDetailView(props) {
 
         h('div', { className: 'card-actions' },
           h('button', { className: 'btn btn-primary', onClick: handleBuyLocal },
-            h(ShoppingCartIcon, null), ' Add to Cart'
+            h(ShoppingCartIcon, null), ' Buy Local'
           ),
           h('button', { className: 'btn btn-ghost btn-sm', onClick: goToMarketplace, style: { marginLeft: '4px' } },
             'Browse Marketplace'
