@@ -348,6 +348,16 @@ export function ScannerView(props) {
   var canvasRef = React.useRef(null);
   var fileInputRef = React.useRef(null);
 
+  // Wire stream to video element when either changes (fixes Safari + race condition)
+  React.useEffect(function() {
+    var video = videoRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(function(err) {
+      console.warn('[Scanner] video.play() failed:', err.message);
+    });
+  }, [stream, phase]);
+
   // Cleanup camera stream + Tesseract worker on unmount
   React.useEffect(function() {
     return function() {
