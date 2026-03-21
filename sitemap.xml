@@ -1,80 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  NOTE: This SPA uses hash-based routing (e.g. /#search, /#store).
-  Search engines may not index hash routes reliably.
-  The root URL (/) renders the full app; all routes are client-side.
-  For improved SEO, consider migrating to path-based routing with
-  server-side rendering or prerendering in the future.
--->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://www.investmtg.com/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#search</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#store</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#movers</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#meta</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#decks</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#portfolio</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#seller</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#cart</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#pricing</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#faq</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#guidelines</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#privacy</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://www.investmtg.com/#terms</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
+  <url><loc>https://www.investmtg.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.investmtg.com/search</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.investmtg.com/store</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.investmtg.com/movers</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.investmtg.com/meta</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.investmtg.com/decks</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.investmtg.com/portfolio</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.investmtg.com/seller</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.investmtg.com/scan</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.investmtg.com/pricing</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.investmtg.com/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://www.investmtg.com/guidelines</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://www.investmtg.com/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.investmtg.com/terms</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
 </urlset>

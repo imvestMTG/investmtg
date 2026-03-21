@@ -113,6 +113,67 @@ const USER_AGENT = 'investMTG/3.0 (https://www.investmtg.com)';
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 const PLATFORM_FEE_PERCENT = 5; // 5% platform fee on each transaction
 
+/* ── SEO: Clean URL → meta page mapping for crawlers ── */
+const SEO_PAGES = {
+  '/search': { title: 'Search Cards — investMTG', desc: 'Search 25,000+ Magic: The Gathering cards with live market prices. Find deals from local Guam sellers.', canonical: 'https://www.investmtg.com/search' },
+  '/store': { title: 'Marketplace — investMTG', desc: 'Buy and sell Magic: The Gathering cards locally in Guam. Browse seller listings, compare prices, and trade with confidence.', canonical: 'https://www.investmtg.com/store' },
+  '/movers': { title: 'Market Movers — investMTG', desc: 'Track the biggest MTG card price changes. See which cards are gaining or losing value in real-time.', canonical: 'https://www.investmtg.com/movers' },
+  '/portfolio': { title: 'Portfolio Tracker — investMTG', desc: 'Track your Magic card collection value. Monitor prices, organize with binders, and manage your MTG investment portfolio.', canonical: 'https://www.investmtg.com/portfolio' },
+  '/seller': { title: 'Sell Cards — investMTG', desc: "List your Magic cards for sale on Guam's local marketplace. Connect your Stripe account and start selling today.", canonical: 'https://www.investmtg.com/seller' },
+  '/scan': { title: 'Card Scanner — investMTG', desc: 'Scan physical Magic cards with your camera to instantly look up prices and details.', canonical: 'https://www.investmtg.com/scan' },
+  '/pricing': { title: 'Pricing & Data Sources — investMTG', desc: 'How investMTG sources card pricing data. Scryfall market prices, JustTCG condition pricing, and transparent methodology.', canonical: 'https://www.investmtg.com/pricing' },
+  '/faq': { title: 'FAQ — investMTG', desc: 'Frequently asked questions about investMTG. Learn about buying, selling, pricing, and accounts on Guam\'s MTG marketplace.', canonical: 'https://www.investmtg.com/faq' },
+  '/guidelines': { title: 'Community Guidelines — investMTG', desc: 'Community guidelines for buying and selling on investMTG. Card grading standards, seller expectations, and the Fair Play Economy.', canonical: 'https://www.investmtg.com/guidelines' },
+  '/terms': { title: 'Terms of Service — investMTG', desc: 'Terms of Service for investMTG. Covers user accounts, marketplace transactions, payments, and dispute resolution.', canonical: 'https://www.investmtg.com/terms' },
+  '/privacy': { title: 'Privacy Policy — investMTG', desc: 'Privacy Policy for investMTG. Covers data collection, Google OAuth, storage, third-party services, and user rights.', canonical: 'https://www.investmtg.com/privacy' },
+  '/decks': { title: 'Decklists — investMTG', desc: 'Import and analyze Magic decklists. View deck prices and find deals on cards you need.', canonical: 'https://www.investmtg.com/decks' },
+  '/meta': { title: 'cEDH Meta — investMTG', desc: 'Competitive EDH metagame data. Top commanders, popular strategies, and tournament results.', canonical: 'https://www.investmtg.com/meta' },
+  '/orders': { title: 'My Orders — investMTG', desc: 'View your order history on investMTG.', canonical: 'https://www.investmtg.com/orders' },
+  '/cart': { title: 'Cart — investMTG', desc: 'Your shopping cart on investMTG.', canonical: 'https://www.investmtg.com/cart' },
+  '/checkout': { title: 'Checkout — investMTG', desc: 'Complete your purchase on investMTG.', canonical: 'https://www.investmtg.com/checkout' },
+};
+
+function buildSeoPage(seo) {
+  return '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+    + '<meta charset="utf-8">\n'
+    + '<title>' + seo.title + '</title>\n'
+    + '<meta name="description" content="' + seo.desc + '">\n'
+    + '<link rel="canonical" href="' + seo.canonical + '">\n'
+    + '<meta property="og:title" content="' + seo.title + '">\n'
+    + '<meta property="og:description" content="' + seo.desc + '">\n'
+    + '<meta property="og:url" content="' + seo.canonical + '">\n'
+    + '<meta property="og:type" content="website">\n'
+    + '<meta property="og:image" content="https://www.investmtg.com/og-image.jpg">\n'
+    + '<meta property="og:site_name" content="investMTG">\n'
+    + '<meta name="twitter:card" content="summary_large_image">\n'
+    + '<meta name="twitter:title" content="' + seo.title + '">\n'
+    + '<meta name="twitter:description" content="' + seo.desc + '">\n'
+    + '<meta name="twitter:image" content="https://www.investmtg.com/og-image.jpg">\n'
+    + '<script type="application/ld+json">\n'
+    + JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: seo.title,
+        description: seo.desc,
+        url: seo.canonical,
+        isPartOf: { '@type': 'WebSite', name: 'investMTG', url: 'https://www.investmtg.com' }
+      })
+    + '\n</script>\n'
+    + '</head>\n<body>\n'
+    + '<h1>' + seo.title + '</h1>\n'
+    + '<p>' + seo.desc + '</p>\n'
+    + '<nav>\n'
+    + '<a href="https://www.investmtg.com/search">Search Cards</a>\n'
+    + '<a href="https://www.investmtg.com/store">Marketplace</a>\n'
+    + '<a href="https://www.investmtg.com/movers">Market Movers</a>\n'
+    + '<a href="https://www.investmtg.com/portfolio">Portfolio</a>\n'
+    + '<a href="https://www.investmtg.com/seller">Sell Cards</a>\n'
+    + '<a href="https://www.investmtg.com/scan">Card Scanner</a>\n'
+    + '<a href="https://www.investmtg.com/pricing">Pricing</a>\n'
+    + '<a href="https://www.investmtg.com/faq">FAQ</a>\n'
+    + '</nav>\n</body>\n</html>';
+}
+
 // Ticker cards to track
 const TICKER_CARDS = [
   { name: 'Ragavan, Nimble Pilferer' },
@@ -3223,18 +3284,22 @@ async function handleBotCardPage(request, env, cardId) {
 /* ── SEO: Dynamic sitemap.xml from D1 ── */
 
 async function handleSitemap(request, env) {
-  // Static page routes
+  // Static page routes — clean URLs for SEO (no hash)
   var pages = [
     { loc: 'https://www.investmtg.com/', freq: 'daily', priority: '1.0' },
-    { loc: 'https://www.investmtg.com/#search', freq: 'weekly', priority: '0.9' },
-    { loc: 'https://www.investmtg.com/#store', freq: 'weekly', priority: '0.8' },
-    { loc: 'https://www.investmtg.com/#movers', freq: 'daily', priority: '0.8' },
-    { loc: 'https://www.investmtg.com/#portfolio', freq: 'weekly', priority: '0.7' },
-    { loc: 'https://www.investmtg.com/#seller', freq: 'weekly', priority: '0.7' },
-    { loc: 'https://www.investmtg.com/#cart', freq: 'weekly', priority: '0.5' },
-    { loc: 'https://www.investmtg.com/#pricing', freq: 'monthly', priority: '0.6' },
-    { loc: 'https://www.investmtg.com/#privacy', freq: 'monthly', priority: '0.3' },
-    { loc: 'https://www.investmtg.com/#terms', freq: 'monthly', priority: '0.3' },
+    { loc: 'https://www.investmtg.com/search', freq: 'daily', priority: '0.9' },
+    { loc: 'https://www.investmtg.com/store', freq: 'daily', priority: '0.9' },
+    { loc: 'https://www.investmtg.com/movers', freq: 'daily', priority: '0.8' },
+    { loc: 'https://www.investmtg.com/meta', freq: 'weekly', priority: '0.8' },
+    { loc: 'https://www.investmtg.com/decks', freq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.investmtg.com/portfolio', freq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.investmtg.com/seller', freq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.investmtg.com/scan', freq: 'monthly', priority: '0.6' },
+    { loc: 'https://www.investmtg.com/pricing', freq: 'monthly', priority: '0.6' },
+    { loc: 'https://www.investmtg.com/faq', freq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.investmtg.com/guidelines', freq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.investmtg.com/privacy', freq: 'monthly', priority: '0.3' },
+    { loc: 'https://www.investmtg.com/terms', freq: 'monthly', priority: '0.3' },
   ];
 
   // Dynamic card pages from D1
@@ -4532,6 +4597,25 @@ export default {
 
         // Sitemap — serve dynamic sitemap for all requesters
         if (path === '/sitemap.xml') return handleSitemap(request, env);
+
+        // SEO: Clean URLs for crawlers, 302 redirect for humans
+        // Matches /search, /store, etc. but not /api/*, /auth/*, /, or file extensions
+        if (path !== '/' && !path.startsWith('/api/') && !path.startsWith('/auth/') && !path.includes('.')) {
+          var seoPage = SEO_PAGES[path];
+          if (seoPage) {
+            if (isBot) {
+              return new Response(buildSeoPage(seoPage), {
+                status: 200,
+                headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }
+              });
+            }
+            // Real user — redirect to hash URL
+            return new Response(null, {
+              status: 302,
+              headers: { 'Location': 'https://www.investmtg.com/#' + path.slice(1) },
+            });
+          }
+        }
 
         // Clean card URL: /card/:id
         // Bots get HTMLRewriter-injected meta; humans get 302 to hash route
